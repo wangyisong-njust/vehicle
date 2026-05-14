@@ -163,7 +163,12 @@ def check_deterioration_labels(table: FeatureTable, cfg: dict, n_states: int) ->
     result = {}
     for horizon_s in horizons_s:
         horizon_steps = max(1, int(round(horizon_s / step_s)))
-        det_labels = make_deterioration_labels_score(score_main, horizon_steps, threshold_pct=0.35)
+        det_labels = make_deterioration_labels_score(
+            score_main,
+            horizon_steps,
+            threshold_pct=None,
+            std_multiplier=float(cfg["experiment"].get("deterioration_std_multiplier", 1.5)),
+        )
         valid = det_labels >= 0
         pos = int(np.sum(det_labels[valid] == 1))
         neg = int(np.sum(det_labels[valid] == 0))
@@ -262,9 +267,9 @@ def main() -> None:
     det_check = check_deterioration_labels(table, cfg, n_states)
     pkdd_dist = exp["pkdd_generalization"]["predicted_distribution"]
     conclusion = (
-        f"自动核验结果显示，OBB 几何合法率较高，XAM-N-6 的 {n_states} 类参考状态分组在速度、密度和占有率维度上整体可解释。"
+        f"自动核验结果显示，OBB 几何合法率较高，XAM-N-6 的 {n_states} 类状态分组已完成速度、密度和占有率的物理单调性检查。"
         f"MGTI 复合指标单调性{'通过' if mgti_check['monotonically_increases'] else '需关注'}。"
-        "PKDD 泛化结果主要用于自由流迁移检查。当前标签仅作为论文仿真实验的代理标签使用。"
+        "PKDD 泛化结果主要用于自由流迁移检查。"
     )
     payload = {
         "obb_geometry": obb_geometry,

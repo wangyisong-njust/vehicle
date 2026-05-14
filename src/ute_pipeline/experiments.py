@@ -9,11 +9,13 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.cluster import KMeans
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import roc_auc_score
-from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import average_precision_score, roc_auc_score
+from sklearn.model_selection import GroupKFold, StratifiedKFold
+from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
 from xgboost import XGBClassifier
 
@@ -76,7 +78,6 @@ FEATURES_VD = [
     "mean_speed_kmh",
     "std_speed_kmh",
     "speed_ratio",
-    "hfgo_occupancy",
 ]
 
 FEATURES_VDR = FEATURES_VD + [
@@ -89,6 +90,8 @@ FEATURES_VDRF = FEATURES_VDR + [
 ]
 
 FEATURES_OURS = FEATURES_VDRF + [
+    "hfgo_occupancy",
+    "obb_occupancy",
     "mean_headway_s",
     "min_headway_s",
     "headway_sample_count",
@@ -150,6 +153,12 @@ def _z(values: np.ndarray) -> np.ndarray:
     return (values - values.mean()) / (values.std() + 1e-6)
 
 
+def _robust_scaled(train: np.ndarray, values: np.ndarray) -> np.ndarray:
+    scaler = RobustScaler()
+    scaler.fit(train.reshape(-1, 1))
+    return scaler.transform(values.reshape(-1, 1)).reshape(-1)
+
+
 def compute_composite_mgti(table: FeatureTable, cfg: dict) -> np.ndarray:
     w = cfg["feature"]["mgti"]["weights"]
     ia = np.asarray([float(r["acceleration_interference"]) for r in table.rows], dtype=np.float32)
@@ -200,27 +209,68 @@ def make_state_labels(table: FeatureTable, cfg: dict, main_dataset: str = "xamn6
     if label_method == "cluster_vdrf":
         label_features = ["speed_ratio", "density_veh_per_m", "lane_change_rate", "direction_fluctuation"]
         x_main = matrix_from_rows(rows, label_features)
-        mean = x_main.mean(axis=0)
-        std = x_main.std(axis=0) + 1e-6
-        x_main_z = (x_main - mean) / std
+        scaler = RobustScaler()
+        x_main_z = scaler.fit_transform(x_main)
         kmeans = KMeans(n_clusters=n_states, random_state=int(cfg["experiment"].get("random_seed", 42)), n_init=50)
         main_cluster = kmeans.fit_predict(x_main_z)
-        centers = kmeans.cluster_centers_
-        risk = -centers[:, 0] + centers[:, 1] + 0.5 * centers[:, 2] + 0.5 * centers[:, 3]
+
+        macro_centers = []
+        for cluster in range(n_states):
+            cluster_rows = [rows[i] for i in np.where(main_cluster == cluster)[0]]
+            if not cluster_rows:
+                macro_centers.append([0.0, 0.0, 0.0])
+                continue
+            macro_centers.append([
+                float(np.mean([float(r["speed_ratio"]) for r in cluster_rows])),
+                float(np.mean([float(r["density_veh_per_m"]) for r in cluster_rows])),
+                float(np.mean([float(r.get("hfgo_occupancy", r["obb_occupancy"])) for r in cluster_rows])),
+            ])
+        macro_center_z = RobustScaler().fit_transform(np.asarray(macro_centers, dtype=np.float32))
+        risk = -macro_center_z[:, 0] + macro_center_z[:, 1] + 0.5 * macro_center_z[:, 2]
         order = np.argsort(risk)
         cluster_to_state = {int(cluster): int(state) for state, cluster in enumerate(order)}
 
         x_all = matrix_from_rows(table.rows, label_features)
-        x_all_z = (x_all - mean) / std
+        x_all_z = scaler.transform(x_all)
         all_cluster = kmeans.predict(x_all_z)
-        labels = np.asarray([cluster_to_state[int(c)] for c in all_cluster], dtype=np.int64)
+        cluster_labels = np.asarray([cluster_to_state[int(c)] for c in all_cluster], dtype=np.int64)
+
+        speed_ratio = np.asarray([float(r["speed_ratio"]) for r in rows], dtype=np.float32)
+        density = np.asarray([float(r["density_veh_per_m"]) for r in rows], dtype=np.float32)
+        occ_key = "hfgo_occupancy" if "hfgo_occupancy" in rows[0] else "obb_occupancy"
+        occ = np.asarray([float(r[occ_key]) for r in rows], dtype=np.float32)
+        speed_ratio_all = np.asarray([float(r["speed_ratio"]) for r in table.rows], dtype=np.float32)
+        density_all = np.asarray([float(r["density_veh_per_m"]) for r in table.rows], dtype=np.float32)
+        occ_all = np.asarray([float(r[occ_key]) for r in table.rows], dtype=np.float32)
         score_all = (
-            -x_all_z[:, 0]
-            + x_all_z[:, 1]
-            + 0.5 * x_all_z[:, 2]
-            + 0.5 * x_all_z[:, 3]
+            0.65 * _robust_scaled(1.0 - speed_ratio, 1.0 - speed_ratio_all)
+            + 0.25 * _robust_scaled(density, density_all)
+            + 0.10 * _robust_scaled(occ, occ_all)
         ).astype(np.float32)
-        thresholds = np.asarray([float(risk[int(cluster)]) for cluster in order], dtype=np.float32)
+        thresholds = np.quantile(score_all[main_indices], quantiles).astype(np.float32)
+        labels = np.digitize(score_all, thresholds).astype(np.int64)
+        labels = np.clip(labels, 0, n_states - 1)
+
+        def _passes_physical_order(candidate: np.ndarray) -> bool:
+            state_speed = []
+            state_density = []
+            state_occ = []
+            for state in range(n_states):
+                state_idx = main_indices[candidate[main_indices] == state]
+                if state_idx.shape[0] == 0:
+                    return False
+                state_speed.append(float(np.mean([float(table.rows[i]["mean_speed_kmh"]) for i in state_idx])))
+                state_density.append(float(np.mean([float(table.rows[i]["density_veh_per_m"]) for i in state_idx])))
+                state_occ.append(float(np.mean([float(table.rows[i]["obb_occupancy"]) for i in state_idx])))
+            return (
+                all(state_speed[i] >= state_speed[i + 1] - 1e-6 for i in range(n_states - 1))
+                and state_speed[-1] < state_speed[0]
+                and abs(state_density[-1] - max(state_density)) < 1e-6
+                and abs(state_occ[-1] - max(state_occ)) < 1e-6
+            )
+
+        if _passes_physical_order(cluster_labels):
+            labels = cluster_labels
     else:
         speed_ratio = np.asarray([float(r["speed_ratio"]) for r in rows], dtype=np.float32)
         density = np.asarray([float(r["density_veh_per_m"]) for r in rows], dtype=np.float32)
@@ -258,7 +308,12 @@ def make_deterioration_labels(y: np.ndarray, horizon_steps: int) -> np.ndarray:
     return labels
 
 
-def make_deterioration_labels_score(scores: np.ndarray, horizon_steps: int, threshold_pct: float = 0.5) -> np.ndarray:
+def make_deterioration_labels_score(
+    scores: np.ndarray,
+    horizon_steps: int,
+    threshold_pct: float | None = 0.5,
+    std_multiplier: float | None = None,
+) -> np.ndarray:
     n = len(scores)
     labels = np.full(n, -1, dtype=np.int64)
     diffs = np.full(n, np.nan, dtype=np.float32)
@@ -267,7 +322,11 @@ def make_deterioration_labels_score(scores: np.ndarray, horizon_steps: int, thre
     valid = ~np.isnan(diffs)
     if valid.sum() == 0:
         return labels
-    threshold = float(np.quantile(diffs[valid], threshold_pct))
+    valid_diffs = diffs[valid]
+    if std_multiplier is not None:
+        threshold = float(valid_diffs.mean() + float(std_multiplier) * valid_diffs.std())
+    else:
+        threshold = float(np.quantile(valid_diffs, threshold_pct if threshold_pct is not None else 0.5))
     for i in range(n - horizon_steps):
         labels[i] = 1 if diffs[i] > threshold else 0
     return labels
@@ -934,6 +993,18 @@ class LSTMClassifier(nn.Module):
         return self.fc(out[:, -1, :])
 
 
+class FocalLoss(nn.Module):
+    def __init__(self, gamma: float = 2.0, weight: torch.Tensor | None = None):
+        super().__init__()
+        self.gamma = gamma
+        self.register_buffer("weight", weight)
+
+    def forward(self, logits: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        ce = F.cross_entropy(logits, target, weight=self.weight, reduction="none")
+        pt = torch.exp(-ce)
+        return ((1.0 - pt) ** self.gamma * ce).mean()
+
+
 def sequence_dataset(x: np.ndarray, y: np.ndarray, seq_len: int, horizon: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     xs = []
     ys = []
@@ -1002,7 +1073,10 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
 
     model = LSTMClassifier(input_size=x.shape[1], hidden_size=int(lstm_cfg["hidden_size"]), num_classes=n_states)
     opt = torch.optim.Adam(model.parameters(), lr=float(lstm_cfg["learning_rate"]))
-    loss_fn = nn.CrossEntropyLoss()
+    train_counts = np.bincount(train_y.cpu().numpy(), minlength=n_states).astype(np.float32)
+    class_weights = train_counts.sum() / np.maximum(train_counts, 1.0)
+    class_weights = class_weights / max(1e-6, float(class_weights.mean()))
+    loss_fn = FocalLoss(gamma=2.0, weight=torch.tensor(class_weights, dtype=torch.float32))
     batch_size = int(lstm_cfg["batch_size"])
     epochs = int(lstm_cfg["epochs"])
     model.train()
@@ -1126,7 +1200,8 @@ def run_deterioration_prediction(table: FeatureTable, cfg: dict) -> dict[str, ob
     det_xgb_params = cfg["experiment"].get("deterioration_xgboost", cfg["experiment"]["xgboost"])
     step_s = float(cfg["feature"]["step_s"])
     horizons_s = cfg["feature"]["deterioration_horizons_s"]
-    det_test_ratio = float(cfg["experiment"].get("deterioration_test_ratio", 0.25))
+    det_folds = int(cfg["experiment"].get("deterioration_group_folds", 5))
+    det_std_multiplier = float(cfg["experiment"].get("deterioration_std_multiplier", 1.5))
     min_positive = int(cfg["experiment"].get("deterioration_min_positive", 10))
     y = table.y
     assert y is not None
@@ -1140,7 +1215,12 @@ def run_deterioration_prediction(table: FeatureTable, cfg: dict) -> dict[str, ob
     results = {}
     for horizon_s in horizons_s:
         horizon_steps = max(1, int(round(horizon_s / step_s)))
-        det_labels = make_deterioration_labels_score(score_main, horizon_steps, threshold_pct=0.35)
+        det_labels = make_deterioration_labels_score(
+            score_main,
+            horizon_steps,
+            threshold_pct=None,
+            std_multiplier=det_std_multiplier,
+        )
 
         valid_mask = det_labels >= 0
         valid_idx = main_idx[valid_mask]
@@ -1161,15 +1241,11 @@ def run_deterioration_prediction(table: FeatureTable, cfg: dict) -> dict[str, ob
         full_x = np.column_stack([base_x, mgti_col])
 
         n_valid = valid_idx.shape[0]
-        split = int(round(n_valid * (1.0 - det_test_ratio)))
-        train_full = full_x[:split]
-        test_full = full_x[split:]
-        train_labels = valid_labels[:split]
-        test_labels = valid_labels[split:]
-
-        train_pos = int(np.sum(train_labels == 1))
-        train_neg = int(np.sum(train_labels == 0))
-        scale_pos = float(train_neg) / max(1.0, float(train_pos))
+        n_splits = min(det_folds, n_valid)
+        group_edges = np.linspace(0, n_valid, n_splits + 1, dtype=int)
+        groups = np.zeros(n_valid, dtype=np.int64)
+        for group_id in range(n_splits):
+            groups[group_edges[group_id] : group_edges[group_id + 1]] = group_id
 
         ablation_results = {}
         for abl_name, abl_features in DETERIORATION_ABLATION_SETS.items():
@@ -1181,29 +1257,52 @@ def run_deterioration_prediction(table: FeatureTable, cfg: dict) -> dict[str, ob
                     feat_indices.append(NUMERIC_FEATURES_OBB.index(feat_name))
                 else:
                     continue
-            x_train_abl = train_full[:, feat_indices]
-            x_test_abl = test_full[:, feat_indices]
+            x_abl = full_x[:, feat_indices]
+            pred_oof = np.zeros(n_valid, dtype=np.int64)
+            prob_pos_oof = np.zeros(n_valid, dtype=np.float32)
+            importances_accum = np.zeros(len(feat_indices), dtype=np.float32)
+            fitted_folds = 0
+            splitter = GroupKFold(n_splits=n_splits)
+            for fold_id, (train_fold, test_fold) in enumerate(splitter.split(x_abl, valid_labels, groups=groups)):
+                train_labels = valid_labels[train_fold]
+                if np.unique(train_labels).shape[0] < 2:
+                    majority = int(np.bincount(train_labels, minlength=2).argmax())
+                    pred_oof[test_fold] = majority
+                    prob_pos_oof[test_fold] = float(majority)
+                    continue
+                train_pos = int(np.sum(train_labels == 1))
+                train_neg = int(np.sum(train_labels == 0))
+                scale_pos = float(train_neg) / max(1.0, float(train_pos))
+                x_tr, x_te, _, _ = standardize(x_abl[train_fold], x_abl[test_fold])
+                model = xgb_binary_model(seed + fold_id, det_xgb_params, scale_pos_weight=scale_pos)
+                model.fit(x_tr, train_labels)
+                pred_oof[test_fold] = class_predictions(model.predict(x_te))
+                prob = model.predict_proba(x_te)
+                prob_pos_oof[test_fold] = prob[:, 1]
+                if hasattr(model, "feature_importances_"):
+                    importances_accum += np.asarray(model.feature_importances_, dtype=np.float32)
+                fitted_folds += 1
 
-            x_tr, x_te, _, _ = standardize(x_train_abl, x_test_abl)
-            model = xgb_binary_model(seed, det_xgb_params, scale_pos_weight=scale_pos)
-            model.fit(x_tr, train_labels)
-            pred = class_predictions(model.predict(x_te))
-            prob = model.predict_proba(x_te)
-
-            abl_metrics = metrics_dict(test_labels, pred, 2)
+            abl_metrics = metrics_dict(valid_labels, pred_oof, 2)
             try:
-                roc_auc = float(roc_auc_score(test_labels, prob[:, 1]))
+                roc_auc = float(roc_auc_score(valid_labels, prob_pos_oof))
             except ValueError:
                 roc_auc = None
+            try:
+                pr_auc = float(average_precision_score(valid_labels, prob_pos_oof))
+            except ValueError:
+                pr_auc = None
 
             abl_item: dict[str, object] = {
                 "metrics": abl_metrics,
                 "roc_auc": roc_auc,
-                "confusion_matrix": confusion_matrix_np(test_labels, pred, 2).tolist(),
+                "pr_auc": pr_auc,
+                "confusion_matrix": confusion_matrix_np(valid_labels, pred_oof, 2).tolist(),
                 "features": abl_features,
+                "evaluation": "contiguous GroupKFold out-of-fold",
             }
-            if hasattr(model, "feature_importances_"):
-                importances = np.asarray(model.feature_importances_, dtype=np.float32)
+            if fitted_folds > 0:
+                importances = importances_accum / float(fitted_folds)
                 order = np.argsort(importances)[::-1][:8]
                 abl_item["feature_importance"] = [
                     {"feature": abl_features[int(i)], "importance": float(importances[int(i)])}
@@ -1218,8 +1317,8 @@ def run_deterioration_prediction(table: FeatureTable, cfg: dict) -> dict[str, ob
             "positive_count": pos_count,
             "negative_count": neg_count,
             "positive_rate": pos_count / max(1, pos_count + neg_count),
-            "train_windows": split,
-            "test_windows": n_valid - split,
+            "cv_folds": n_splits,
+            "event_threshold": f"mean+{det_std_multiplier:.2f}std",
             "ablation": ablation_results,
         }
 

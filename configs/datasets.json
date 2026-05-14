@@ -94,6 +94,8 @@
     "test_ratio": 0.30,
     "random_seed": 42,
     "deterioration_test_ratio": 0.30,
+    "deterioration_group_folds": 5,
+    "deterioration_std_multiplier": 1.0,
     "deterioration_min_positive": 10,
     "xgboost": {
       "n_estimators": 60,

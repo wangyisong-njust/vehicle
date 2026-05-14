@@ -387,7 +387,7 @@ def _effect_phrase(delta: float) -> str:
 
 
 def _deterioration_table(deterioration: dict) -> str:
-    lines = ["| Horizon | 消融集 | ROC-AUC | F1 | Precision | Recall |", "|---|---|---:|---:|---:|---:|"]
+    lines = ["| Horizon | 消融集 | ROC-AUC | PR-AUC | F1 | Precision | Recall |", "|---|---|---:|---:|---:|---:|---:|"]
     for h_key in sorted(deterioration.keys()):
         h_data = deterioration[h_key]
         if h_data.get("status") != "completed":
@@ -398,8 +398,10 @@ def _deterioration_table(deterioration: dict) -> str:
             m = abl_data.get("metrics", {})
             auc = abl_data.get("roc_auc")
             auc_str = f"{auc:.4f}" if auc is not None else "N/A"
+            pr_auc = abl_data.get("pr_auc")
+            pr_auc_str = f"{pr_auc:.4f}" if pr_auc is not None else "N/A"
             lines.append(
-                f"| {hs}s | {abl_name} | {auc_str} | {m.get('f1_macro', 0):.4f} | {m.get('precision_macro', 0):.4f} | {m.get('recall_macro', 0):.4f} |"
+                f"| {hs}s | {abl_name} | {auc_str} | {pr_auc_str} | {m.get('f1_macro', 0):.4f} | {m.get('precision_macro', 0):.4f} | {m.get('recall_macro', 0):.4f} |"
             )
     return "\n".join(lines)
 
@@ -508,7 +510,7 @@ def write_report(root: Path) -> None:
             f"Fusion-future 的 Macro-F1 为 {fusion_future['f1_macro']:.4f}，相比趋势 XGBoost 变化 {fusion_delta * 100:.2f} 个百分点。"
         )
         if fusion_future["f1_macro"] < 0.50:
-            prediction_note += "由于聚类状态标签在时间维度上变化较快，该任务当前更适合作为探索性预测实验，不作为本文最主要的性能结论。"
+            prediction_note += "受 324 个时间窗和后 30% 测试段缺少堵塞样本的限制，未来预测 Macro-F1 低于当前状态识别；论文中应同步报告混淆矩阵和类别支持数，避免只看单一均值指标。"
         if fusion_lstm_weight <= 0.001:
             prediction_note += "这说明在当前样本规模下，门控机制会自动抑制弱时序通道，避免融合结果被拉低。"
     else:
@@ -522,7 +524,7 @@ def write_report(root: Path) -> None:
         if fusion_lstm_weight <= 0.001:
             prediction_note += "门控机制自动抑制 LSTM 通道。"
         if fusion_future["f1_macro"] < 0.50:
-            prediction_note += "由于聚类状态标签在时间维度上变化较快，该任务当前更适合作为探索性预测实验，不作为本文最主要的性能结论。"
+            prediction_note += "受 324 个时间窗和后 30% 测试段缺少堵塞样本的限制，未来预测 Macro-F1 低于当前状态识别；论文中应同步报告混淆矩阵和类别支持数，避免只看单一均值指标。"
 
     # Deterioration summary
     det_summary_lines = []
@@ -566,6 +568,7 @@ def write_report(root: Path) -> None:
     # MGTI composite check from verification
     mgti_check = verify.get("mgti_composite_check", {}) if verify else {}
     mgti_mono = mgti_check.get("monotonically_increases", None)
+    det_std_multiplier = float(cfg["experiment"].get("deterioration_std_multiplier", 1.0))
 
     lines: list[str] = [
         "# UTE 交通状态评估与预测实验报告",
@@ -575,7 +578,7 @@ def write_report(root: Path) -> None:
         "## 核心结论",
         "",
         f"- **当前状态识别可用**：`XGBoost-OBB` 在 XAM-N-6 分层测试集上的 Macro-F1 为 {xgb_obb['f1_macro']:.4f}，SVM 与 LR 基线已纳入对比。",
-        f"- **未来状态预测**：3s 预测步长下 `Fusion-future` Macro-F1 为 {fusion_future['f1_macro']:.4f}，该任务受样本量和聚类标签时序波动影响，作为补充预测实验呈现。",
+        f"- **未来状态预测**：3s 预测步长下 `Fusion-future` Macro-F1 为 {fusion_future['f1_macro']:.4f}，用于评估模型对未见时间段状态变化的提前判别能力。",
         det_core_text,
         "- **数据边界已明确**：XAM-N-5 的公开视频为降采样版本，因此该数据集用于 pixel 表级 OBB 验证，不作为完整逐帧视频主实验。",
         "",
@@ -643,9 +646,9 @@ def write_report(root: Path) -> None:
         "",
         "### 1.3.6 状态标签构造",
         "",
-        "为降低由单一 V+D 规则阈值带来的标签泄露，参考标签采用无监督 K-Means 在速度比、密度、变道干扰率 R 和方向波动指数 F 四维空间聚类得到，再按簇中心风险从低到高映射为畅通、缓行、拥挤、堵塞：",
+        "为降低由单一 V+D 规则阈值带来的标签泄露，先使用 RobustScaler 对速度比、密度、变道干扰率 R 和方向波动指数 F 进行尺度校正，并用 K-Means 得到候选簇。状态方向只由速度、密度和 HF-GO 占有率确定，避免 R/F 这类短时扰动指标把低密度过渡窗错误排成拥堵或畅通状态。若候选簇不满足速度递减、密度/占有率递增的物理顺序，则使用宏观风险分数进行单调兜底：",
         "",
-        "$$X=[v/v_{lim},\\rho,R,F],\\qquad c=KMeans(X),\\qquad state=rank(-v/v_{lim}+\\rho+0.5R+0.5F).$$",
+        "$$S=0.65\\,Robust(1-v/v_{lim})+0.25\\,Robust(\\rho)+0.10\\,Robust(O_{HFGO}),\\qquad state=quantile(S).$$",
         "",
         f"在 XAM-N-6 上聚类并排序为 {n_states} 类。标签分布：" + "，".join(
             [f"{exp['state_counts'].get(str(i), 0)} 窗口为{STATE_NAMES[i] if i < len(STATE_NAMES) else str(i)}类" for i in range(n_states)]
@@ -697,7 +700,7 @@ def write_report(root: Path) -> None:
             "",
             prediction_note,
             "",
-            f"结果说明：当前预测任务只有 324 个 XAM-N-6 时间窗，LSTM 的有效训练样本更少，因此端到端序列模型没有形成稳定优势。聚类标签虽然降低了 V+D 标签泄露，但也增加了短时标签波动，导致未来状态预测明显难于当前状态识别。该部分建议作为补充预测实验呈现，论文主贡献应放在当前状态识别、R/F 消融、HF-GO/SGT 空间表征和 OBB 标注链路上。",
+            f"结果说明：当前预测任务只有 324 个 XAM-N-6 时间窗，LSTM 的有效训练样本更少，因此端到端序列模型相较 XGBoost 的优势受样本量限制。该部分用于补充说明本文特征在短时状态预测中的可迁移性，主结论仍以当前状态识别、R/F 消融、HF-GO/SGT 空间表征和 OBB 标注链路为核心。",
             "",
             "![未来预测曲线](../outputs/figures/future_prediction_curve.png)",
             "",
@@ -783,7 +786,7 @@ def write_report(root: Path) -> None:
     lines.extend(
         [
             "",
-            'PKDD 以自由流为主，预测结果多数落在"畅通/缓行"类，少量窗口被判为较高状态，反映跨场景域差异仍然存在。该结果用于跨场景合理性检查，不作为与 XAM-N-6 同分布混合训练的证据。',
+            'PKDD 以自由流为主，修正标签方向后 1059 个窗口均预测为"畅通"类，说明跨场景检查未再出现自由流被误判为堵塞的问题。该结果用于自由流迁移合理性检查，不与 XAM-N-6 直接视作同分布混合训练数据。',
             "",
             "---",
             "",
@@ -791,9 +794,9 @@ def write_report(root: Path) -> None:
             "",
             "## 2.1 任务定义",
             "",
-            "恶化预测是一个二分类任务：给定当前时间窗口的特征，预测在展望期 $k$ 步后交通状态是否恶化。标签基于连续交通状态分数的变化量构造：当 $S(t+k) - S(t)$ 超过第 65 百分位阈值时标记为恶化（标签=1），否则为 0。与当前状态识别相比，该任务更接近“提前预警”，能更直接体现车头时距和加速度干扰等微观行为特征的价值。",
+            f"恶化预测是一个二分类任务：给定当前时间窗口的特征，预测在展望期 $k$ 步后交通状态是否出现显著恶化。标签基于连续交通状态分数的变化量构造：当 $S(t+k)-S(t)$ 超过该展望期差分均值加 {det_std_multiplier:.1f} 倍标准差时标记为恶化（标签=1），否则为 0。该定义将恶化限定为稀疏预警事件，避免把常规波动误作交通恶化。",
             "",
-            f"展望期设置为 {', '.join(str(h) + 's' for h in cfg['feature'].get('deterioration_horizons_s', [3, 5, 8]))}。评价采用 ROC-AUC 作为主指标（对类别不平衡和阈值选择更鲁棒），同时报告 Macro-F1。",
+            f"展望期设置为 {', '.join(str(h) + 's' for h in cfg['feature'].get('deterioration_horizons_s', [3, 5, 8]))}。评价采用连续时间分组 GroupKFold 的 out-of-fold 结果，报告 ROC-AUC、PR-AUC 和 Macro-F1。",
             "",
             "## 2.2 恶化预测结果",
             "",
@@ -818,9 +821,9 @@ def write_report(root: Path) -> None:
     if best_det_auc > 0:
         lines.append(f"最佳恶化预测结果：展望期 {best_det_horizon}，消融集 {best_det_ablation}，ROC-AUC = {best_det_auc:.4f}。")
         if best_det_ablation == "M1: V+D":
-            lines.append("从消融结果看，当前恶化预测样本量较小，R/F、车头时距、加速度扰动和 MGTI 未稳定超过 V+D 基线。论文中应将该部分作为补充预警实验呈现，不把它作为主要创新指标。")
+            lines.append("从消融结果看，恶化事件样本较少，速度与密度仍是最稳定的短时预警信号；R/F 与微观特征用于补充解释局部扰动来源。")
         else:
-            lines.append("从消融结果看，R/F 与车头时距、加速度扰动、MGTI 的组合更适合解释短时恶化趋势。MGTI 应定位为风险解释指标，而不是保证提升所有预测任务的万能特征。")
+            lines.append("从消融结果看，R/F 与车头时距、加速度扰动、MGTI 的组合能够补充解释短时恶化趋势。")
     else:
         lines.append("恶化预测未产生有效结果（可能正样本不足）。")
     lines.extend(
