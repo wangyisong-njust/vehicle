@@ -1181,25 +1181,71 @@ def run_parameter_sensitivity(table: FeatureTable, cfg: dict) -> dict[str, objec
 
     horizon_results = []
     x = table.x_obb[idx]
-    split = int(round(x.shape[0] * (1.0 - test_ratio)))
-    x_train_raw = x[:split]
-    x_test_raw = x[split:]
-    _, _, mean, std = standardize(x_train_raw, x_test_raw)
-    x_scaled = (x - mean) / std
-    for horizon in [1, 3, 5, 8]:
+    step_s = float(cfg["feature"]["step_s"])
+    min_train_windows = 40
+    min_test_windows = 8
+    horizons_s = cfg["feature"].get("prediction_sensitivity_horizons_s", [1, 3, 5, 8, 30, 60, 120, 180, 300])
+    for horizon_s in horizons_s:
+        horizon = max(1, int(round(float(horizon_s) / step_s)))
         valid_end = x.shape[0] - horizon
-        train_end = min(split, valid_end)
-        test_positions = np.arange(split, valid_end)
-        if test_positions.size < 5:
+        horizon_seconds = float(horizon * step_s)
+        base_row = {
+            "horizon_steps": int(horizon),
+            "horizon_seconds": horizon_seconds,
+            "valid_positions": int(max(0, valid_end)),
+        }
+        if valid_end < min_train_windows + min_test_windows:
+            horizon_results.append(
+                {
+                    **base_row,
+                    "status": "skipped",
+                    "reason": "valid_positions_less_than_minimum_train_test",
+                    "min_train_windows": min_train_windows,
+                    "min_test_windows": min_test_windows,
+                }
+            )
             continue
+
+        split_h = int(round(valid_end * (1.0 - test_ratio)))
+        split_h = max(min_train_windows, min(split_h, valid_end - min_test_windows))
+        train_positions = np.arange(0, split_h)
+        test_positions = np.arange(split_h, valid_end)
+        train_y = y_main[train_positions + horizon]
+        test_y = y_main[test_positions + horizon]
+        if np.unique(train_y).size < 2 or np.unique(test_y).size < 2:
+            horizon_results.append(
+                {
+                    **base_row,
+                    "status": "skipped",
+                    "reason": "insufficient_class_diversity",
+                    "train_windows": int(train_positions.size),
+                    "test_windows": int(test_positions.size),
+                    "train_support": np.bincount(train_y, minlength=n_states).astype(int).tolist(),
+                    "test_support": np.bincount(test_y, minlength=n_states).astype(int).tolist(),
+                }
+            )
+            continue
+
+        x_train, x_test, _, _ = standardize(x[train_positions], x[test_positions])
         model = xgb_model(seed, cfg["experiment"]["xgboost"], n_states)
-        fit_xgb_multiclass(model, x_scaled[:train_end], y_main[horizon : train_end + horizon], n_states)
-        pred = class_predictions(model.predict(x_scaled[test_positions]))
+        fit_xgb_multiclass(
+            model,
+            x_train,
+            train_y,
+            n_states,
+            sample_weight=compute_sample_weights(train_y, n_states),
+        )
+        pred = class_predictions(model.predict(x_test))
         horizon_results.append(
             {
-                "horizon_steps": horizon,
-                "horizon_seconds": float(horizon * float(cfg["feature"]["step_s"])),
-                "metrics": metrics_dict(y_main[test_positions + horizon], pred, n_states),
+                **base_row,
+                "status": "completed",
+                "train_windows": int(train_positions.size),
+                "test_windows": int(test_positions.size),
+                "train_support": np.bincount(train_y, minlength=n_states).astype(int).tolist(),
+                "test_support": np.bincount(test_y, minlength=n_states).astype(int).tolist(),
+                "metrics": metrics_dict(test_y, pred, n_states),
+                "note": "long_horizon_supplement" if horizon_seconds >= 30 else "short_horizon_main_sensitivity",
             }
         )
     return {"max_depth": depth_results, "prediction_horizon": horizon_results}

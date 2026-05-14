@@ -519,8 +519,9 @@ def plot_sensitivity(results: dict, out_path: Path) -> None:
     depths = [item["max_depth"] for item in results["max_depth"]]
     f1_depth = [item["metrics"]["f1_macro"] for item in results["max_depth"]]
     f1_depth_std = [item["metrics"].get("f1_macro_std", 0.0) for item in results["max_depth"]]
-    horizons = [item["horizon_seconds"] for item in results["prediction_horizon"]]
-    f1_horizon = [item["metrics"]["f1_macro"] for item in results["prediction_horizon"]]
+    completed_horizons = [item for item in results["prediction_horizon"] if item.get("status", "completed") == "completed" and "metrics" in item]
+    horizons = [item["horizon_seconds"] for item in completed_horizons]
+    f1_horizon = [item["metrics"]["f1_macro"] for item in completed_horizons]
     fig, axes = plt.subplots(1, 2, figsize=(10, 4.2))
     axes[0].errorbar(depths, f1_depth, yerr=f1_depth_std, marker="o", capsize=4)
     axes[0].set_xlabel("XGBoost max_depth")
@@ -1050,7 +1051,7 @@ def write_report(root: Path) -> None:
         "",
         "主要评价采用分层随机划分（stratified split），确保训练集和测试集各类别比例一致。消融实验和参数敏感性分析使用 5 折分层交叉验证（stratified 5-fold CV），以交叉验证均值作为报告指标。",
         "",
-        "为对齐近五年文献中的方法对比，本节不只比较项目内部模型，还补充交通状态识别与短时交通预测文献中常见的基线。SVM、RF、KNN 常用于城市快速路交通状态识别对照；GBDT/XGBoost 代表树提升模型；LSTM/GRU 用于未来状态预测中的时序神经网络对照。状态识别模型使用同一份 XAM-N-6 四类状态标签、同一训练/测试划分和同一评价指标；未来预测模型统一预测 3 秒后的交通状态。",
+        "为对齐近五年文献中的方法对比，本节不只比较项目内部模型，还补充交通状态识别与短时交通预测文献中常见的基线。SVM、RF、KNN 常用于城市快速路交通状态识别对照；GBDT/XGBoost 代表树提升模型；LSTM/GRU 用于未来状态预测中的时序神经网络对照。状态识别模型使用同一份 XAM-N-6 四类状态标签、同一训练/测试划分和同一评价指标；未来预测主实验统一预测 3 秒后的交通状态，长时预测作为参数敏感性补充。",
         "",
         "| 对比类别 | 本报告实现 | 近五年文献中的作用 |",
         "|---|---|---|",
@@ -1067,6 +1068,7 @@ def write_report(root: Path) -> None:
         "| CNN/LSTM 类时序预测 | Reza 等 2022 年交通状态预测研究采用 1D-CNN 与 LSTM，并讨论 LSTM/GRU 在交通状态预测中的作用 | 在未来状态预测中加入 LSTM-future，并保留 XGBoost 静态/趋势通道 |",
         "| 深度学习交通拥堵预测 | 2023 年交通拥堵预测研究总结了神经网络、SVM 与深度学习方法在拥堵预测中的应用 | 把 XGBoost、SVM、LSTM/GRU 作为未来状态预测和识别任务的对照组 |",
         "| LSTM / GRU 记忆型循环网络 | 2023 年交通量预测研究直接比较 LSTM 与 GRU 两类记忆型循环网络 | 在未来状态预测中新增 GRU-future，与 LSTM-future 同口径比较 |",
+        "| 长时交通流/速度预测 | 近年 PeMS/METR-LA 交通预测论文通常报告 15/30/60 分钟，少数工作扩展到 120 分钟 | 本数据主场景 XAM-N-6 只有约 5.5 分钟，因此只补充 30/60/120/180/300 秒可行性，不把 15/30 分钟写成主实验 |",
         "",
         "参考文献链接：",
         "",
@@ -1074,6 +1076,17 @@ def write_report(root: Path) -> None:
         "- Reza et al., Traffic State Prediction Using One-Dimensional Convolution Neural Networks and Long Short-Term Memory, Applied Sciences, 2022, <https://doi.org/10.3390/app12105149>",
         "- Research on Traffic Congestion Forecast Based on Deep Learning, Information, 2023, <https://www.mdpi.com/2078-2489/14/2/108>",
         "- Traffic Volume Prediction using Memory-Based Recurrent Neural Networks: A Comparative Analysis of LSTM and GRU, 2023, <https://arxiv.org/abs/2303.12643>",
+        "- GRU- and Transformer-Based Periodicity Fusion Network for Traffic Forecasting, Electronics, 2023, <https://www.mdpi.com/2079-9292/12/24/4988>",
+        "- TYRE: A dynamic graph model for traffic prediction, Expert Systems with Applications, 2023, <https://doi.org/10.1016/j.eswa.2022.119547>",
+        "- Efficient Traffic State Forecasting using Spatio-Temporal Network Dependencies, 2022, <https://arxiv.org/abs/2211.03033>",
+        "",
+        "长时预测文献与本项目数据的对应关系如下。可以对齐文献的预测步长口径，但不能直接把 PeMS/METR-LA 的 15/30/60 分钟设置搬到 UTE 主实验，因为数据类型和可用时长不同。",
+        "",
+        "| 文献数据集/任务 | 常见预测步长 | 数据特点 | 与本项目的处理方式 |",
+        "|---|---:|---|---|",
+        "| PeMS / PeMSD4 / PeMSD8 交通流或速度预测 | 15/30/60 分钟，部分到 120 分钟 | 固定检测器长时间序列，通常 5 分钟聚合，持续数周到数月 | 作为长时预测相关工作引用，不直接替代 UTE OBB 实验 |",
+        "| METR-LA / PEMS-BAY 交通速度预测 | 15/30/60 分钟 | 路网传感器序列，关注速度/流量连续值 | 可作为后续扩展数据集；当前没有 pixel/车辆框，无法验证 HBB→OBB 与 HF-GO |",
+        "| UTE XAM-N-6 四类状态预测 | 主实验 3 秒；补充 30/60/120/180/300 秒 | 无人机 pixel 轨迹与车辆框，主场景约 5.5 分钟 | 保留 OBB/HF-GO 创新链路，最长可靠展望期受视频长度限制 |",
         "",
         metric_table(exp["classification"]),
         "",
@@ -1152,6 +1165,8 @@ def write_report(root: Path) -> None:
             "## 1.5 未来状态预测",
             "",
             f"预测步长：{exp['prediction']['horizon_seconds']:.1f} 秒",
+            "",
+            "这里的“未来状态预测”默认是短时状态预测，即预测 3 秒后的四类交通状态。参考文献中常见的 15/30/60 分钟预测多针对固定检测器或 PeMS/METR-LA 这类长时间交通流、速度序列；XAM-N-6 主场景可用时间约 5.5 分钟，无法支撑 15/30 分钟标签。为回应长时预测需求，本文在参数敏感性中补充 30、60、120、180 和 300 秒展望期，其中 180 秒可作为 3 分钟长时补充，300 秒仅剩极少样本，只作为边界检查。",
             "",
             metric_table({k: v for k, v in exp["prediction"].items() if isinstance(v, dict) and "metrics" in v}),
             "",
@@ -1266,12 +1281,20 @@ def write_report(root: Path) -> None:
         std_str = f" ± {m.get('f1_macro_std', 0):.4f}" if m.get("f1_macro_std", 0) > 0 else ""
         lines.append(f"| XGBoost max_depth | {item['max_depth']} | {m['accuracy']:.4f} | {m['f1_macro']:.4f}{std_str} |")
     for item in exp["parameter_sensitivity"]["prediction_horizon"]:
+        if item.get("status", "completed") != "completed" or "metrics" not in item:
+            lines.append(f"| prediction horizon(s) | {item['horizon_seconds']:.1f} | - | skipped: {item.get('reason', 'insufficient data')} |")
+            continue
         m = item["metrics"]
-        lines.append(f"| prediction horizon(s) | {item['horizon_seconds']:.1f} | {m['accuracy']:.4f} | {m['f1_macro']:.4f} |")
+        sample_note = f"（train/test={item.get('train_windows', '-')}/{item.get('test_windows', '-')}）"
+        lines.append(f"| prediction horizon(s) | {item['horizon_seconds']:.1f} | {m['accuracy']:.4f} | {m['f1_macro']:.4f} {sample_note} |")
     lines.extend(
         [
             "",
             "![参数敏感性](../outputs/figures/parameter_sensitivity.png)",
+            "",
+            "预测步长敏感性采用同一条 XAM-N-6 时间序列重新构造目标标签。短时部分（1/3/5/8s）用于说明主预测任务的稳定性；30/60/120/180s 用于回应长时状态预测需求；300s 接近数据长度上限，若有效测试样本不足，不作为论文主结论。与常见 15/30/60 分钟交通流预测不同，这里预测的是无人机片段内的四类状态，能够报告的最长可靠展望期受原始视频时长限制。",
+            "",
+            "如果导师要求与长时交通预测论文完全同口径对比，建议把它作为扩展实验单独设计：数据集选 PeMSD4/PeMSD8、METR-LA 或 PEMS-BAY，预测对象改为速度/流量连续值，展望期设为 15/30/60 分钟，并加入 HA、ARIMA、SVR、LSTM、GRU、DCRNN、STGCN、GraphWaveNet、TYRE 等文献基线。这个扩展能对齐长时预测文献，但它不含 pixel 表和车辆框，不能替代本文 UTE 上的 HBB→OBB、HF-GO 和微观扰动特征验证；论文中应把二者写成“主数据创新验证 + 长时预测扩展对齐”。",
             "",
             "## 1.8 多随机种子稳健性检验",
             "",

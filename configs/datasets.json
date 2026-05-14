@@ -76,6 +76,7 @@
     "label_smoothing_window": 5,
     "quantiles": [0.25, 0.50, 0.75],
     "prediction_horizon_steps": 3,
+    "prediction_sensitivity_horizons_s": [1, 3, 5, 8, 30, 60, 120, 180, 300],
     "safe_headway_s": 2.0,
     "deterioration_horizons_s": [3, 5, 8],
     "primary_split": "stratified",
