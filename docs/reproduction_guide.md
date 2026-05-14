@@ -158,7 +158,7 @@ data_check/PKDD/PKDD-8/sample video.mp4
 | 参数敏感性 | XAM-N-6 | 5 折交叉验证 |
 | 未来状态预测 | XAM-N-6 | 按时间顺序前 70% 训练、后 30% 测试 |
 | LSTM/Fusion | XAM-N-6 | 训练段后 20% 作为验证段，用于融合权重选择 |
-| 恶化预测 | XAM-N-6 | 按时间顺序前 70% 训练、后 30% 测试 |
+| 恶化预测 | XAM-N-6 | 连续时间分组 GroupKFold out-of-fold 评估 |
 | OBB 补充验证 | XAM-N-5、PKDD-8 | 不参与主训练，只做标注效果和场景合理性检查 |
 
 ## 6. 一键复现
@@ -216,7 +216,7 @@ python scripts/04_make_report.py
 | `outputs/processed/` | HBB 转 OBB 后的标注表，包含角度、角度置信度和四点坐标 |
 | `outputs/features/` | 滑窗特征表 |
 | `outputs/reports/` | JSON 指标、核验结果和中间摘要 |
-| `outputs/figures/` | 混淆矩阵、预测曲线、消融图、参数敏感性图、稳健性图、TreeSHAP 图、PKDD 概率图、状态时空图、HF-GO 局部对比和 OBB 抽帧可视化 |
+| `outputs/figures/` | 混淆矩阵、预测曲线、消融图、参数敏感性图、稳健性图、TreeSHAP 图、SHAP 反事实曲线、R/F 散点图、PKDD 概率图、状态时空图、HF-GO 局部对比和 OBB 抽帧可视化 |
 | `docs/experiment_report.md` | 最终实验报告 |
 
 ## 9. 复现成功的判断

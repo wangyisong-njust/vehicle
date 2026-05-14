@@ -298,6 +298,88 @@ def plot_shap_summary(shap_summary: dict, out_path: Path) -> None:
     plt.close(fig)
 
 
+def plot_counterfactual(counterfactual: dict, out_path: Path) -> None:
+    if not counterfactual or counterfactual.get("status") != "completed":
+        return
+    cases = counterfactual.get("cases", [])
+    if not cases:
+        return
+    case = cases[0]
+    features = case.get("features", [])[:3]
+    if not features:
+        return
+    fig, axes = plt.subplots(1, len(features), figsize=(4.2 * len(features), 3.6), squeeze=False)
+    for ax, item in zip(axes[0], features):
+        curve = item.get("curve", [])
+        x = [p["feature_value_standardized"] for p in curve]
+        true_prob = [p["true_class_prob"] for p in curve]
+        pred_prob = [p["pred_class_prob"] for p in curve]
+        ax.plot(x, true_prob, marker="o", label="true class")
+        ax.plot(x, pred_prob, marker="s", label="pred class")
+        ax.set_title(item.get("feature", "feature"))
+        ax.set_xlabel("standardized value")
+        ax.set_ylabel("probability")
+        ax.grid(alpha=0.25)
+    axes[0, 0].legend()
+    fig.suptitle("SHAP-guided What-if Counterfactual Curves", fontsize=12)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=200)
+    plt.close(fig)
+
+
+def plot_rf_scatter(rows: list[dict[str, str]], labels: np.ndarray, out_path: Path) -> None:
+    datasets = ["xamn6", "pkdd8"]
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.2))
+    state_names = configure_plot_font()
+    all_xamn_idx = [i for i, r in enumerate(rows) if r["dataset"] == "xamn6"]
+    xamn_label_map = {idx: int(labels[pos]) for pos, idx in enumerate(all_xamn_idx)}
+    for ax, dataset in zip(axes, datasets):
+        ds_rows = [(i, r) for i, r in enumerate(rows) if r["dataset"] == dataset]
+        if not ds_rows:
+            continue
+        r_vals = np.asarray([float(r["lane_change_rate"]) for _, r in ds_rows])
+        f_vals = np.asarray([float(r["direction_fluctuation"]) for _, r in ds_rows])
+        if dataset == "xamn6":
+            colors = np.asarray([xamn_label_map.get(i, 0) for i, _ in ds_rows])
+            sc = ax.scatter(r_vals, f_vals, c=colors, cmap="viridis", s=16, alpha=0.75)
+            cbar = fig.colorbar(sc, ax=ax, fraction=0.046, pad=0.04)
+            cbar.ax.set_yticks(range(min(4, len(state_names))))
+            cbar.ax.set_yticklabels(state_names[:4])
+        else:
+            ax.scatter(r_vals, f_vals, color="#4c78a8", s=14, alpha=0.65)
+        corr = float(np.corrcoef(r_vals, f_vals)[0, 1]) if r_vals.std() > 1e-9 and f_vals.std() > 1e-9 else 0.0
+        ax.set_title(f"{dataset} R-F corr={corr:.3f}")
+        ax.set_xlabel("lane_change_rate R")
+        ax.set_ylabel("direction_fluctuation F")
+        ax.grid(alpha=0.25)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=200)
+    plt.close(fig)
+
+
+def rf_correlation_table(rows: list[dict[str, str]], labels: np.ndarray) -> list[dict[str, object]]:
+    result: list[dict[str, object]] = []
+    xamn_positions = [i for i, r in enumerate(rows) if r["dataset"] == "xamn6"]
+    for dataset in sorted(set(r["dataset"] for r in rows)):
+        ds_idx = [i for i, r in enumerate(rows) if r["dataset"] == dataset]
+        r_vals = np.asarray([float(rows[i]["lane_change_rate"]) for i in ds_idx])
+        f_vals = np.asarray([float(rows[i]["direction_fluctuation"]) for i in ds_idx])
+        corr = float(np.corrcoef(r_vals, f_vals)[0, 1]) if r_vals.std() > 1e-9 and f_vals.std() > 1e-9 else 0.0
+        result.append({"scope": dataset, "count": len(ds_idx), "pearson_r": corr})
+    state_names = configure_plot_font()
+    for state in range(min(4, len(state_names))):
+        pos = [xamn_positions[i] for i in range(len(xamn_positions)) if int(labels[i]) == state]
+        if len(pos) < 3:
+            continue
+        r_vals = np.asarray([float(rows[i]["lane_change_rate"]) for i in pos])
+        f_vals = np.asarray([float(rows[i]["direction_fluctuation"]) for i in pos])
+        corr = float(np.corrcoef(r_vals, f_vals)[0, 1]) if r_vals.std() > 1e-9 and f_vals.std() > 1e-9 else 0.0
+        result.append({"scope": f"xamn6-{state_names[state]}", "count": len(pos), "pearson_r": corr})
+    return result
+
+
 def plot_prediction_curve(pred_block: dict, out_path: Path, state_names: list[str]) -> None:
     true = np.asarray(pred_block["true"])
     pred = np.asarray(pred_block["pred"])
@@ -537,7 +619,7 @@ def _effect_phrase(delta: float) -> str:
 
 
 def _deterioration_table(deterioration: dict) -> str:
-    lines = ["| Horizon | 消融集 | ROC-AUC | PR-AUC | 默认F1 | CST阈值 | CST-F1 |", "|---|---|---:|---:|---:|---:|---:|"]
+    lines = ["| Horizon | 消融集 | ROC-AUC | PR-AUC | 默认F1 | CST阈值 | CST-F1 | TP/FP/FN/TN |", "|---|---|---:|---:|---:|---:|---:|---|"]
     for h_key in sorted(deterioration.keys()):
         h_data = deterioration[h_key]
         if h_data.get("status") != "completed":
@@ -551,8 +633,9 @@ def _deterioration_table(deterioration: dict) -> str:
             pr_auc = abl_data.get("pr_auc")
             pr_auc_str = f"{pr_auc:.4f}" if pr_auc is not None else "N/A"
             cst = abl_data.get("cst_operating_point", {})
+            counts = f"{cst.get('tp', 0)}/{cst.get('fp', 0)}/{cst.get('fn', 0)}/{cst.get('tn', 0)}"
             lines.append(
-                f"| {hs}s | {abl_name} | {auc_str} | {pr_auc_str} | {m.get('f1_macro', 0):.4f} | {cst.get('threshold', 0.5):.3f} | {cst.get('f1_macro', 0):.4f} |"
+                f"| {hs}s | {abl_name} | {auc_str} | {pr_auc_str} | {m.get('f1_macro', 0):.4f} | {cst.get('threshold', 0.5):.3f} | {cst.get('f1_macro', 0):.4f} | {counts} |"
             )
     return "\n".join(lines)
 
@@ -599,8 +682,10 @@ def write_report(root: Path) -> None:
     best_cm = exp["classification"][best_name]["confusion_matrix"]
     plot_confusion(best_cm, f"{best_name} Current State", fig_dir / "cm_xgboost_obb.png", state_names)
     plot_shap_summary(exp["classification"]["XGBoost-OBB"].get("shap_summary", {}), fig_dir / "shap_summary_xgboost_obb.png")
+    plot_counterfactual(exp["classification"]["XGBoost-OBB"].get("counterfactual_analysis", {}), fig_dir / "shap_counterfactual_curves.png")
     plot_state_spacetime(root, cfg, labels, fig_dir / "xamn6_state_spacetime.png")
     plot_hfgo_local_by_state(root, cfg, labels, fig_dir / "hfgo_local_by_state.png")
+    plot_rf_scatter(rows, labels, fig_dir / "rf_scatter_by_state.png")
     fusion = exp["prediction"]["Fusion-future"]
     plot_confusion(fusion["confusion_matrix"], "Fusion Future State", fig_dir / "cm_fusion_future.png", state_names)
     plot_prediction_curve(fusion, fig_dir / "future_prediction_curve.png", state_names)
@@ -632,6 +717,8 @@ def write_report(root: Path) -> None:
     best_ablation_name, best_ablation = max(exp["ablation"].items(), key=lambda kv: kv[1]["metrics"]["f1_macro"])
     ablation_delta = best_ablation["metrics"]["f1_macro"] - hbb_basic["f1_macro"]
     ablation_std = best_ablation["metrics"].get("f1_macro_std", 0.0)
+    m4_stability = exp["ablation"].get("M4: Ours+headway+acc+MGTI", {}).get("stability_vs_m3f", {})
+    rf_corr = rf_correlation_table(rows, labels)
 
     # Supplementary results
     strat = exp["classification"].get("stratified_supplementary", {})
@@ -849,6 +936,22 @@ def write_report(root: Path) -> None:
     for item in shap_items[:5]:
         lines.append(f"- `{item['feature']}`: {item['mean_abs_shap']:.4f}")
     lines.extend(["", "![TreeSHAP特征贡献](../outputs/figures/shap_summary_xgboost_obb.png)"])
+    cf = exp["classification"]["XGBoost-OBB"].get("counterfactual_analysis", {})
+    if cf.get("status") == "completed":
+        lines.extend([
+            "",
+            "SHAP 反事实分析选取低置信或误判样本，对 Top 特征做单变量分位扰动，观察真实类与预测类概率变化，用于解释边界样本的判别来源。",
+            "",
+            "![SHAP反事实曲线](../outputs/figures/shap_counterfactual_curves.png)",
+        ])
+    conformal = exp["classification"]["XGBoost-OBB"].get("conformal_prediction", {})
+    if conformal.get("status") == "completed":
+        lines.extend([
+            "",
+            "### 1.4.3 预测可靠性分析",
+            "",
+            f"对 `XGBoost-OBB` 增加 split conformal 置信集合。置信水平为 {conformal['confidence']:.0%}，测试集覆盖率为 {conformal['coverage']:.4f}，平均集合大小为 {conformal['average_set_size']:.2f}，单标签集合比例为 {conformal['singleton_rate']:.4f}。该结果用于补充说明模型预测的可靠性校准情况。",
+        ])
 
     lines.extend(
         [
@@ -877,6 +980,7 @@ def write_report(root: Path) -> None:
     if balanced_pred.get("status") == "completed":
         lines.extend([
             f"- 测试窗口数：{balanced_pred['test_windows']}，各类支持数：" + "，".join([f"{k} {v}" for k, v in balanced_pred.get("test_support", {}).items()]),
+            f"- Embargo 步长：±{balanced_pred.get('embargo_steps', 0)} 个窗口，训练窗口数：{balanced_pred['train_windows']}",
             f"- XGBoost-future Macro-F1：{balanced_pred['metrics']['f1_macro']:.4f}，Accuracy：{balanced_pred['metrics']['accuracy']:.4f}",
             "",
         ])
@@ -905,6 +1009,32 @@ def write_report(root: Path) -> None:
             "",
             "![消融实验](../outputs/figures/ablation_macro_f1.png)",
             "",
+        ]
+    )
+    if m4_stability:
+        p_val = m4_stability.get("paired_t_pvalue")
+        p_text = "N/A" if p_val is None else f"{p_val:.4f}"
+        lines.extend([
+            f"M4 与 `M3': V+D+F` 的均值增益为 {m4_stability['mean_delta'] * 100:.2f} 个百分点；更重要的是，5 折 Macro-F1 标准差由 {m4_stability['m3f_std']:.4f} 降至 {m4_stability['m4_std']:.4f}，降低 {m4_stability['std_reduction_rate'] * 100:.1f}%。配对 t 检验 p={p_text}。因此 M4 的优势应表述为稳定性提升和边界样本鲁棒性增强，而不是单纯追求均值大幅提高。",
+            "",
+        ])
+    lines.extend([
+        "### 1.6.1 R/F 相关性分析",
+        "",
+        "| 范围 | 样本数 | Pearson r(R,F) |",
+        "|---|---:|---:|",
+    ])
+    for item in rf_corr:
+        lines.append(f"| {item['scope']} | {item['count']} | {item['pearson_r']:.4f} |")
+    lines.extend([
+        "",
+        "R/F 相关性用于解释 `M2`、`M3'` 和 `M3` 的差异：F 在方向扰动上具有独立贡献，但与 R 同时进入模型时可能存在局部共线或样本量受限，导致 `M3` 的均值未继续超过 `M3'`。",
+        "",
+        "![R-F相关散点](../outputs/figures/rf_scatter_by_state.png)",
+        "",
+    ])
+    lines.extend(
+        [
             "## 1.7 参数敏感性分析（5 折 CV）",
             "",
             "| 参数 | 取值 | Accuracy | Macro-F1 |",
@@ -1132,6 +1262,7 @@ def write_report(root: Path) -> None:
             "- `outputs/figures/hfgo_hbb_vs_obb_heatmap.png` — HBB 与 HF-GO 网格占有率热力图",
             "- `outputs/figures/hfgo_local_by_state.png` — 四类状态下 HBB/HF-GO 局部对比",
             "- `outputs/figures/pkdd_free_probability_hist.png` — PKDD 畅通类预测概率分布",
+            "- `outputs/figures/rf_scatter_by_state.png` — R/F 相关性散点图",
             "",
             "**恶化预测图表：**",
             "- `outputs/figures/deterioration_ablation_auc.png` — 恶化预测消融 AUC",
@@ -1141,6 +1272,7 @@ def write_report(root: Path) -> None:
             "**特征分析图表：**",
             "- `outputs/figures/mgti_risk_by_state.png` — MGTI 复合风险箱线图",
             "- `outputs/figures/shap_summary_xgboost_obb.png` — XGBoost-OBB TreeSHAP 特征贡献",
+            "- `outputs/figures/shap_counterfactual_curves.png` — SHAP 引导反事实曲线",
             "",
             "**OBB 抽帧可视化：**",
             "- `outputs/figures/xamn5_obb_overlay_f*.jpg` — XAM-N-5 pixel 帧时间映射后的旋转框叠加图",

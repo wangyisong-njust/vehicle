@@ -17,6 +17,7 @@ from sklearn.metrics import average_precision_score, precision_recall_curve, roc
 from sklearn.model_selection import GroupKFold, StratifiedKFold
 from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
+from scipy.stats import ttest_rel
 from xgboost import DMatrix, XGBClassifier
 
 
@@ -369,9 +370,10 @@ def cost_sensitive_operating_point(y_true: np.ndarray, prob_pos: np.ndarray, cos
     for threshold in thresholds:
         pred = (prob_pos >= float(threshold)).astype(np.int64)
         cm = confusion_matrix_np(y_true, pred, 2).astype(np.float32)
-        tp = float(cm[1, 1])
+        tn = float(cm[0, 0])
         fp = float(cm[0, 1])
         fn = float(cm[1, 0])
+        tp = float(cm[1, 1])
         precision_pos = tp / max(1e-6, tp + fp)
         recall_pos = tp / max(1e-6, tp + fn)
         m = metrics_dict(y_true, pred, 2)
@@ -379,6 +381,10 @@ def cost_sensitive_operating_point(y_true: np.ndarray, prob_pos: np.ndarray, cos
         payload = {
             "threshold": float(threshold),
             "score": float(score),
+            "tp": int(tp),
+            "fp": int(fp),
+            "fn": int(fn),
+            "tn": int(tn),
             "precision_positive": float(precision_pos),
             "recall_positive": float(recall_pos),
             **m,
@@ -570,6 +576,102 @@ def tree_shap_summary(model: XGBClassifier, x_eval: np.ndarray, feature_names: l
         ],
         "per_class": per_class,
     }
+
+
+def conformal_prediction_summary(
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    x_test: np.ndarray,
+    y_test: np.ndarray,
+    params: dict[str, float | int],
+    seed: int,
+    n_states: int,
+    alpha: float = 0.10,
+) -> dict[str, object]:
+    cal_train_idx, cal_idx = stratified_split_indices(np.ones(y_train.shape[0], dtype=bool), y_train, 0.20, seed, n_states)
+    if cal_idx.size < n_states or cal_train_idx.size < n_states:
+        return {"status": "skipped", "reason": "calibration split too small"}
+    model = xgb_model(seed, params, n_states)
+    fit_xgb_multiclass(
+        model,
+        x_train[cal_train_idx],
+        y_train[cal_train_idx],
+        n_states,
+        sample_weight=compute_sample_weights(y_train[cal_train_idx], n_states),
+    )
+    cal_prob = model.predict_proba(x_train[cal_idx])
+    cal_scores = 1.0 - cal_prob[np.arange(cal_idx.shape[0]), y_train[cal_idx]]
+    q_level = min(1.0, math.ceil((cal_scores.shape[0] + 1) * (1.0 - alpha)) / max(1, cal_scores.shape[0]))
+    threshold = float(np.quantile(cal_scores, q_level, method="higher"))
+    test_prob = model.predict_proba(x_test)
+    prediction_sets = (1.0 - test_prob) <= threshold
+    empty = np.where(prediction_sets.sum(axis=1) == 0)[0]
+    if empty.size:
+        prediction_sets[empty, np.argmax(test_prob[empty], axis=1)] = True
+    covered = prediction_sets[np.arange(y_test.shape[0]), y_test]
+    set_sizes = prediction_sets.sum(axis=1)
+    return {
+        "status": "completed",
+        "alpha": alpha,
+        "confidence": 1.0 - alpha,
+        "calibration_size": int(cal_idx.shape[0]),
+        "threshold": threshold,
+        "coverage": float(np.mean(covered)),
+        "average_set_size": float(np.mean(set_sizes)),
+        "singleton_rate": float(np.mean(set_sizes == 1)),
+        "set_size_histogram": {str(i): int(np.sum(set_sizes == i)) for i in range(1, n_states + 1)},
+    }
+
+
+def shap_counterfactual_analysis(
+    model: XGBClassifier,
+    x_train: np.ndarray,
+    x_test: np.ndarray,
+    y_test: np.ndarray,
+    feature_names: list[str],
+    shap_summary: dict[str, object],
+    n_states: int,
+) -> dict[str, object]:
+    if not shap_summary or shap_summary.get("status") != "ok":
+        return {"status": "skipped", "reason": "TreeSHAP summary unavailable"}
+    prob = model.predict_proba(x_test)
+    pred = np.argmax(prob, axis=1)
+    confidence = np.max(prob, axis=1)
+    hard = np.where((pred != y_test) | (confidence < 0.65))[0]
+    if hard.size == 0:
+        hard = np.argsort(confidence)[:3]
+    top_features = [item["feature"] for item in shap_summary.get("global_top_features", [])[:3]]
+    if not top_features:
+        return {"status": "skipped", "reason": "no top features"}
+    grid_q = np.asarray([0.05, 0.25, 0.50, 0.75, 0.95], dtype=np.float32)
+    cases = []
+    for local_idx in hard[:3]:
+        case = {
+            "test_index": int(local_idx),
+            "true_class": int(y_test[local_idx]),
+            "pred_class": int(pred[local_idx]),
+            "pred_confidence": float(confidence[local_idx]),
+            "features": [],
+        }
+        base = x_test[local_idx].copy()
+        for feature in top_features:
+            if feature not in feature_names:
+                continue
+            feat_idx = feature_names.index(feature)
+            values = np.quantile(x_train[:, feat_idx], grid_q)
+            curve = []
+            for value in values:
+                perturbed = base.copy()
+                perturbed[feat_idx] = value
+                p = model.predict_proba(perturbed.reshape(1, -1))[0]
+                curve.append({
+                    "feature_value_standardized": float(value),
+                    "true_class_prob": float(p[int(y_test[local_idx])]),
+                    "pred_class_prob": float(p[int(pred[local_idx])]),
+                })
+            case["features"].append({"feature": feature, "curve": curve})
+        cases.append(case)
+    return {"status": "completed", "method": "one_feature_quantile_perturbation", "cases": cases}
 
 
 def class_predictions(pred: np.ndarray) -> np.ndarray:
@@ -772,11 +874,31 @@ def run_classification(table: FeatureTable, cfg: dict) -> dict[str, object]:
     x_obb_train_full, x_obb_test_full, _, _ = standardize(table.x_obb[train_idx], table.x_obb[test_idx])
     shap_model = xgb_model(seed, xgb_params, n_states)
     fit_xgb_multiclass(shap_model, x_obb_train_full, y[train_idx], n_states, sample_weight=sw_train)
-    results["XGBoost-OBB"]["shap_summary"] = tree_shap_summary(
+    shap_summary = tree_shap_summary(
         shap_model,
         x_obb_test_full,
         NUMERIC_FEATURES_OBB,
         STATE_NAMES if n_states <= len(STATE_NAMES) else [str(i) for i in range(n_states)],
+    )
+    results["XGBoost-OBB"]["shap_summary"] = shap_summary
+    results["XGBoost-OBB"]["counterfactual_analysis"] = shap_counterfactual_analysis(
+        shap_model,
+        x_obb_train_full,
+        x_obb_test_full,
+        y[test_idx],
+        NUMERIC_FEATURES_OBB,
+        shap_summary,
+        n_states,
+    )
+    results["XGBoost-OBB"]["conformal_prediction"] = conformal_prediction_summary(
+        x_obb_train_full,
+        y[train_idx],
+        x_obb_test_full,
+        y[test_idx],
+        xgb_params,
+        seed,
+        n_states,
+        alpha=0.10,
     )
     results["test_support"] = {STATE_NAMES[i] if i < len(STATE_NAMES) else str(i): int(np.sum(y[test_idx] == i)) for i in range(n_states)}
     results["test_indices"] = test_idx.tolist()
@@ -874,6 +996,21 @@ def run_ablation(table: FeatureTable, cfg: dict) -> dict[str, object]:
                 "recall_macro": float(np.mean([m["recall_macro"] for m in fold_metrics])),
             },
             "fold_details": fold_metrics,
+        }
+    if "M4: Ours+headway+acc+MGTI" in results and "M3': V+D+F" in results:
+        m4 = np.asarray([m["f1_macro"] for m in results["M4: Ours+headway+acc+MGTI"]["fold_details"]], dtype=np.float32)
+        m3f = np.asarray([m["f1_macro"] for m in results["M3': V+D+F"]["fold_details"]], dtype=np.float32)
+        test = ttest_rel(m4, m3f)
+        m4_std = float(np.std(m4))
+        m3f_std = float(np.std(m3f))
+        results["M4: Ours+headway+acc+MGTI"]["stability_vs_m3f"] = {
+            "comparison": "M4 vs M3': V+D+F",
+            "mean_delta": float(np.mean(m4 - m3f)),
+            "m4_std": m4_std,
+            "m3f_std": m3f_std,
+            "std_reduction_rate": float((m3f_std - m4_std) / max(1e-9, m3f_std)),
+            "paired_t_statistic": float(test.statistic) if np.isfinite(test.statistic) else None,
+            "paired_t_pvalue": float(test.pvalue) if np.isfinite(test.pvalue) else None,
         }
     return results
 
@@ -1118,11 +1255,17 @@ def sequence_dataset(x: np.ndarray, y: np.ndarray, seq_len: int, horizon: int) -
     return np.asarray(xs, dtype=np.float32), np.asarray(ys, dtype=np.int64), np.asarray(end_positions, dtype=np.int64)
 
 
-def stratified_future_positions(y: np.ndarray, horizon: int, test_ratio: float, seed: int, n_states: int) -> tuple[np.ndarray, np.ndarray]:
+def stratified_future_positions(
+    y: np.ndarray,
+    horizon: int,
+    test_ratio: float,
+    seed: int,
+    n_states: int,
+    embargo_steps: int | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
     rng = np.random.default_rng(seed)
     valid_positions = np.arange(0, y.shape[0] - horizon, dtype=np.int64)
     target = y[valid_positions + horizon]
-    train_parts = []
     test_parts = []
     for state in range(n_states):
         state_pos = valid_positions[target == state]
@@ -1132,12 +1275,18 @@ def stratified_future_positions(y: np.ndarray, horizon: int, test_ratio: float, 
         rng.shuffle(shuffled)
         n_test = max(1, int(round(shuffled.size * test_ratio)))
         if shuffled.size >= 10:
-            n_test = max(5, n_test)
+            n_test = 5 if embargo_steps is not None else max(5, n_test)
         n_test = min(shuffled.size - 1, n_test) if shuffled.size > 1 else 1
         test_parts.append(shuffled[:n_test])
-        train_parts.append(shuffled[n_test:])
-    train = np.sort(np.concatenate([p for p in train_parts if p.size])) if train_parts else np.asarray([], dtype=np.int64)
     test = np.sort(np.concatenate([p for p in test_parts if p.size])) if test_parts else np.asarray([], dtype=np.int64)
+    if test.size == 0:
+        return np.asarray([], dtype=np.int64), test
+    embargo = horizon if embargo_steps is None else int(embargo_steps)
+    keep = np.ones(valid_positions.shape[0], dtype=bool)
+    for p in test:
+        keep &= np.abs(valid_positions - int(p)) > embargo
+    keep &= ~np.isin(valid_positions, test)
+    train = np.sort(valid_positions[keep])
     return train, test
 
 
@@ -1154,6 +1303,7 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
     assert y is not None
     main_idx = np.where(table.dataset == "xamn6")[0]
     x = table.x_obb[main_idx]
+    x_lstm_raw = matrix_from_rows(table.rows, FEATURES_VDF)[main_idx]
     y_main = y[main_idx]
 
     split = int(round(x.shape[0] * (1.0 - float(cfg["experiment"]["test_ratio"]))))
@@ -1161,6 +1311,8 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
     x_test_raw = x[split:]
     x_train, x_test, mean, std = standardize(x_train_raw, x_test_raw)
     x_scaled = (x - mean) / std
+    _, _, lstm_mean, lstm_std = standardize(x_lstm_raw[:split], x_lstm_raw[split:])
+    x_lstm_scaled = (x_lstm_raw - lstm_mean) / lstm_std
 
     valid_end = x.shape[0] - horizon
     train_end = min(split, valid_end)
@@ -1180,7 +1332,7 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
     temporal_xgb_prob = temporal_xgb.predict_proba(x_temporal_scaled[xgb_test_positions])
     temporal_xgb_pred = np.argmax(temporal_xgb_prob, axis=1)
 
-    seq_x, seq_y, end_positions = sequence_dataset(x_scaled, y_main, seq_len, horizon)
+    seq_x, seq_y, end_positions = sequence_dataset(x_lstm_scaled, y_main, seq_len, horizon)
     seq_train_mask = end_positions < split
     seq_test_mask = end_positions >= split
     train_positions = end_positions[seq_train_mask]
@@ -1196,7 +1348,7 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
     test_x = torch.tensor(seq_x[seq_test_mask], dtype=torch.float32)
     test_y = seq_y[seq_test_mask]
 
-    model = LSTMClassifier(input_size=x.shape[1], hidden_size=int(lstm_cfg["hidden_size"]), num_classes=n_states)
+    model = LSTMClassifier(input_size=x_lstm_raw.shape[1], hidden_size=int(lstm_cfg["hidden_size"]), num_classes=n_states)
     opt = torch.optim.Adam(model.parameters(), lr=float(lstm_cfg["learning_rate"]))
     train_counts = np.bincount(train_y.cpu().numpy(), minlength=n_states).astype(np.float32)
     class_weights = train_counts.sum() / np.maximum(train_counts, 1.0)
@@ -1286,6 +1438,7 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
         float(cfg["experiment"]["test_ratio"]),
         seed,
         n_states,
+        embargo_steps=horizon,
     )
     balanced_result: dict[str, object] = {"status": "skipped", "reason": "insufficient positions"}
     if balanced_train_pos.size > 0 and balanced_test_pos.size > 0:
@@ -1307,7 +1460,8 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
             "test_support": {STATE_NAMES[i] if i < len(STATE_NAMES) else str(i): int(np.sum(balanced_true == i)) for i in range(n_states)},
             "train_windows": int(balanced_train_pos.size),
             "test_windows": int(balanced_test_pos.size),
-            "note": "State-balanced random split for future-state prediction upper-bound; main prediction remains chronological.",
+            "embargo_steps": int(horizon),
+            "note": "State-balanced future prediction with +/- horizon embargo around test positions; main prediction remains chronological.",
         }
 
     return {
@@ -1331,6 +1485,8 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
             "confusion_matrix": confusion_matrix_np(common_true, lstm_pred, n_states).tolist(),
             "pred": lstm_pred.tolist(),
             "true": common_true.tolist(),
+            "input_features": FEATURES_VDF,
+            "note": "Low-dimensional temporal channel using V+D+F features.",
         },
         "Fusion-future": {
             "metrics": metrics_dict(common_true, fusion_pred, n_states),
