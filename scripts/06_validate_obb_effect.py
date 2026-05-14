@@ -98,6 +98,9 @@ def main() -> None:
             "spatial_effect": {
                 "occupancy_reduction_mean": _mean(rows, "occupancy_reduction"),
                 "hfgo_occupancy_reduction_mean": _mean(rows, "hfgo_occupancy_reduction"),
+                "hfgo_lgar_005_mean": _mean(rows, "hfgo_lgar_005") if "hfgo_lgar_005" in rows[0] else 0.0,
+                "hfgo_local_diff_mean": _mean(rows, "hfgo_local_diff_mean") if "hfgo_local_diff_mean" in rows[0] else 0.0,
+                "hfgo_local_diff_max_mean": _mean(rows, "hfgo_local_diff_max") if "hfgo_local_diff_max" in rows[0] else 0.0,
             },
             "method1_vd": baseline,
             "method3_vdrf": reference,

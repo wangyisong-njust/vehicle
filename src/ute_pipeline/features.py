@@ -430,6 +430,7 @@ def high_fidelity_grid_stats(
     obb_peak = np.zeros(n, dtype=np.float32)
     hbb_area_px = np.zeros(n, dtype=np.float32)
     obb_area_px = np.zeros(n, dtype=np.float32)
+    hbb_cell_frac = np.zeros((n, grid_cols * grid_rows), dtype=np.float32)
     obb_cell_frac = np.zeros((n, grid_cols * grid_rows), dtype=np.float32)
 
     for start in range(0, n, chunk_size):
@@ -459,8 +460,8 @@ def high_fidelity_grid_stats(
                 for lx, ly in local
             ])
 
-        hbb_a, hbb_e, hbb_p, hbb_area, _ = _rect_grid_stats(
-            hbb_polys, width, height, grid_cols, grid_rows
+        hbb_a, hbb_e, hbb_p, hbb_area, hbb_cells = _rect_grid_stats(
+            hbb_polys, width, height, grid_cols, grid_rows, keep_cells=True
         )
         obb_a, obb_e, obb_p, obb_area, obb_cells = _rect_grid_stats(
             obb_polys, width, height, grid_cols, grid_rows, keep_cells=True
@@ -469,6 +470,8 @@ def high_fidelity_grid_stats(
         obb_active[sl], obb_entropy[sl], obb_peak[sl], obb_area_px[sl] = obb_a, obb_e, obb_p, obb_area
         if obb_cells is not None:
             obb_cell_frac[sl] = obb_cells
+        if hbb_cells is not None:
+            hbb_cell_frac[sl] = hbb_cells
 
     return {
         "hbb_grid_active": hbb_active,
@@ -479,6 +482,7 @@ def high_fidelity_grid_stats(
         "obb_grid_entropy": obb_entropy,
         "obb_grid_peak_frac": obb_peak,
         "obb_grid_area_px": obb_area_px,
+        "hbb_grid_cell_frac": hbb_cell_frac,
         "obb_grid_cell_frac": obb_cell_frac,
     }
 
@@ -600,10 +604,23 @@ def extract_window_features(
         hbb_peak_mean = _safe_mean(grid_stats["hbb_grid_peak_frac"][ob_idx])
         obb_peak_mean = _safe_mean(grid_stats["obb_grid_peak_frac"][ob_idx])
         if ob_idx.size:
+            hbb_cell_occ = np.sum(grid_stats["hbb_grid_cell_frac"][ob_idx], axis=0) / max(1, frame_count)
             cell_occ = np.sum(grid_stats["obb_grid_cell_frac"][ob_idx], axis=0) / max(1, frame_count)
             sgt_hfgo = _spatial_gradient_turbulence(cell_occ, grid_cols, grid_rows)
+            local_abs_diff = np.abs(hbb_cell_occ - cell_occ)
+            active_cells = np.maximum(hbb_cell_occ, cell_occ) > 1e-9
+            if np.any(active_cells):
+                local_rel_diff = local_abs_diff[active_cells] / np.maximum(hbb_cell_occ[active_cells], 1e-6)
+                hfgo_lgar_005 = float(np.mean(local_rel_diff > 0.05))
+            else:
+                hfgo_lgar_005 = 0.0
+            hfgo_local_diff_mean = float(np.mean(local_abs_diff))
+            hfgo_local_diff_max = float(np.max(local_abs_diff))
         else:
             sgt_hfgo = 0.0
+            hfgo_lgar_005 = 0.0
+            hfgo_local_diff_mean = 0.0
+            hfgo_local_diff_max = 0.0
         row = {
             "dataset": dataset_key,
             "dataset_name": dataset_name,
@@ -644,6 +661,9 @@ def extract_window_features(
             "obb_grid_peak_frac_mean": f"{obb_peak_mean:.6f}",
             "grid_peak_gain": f"{(obb_peak_mean - hbb_peak_mean):.6f}",
             "sgt_hfgo": f"{sgt_hfgo:.8f}",
+            "hfgo_lgar_005": f"{hfgo_lgar_005:.8f}",
+            "hfgo_local_diff_mean": f"{hfgo_local_diff_mean:.8f}",
+            "hfgo_local_diff_max": f"{hfgo_local_diff_max:.8f}",
             "direction_fluctuation": f"{direction_std:.8f}",
             "theta_conf_mean": f"{_safe_mean(obb.theta_conf[ob_idx], 0.0):.6f}",
         }
@@ -689,6 +709,9 @@ def extract_window_features(
         "obb_grid_peak_frac_mean",
         "grid_peak_gain",
         "sgt_hfgo",
+        "hfgo_lgar_005",
+        "hfgo_local_diff_mean",
+        "hfgo_local_diff_max",
         "direction_fluctuation",
         "theta_conf_mean",
     ]

@@ -9,7 +9,10 @@
     },
     "spatial_effect": {
       "occupancy_reduction_mean": 7.993827160493824e-09,
-      "hfgo_occupancy_reduction_mean": 0.00016989641975308638
+      "hfgo_occupancy_reduction_mean": 0.00016989641975308638,
+      "hfgo_lgar_005_mean": 0.07846849533950617,
+      "hfgo_local_diff_mean": 0.0010870600000000002,
+      "hfgo_local_diff_max_mean": 0.010410834691358024
     },
     "method1_vd": {
       "accuracy": 0.8641975308641975,
@@ -51,7 +54,10 @@
     },
     "spatial_effect": {
       "occupancy_reduction_mean": 0.048466225095785444,
-      "hfgo_occupancy_reduction_mean": 0.0005555644444444444
+      "hfgo_occupancy_reduction_mean": 0.0005555644444444444,
+      "hfgo_lgar_005_mean": 0.007211003065134099,
+      "hfgo_local_diff_mean": 7.039980842911877e-05,
+      "hfgo_local_diff_max_mean": 0.0016308671264367814
     },
     "method1_vd": {
       "accuracy": 0.7076923076923077,
@@ -93,7 +99,10 @@
     },
     "spatial_effect": {
       "occupancy_reduction_mean": 6.620396600566571e-08,
-      "hfgo_occupancy_reduction_mean": 0.002605505099150142
+      "hfgo_occupancy_reduction_mean": 0.002605505099150142,
+      "hfgo_lgar_005_mean": 0.011519438045325778,
+      "hfgo_local_diff_mean": 1.7031888574126534e-05,
+      "hfgo_local_diff_max_mean": 0.0006996215014164306
     },
     "method1_vd": {
       "accuracy": 0.8867924528301887,
@@ -110,19 +119,19 @@
       "f1_weighted": 0.8960265162679489
     },
     "method4_ours": {
-      "accuracy": 0.8981132075471698,
-      "precision_macro": 0.9038521334716987,
-      "recall_macro": 0.8974691560512456,
-      "f1_macro": 0.8989401137206113,
-      "f1_weighted": 0.8993448496399696
+      "accuracy": 0.8943396226415095,
+      "precision_macro": 0.8992498572762514,
+      "recall_macro": 0.8941346381644889,
+      "f1_macro": 0.8953623893954468,
+      "f1_weighted": 0.8953820076421423
     },
     "reference_minus_baseline": {
       "accuracy_point": 0.007547169811320753,
       "f1_macro_point": 0.006999994128638165
     },
     "ours_minus_reference": {
-      "accuracy_point": 0.0037735849056603765,
-      "f1_macro_point": 0.004239724661288635
+      "accuracy_point": 0.0,
+      "f1_macro_point": 0.0006620003361240689
     }
   }
 }

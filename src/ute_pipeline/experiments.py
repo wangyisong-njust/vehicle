@@ -109,6 +109,9 @@ FEATURES_OURS = FEATURES_VDRF + [
     "hfgo_occupancy_reduction",
     "sgt_hfgo",
     "delta_sgt_hfgo",
+    "hfgo_lgar_005",
+    "hfgo_local_diff_mean",
+    "hfgo_local_diff_max",
     "obb_grid_entropy_mean",
     "grid_entropy_reduction",
 ]
