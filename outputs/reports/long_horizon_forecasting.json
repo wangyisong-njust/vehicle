@@ -1,0 +1,97 @@
+{
+  "dataset": "PEMS08",
+  "source": "https://raw.githubusercontent.com/guoshnBJTU/ASTGNN/master/data/PEMS08/PEMS08.npz",
+  "description": "PeMSD8 traffic flow data, 170 sensors, 5-minute interval.",
+  "interval_minutes": 5,
+  "shape": {
+    "time_steps": 17856,
+    "sensors": 170,
+    "channels": 3
+  },
+  "split": {
+    "train_ratio": 0.6,
+    "validation_ratio": 0.2,
+    "test_ratio": 0.2,
+    "train_end_step": 10713,
+    "test_start_step": 14284
+  },
+  "target": "traffic_flow_channel_0",
+  "lags_steps": [
+    1,
+    2,
+    3,
+    6,
+    12
+  ],
+  "horizons": {
+    "15min": {
+      "horizon_minutes": 15,
+      "horizon_steps": 3,
+      "train_samples": 10701,
+      "test_samples": 3569,
+      "models": {
+        "Persistence": {
+          "mae": 19.51154136657715,
+          "rmse": 29.83809153654048,
+          "mape": 10.731498152017593
+        },
+        "HistoricalAverage": {
+          "mae": 36.360870361328125,
+          "rmse": 54.156599374954986,
+          "mape": 22.072520852088928
+        },
+        "RidgeLag": {
+          "mae": 19.36497688293457,
+          "rmse": 29.151998032001384,
+          "mape": 10.595444589853287
+        }
+      }
+    },
+    "30min": {
+      "horizon_minutes": 30,
+      "horizon_steps": 6,
+      "train_samples": 10701,
+      "test_samples": 3566,
+      "models": {
+        "Persistence": {
+          "mae": 24.19135856628418,
+          "rmse": 36.67889792148034,
+          "mape": 13.484284281730652
+        },
+        "HistoricalAverage": {
+          "mae": 36.36063003540039,
+          "rmse": 54.15333544883801,
+          "mape": 22.081665694713593
+        },
+        "RidgeLag": {
+          "mae": 21.454605102539062,
+          "rmse": 32.519106838446724,
+          "mape": 12.068666517734528
+        }
+      }
+    },
+    "60min": {
+      "horizon_minutes": 60,
+      "horizon_steps": 12,
+      "train_samples": 10701,
+      "test_samples": 3560,
+      "models": {
+        "Persistence": {
+          "mae": 34.611019134521484,
+          "rmse": 50.46731325354313,
+          "mape": 19.854432344436646
+        },
+        "HistoricalAverage": {
+          "mae": 36.35969161987305,
+          "rmse": 54.14555803644584,
+          "mape": 22.09930121898651
+        },
+        "RidgeLag": {
+          "mae": 26.030864715576172,
+          "rmse": 38.54772369353507,
+          "mape": 15.098859369754791
+        }
+      }
+    }
+  }
+}

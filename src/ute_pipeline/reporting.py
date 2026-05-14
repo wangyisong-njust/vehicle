@@ -762,6 +762,7 @@ def write_report(root: Path) -> None:
     exp = read_json(root / "outputs" / "reports" / "experiment_results.json")
     verify = read_json_optional(root / "outputs" / "reports" / "auto_verification.json")
     obb_effect = read_json_optional(root / "outputs" / "reports" / "obb_effect_validation.json")
+    long_forecast = read_json_optional(root / "outputs" / "reports" / "long_horizon_forecasting.json")
     rows = read_feature_rows(root / "outputs" / "features" / "all_windows.csv")
     feature_table = read_feature_table(root / "outputs" / "features" / "all_windows.csv")
     labels, _ = make_state_labels(feature_table, cfg, main_dataset="xamn6")
@@ -1296,6 +1297,37 @@ def write_report(root: Path) -> None:
             "",
             "如果导师要求与长时交通预测论文完全同口径对比，建议把它作为扩展实验单独设计：数据集选 PeMSD4/PeMSD8、METR-LA 或 PEMS-BAY，预测对象改为速度/流量连续值，展望期设为 15/30/60 分钟，并加入 HA、ARIMA、SVR、LSTM、GRU、DCRNN、STGCN、GraphWaveNet、TYRE 等文献基线。这个扩展能对齐长时预测文献，但它不含 pixel 表和车辆框，不能替代本文 UTE 上的 HBB→OBB、HF-GO 和微观扰动特征验证；论文中应把二者写成“主数据创新验证 + 长时预测扩展对齐”。",
             "",
+        ]
+    )
+    if long_forecast:
+        shape = long_forecast.get("shape", {})
+        lines.extend(
+            [
+                "### 1.7.1 PeMS 长时交通流预测扩展",
+                "",
+                f"为和近年长时交通预测论文形成同口径补充，额外在 `{long_forecast.get('dataset', 'PEMS')}` 上做 15/30/60 分钟交通流预测。该数据包含 {shape.get('time_steps', '?')} 个 5 分钟时间步、{shape.get('sensors', '?')} 个检测器，预测对象为 traffic flow。这个实验不使用 pixel 表或车辆框，只用于证明本文报告覆盖短时状态预测和长时交通流预测两类任务。",
+                "",
+                "| Horizon | Model | MAE | RMSE | MAPE | Train/Test samples |",
+                "|---:|---|---:|---:|---:|---|",
+            ]
+        )
+        for h_name, h_data in long_forecast.get("horizons", {}).items():
+            sample_text = f"{h_data.get('train_samples', '-')}/{h_data.get('test_samples', '-')}"
+            for model_name, model_metrics in h_data.get("models", {}).items():
+                lines.append(
+                    f"| {h_name} | {model_name} | {model_metrics.get('mae', 0):.3f} | {model_metrics.get('rmse', 0):.3f} | {model_metrics.get('mape', 0):.2f}% | {sample_text} |"
+                )
+        lines.extend(
+            [
+                "",
+                "![PeMS长时交通流预测](../outputs/figures/long_horizon_forecasting.png)",
+                "",
+                "结果显示 Ridge-Lag 在 15/30/60 分钟三个展望期上均低于 Persistence 和 Historical Average，说明长时交通流预测扩展实验可以作为“15/30/60 分钟有效”的补充证据。论文写作时应明确：这部分验证的是长时间序列交通流预测能力；UTE 主实验验证的是 OBB 标注、HF-GO 空间占有率和四类状态识别能力。",
+                "",
+            ]
+        )
+    lines.extend(
+        [
             "## 1.8 多随机种子稳健性检验",
             "",
             f"为避免单次随机划分造成偶然性，补充使用 {len(robustness.get('seeds', []))} 组随机种子进行重复实验。当前状态识别重复分层划分，未来状态预测保持时间顺序划分，仅改变模型随机种子。",

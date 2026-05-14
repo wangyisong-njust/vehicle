@@ -17,3 +17,4 @@ venv/
 outputs/logs/
 outputs/models/
 deliverables/hbb_to_obb_minimal/outputs/
+data/long_horizon/

@@ -190,6 +190,13 @@ bash scripts/run_all.sh
 5. `scripts/06_validate_obb_effect.py`：输出 OBB 效果补充验证 JSON；
 6. `scripts/04_make_report.py`：汇总生成 `docs/experiment_report.md`。
 
+长时交通流预测扩展实验不放进 `run_all.sh`，因为它会额外下载 PeMS08 数据。需要复现 15/30/60 分钟结果时单独运行：
+
+```bash
+python scripts/07_run_long_horizon_forecasting.py --dataset PEMS08 --auto-download
+python scripts/04_make_report.py
+```
+
 预期输出：
 
 ```text
@@ -201,6 +208,7 @@ outputs/features/xamn5_windows.csv
 outputs/features/pkdd8_windows.csv
 outputs/features/all_windows.csv
 outputs/reports/experiment_results.json
+outputs/reports/long_horizon_forecasting.json
 outputs/reports/auto_verification.json
 outputs/reports/obb_effect_validation.json
 docs/experiment_report.md
@@ -214,6 +222,7 @@ docs/experiment_report.md
 python scripts/01_prepare_obb.py --datasets xamn6 xamn5 pkdd8
 python scripts/02_extract_features.py --datasets xamn6 xamn5 pkdd8
 python scripts/03_run_experiments.py
+python scripts/07_run_long_horizon_forecasting.py --dataset PEMS08 --auto-download
 python scripts/05_auto_verify.py
 python scripts/06_validate_obb_effect.py
 python scripts/04_make_report.py
@@ -227,8 +236,8 @@ python scripts/04_make_report.py
 |---|---|
 | `outputs/processed/` | HBB 转 OBB 后的标注表，包含角度、角度置信度和四点坐标 |
 | `outputs/features/` | 滑窗特征表 |
-| `outputs/reports/` | JSON 指标、核验结果和中间摘要 |
-| `outputs/figures/` | 混淆矩阵、预测曲线、消融图、参数敏感性图、稳健性图、TreeSHAP 图、SHAP 反事实曲线、conformal 扫线、消融 t 检验矩阵、R/F 散点图、V-D-R-F 特征空间、PKDD 概率图、状态时空图、HF-GO 局部对比和 OBB 抽帧可视化 |
+| `outputs/reports/` | JSON 指标、核验结果和中间摘要，含 PeMS08 长时预测扩展结果 |
+| `outputs/figures/` | 混淆矩阵、预测曲线、消融图、参数敏感性图、PeMS08 长时预测图、稳健性图、TreeSHAP 图、SHAP 反事实曲线、conformal 扫线、消融 t 检验矩阵、R/F 散点图、V-D-R-F 特征空间、PKDD 概率图、状态时空图、HF-GO 局部对比和 OBB 抽帧可视化 |
 | `docs/experiment_report.md` | 最终实验报告 |
 
 ## 9. 复现成功的判断
