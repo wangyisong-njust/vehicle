@@ -1,0 +1,18 @@
+{
+  "xamn6": {
+    "windows": 324,
+    "feature_csv": "outputs/features/xamn6_windows.csv"
+  },
+  "xamn5": {
+    "windows": 261,
+    "feature_csv": "outputs/features/xamn5_windows.csv"
+  },
+  "pkdd8": {
+    "windows": 1059,
+    "feature_csv": "outputs/features/pkdd8_windows.csv"
+  },
+  "merged": {
+    "windows": 1644,
+    "feature_csv": "outputs/features/all_windows.csv"
+  }
+}

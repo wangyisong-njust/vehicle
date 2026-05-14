@@ -1,0 +1,1170 @@
+from __future__ import annotations
+
+import csv
+import json
+import math
+from dataclasses import dataclass
+from pathlib import Path
+
+import numpy as np
+import torch
+import torch.nn as nn
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import StratifiedKFold
+from sklearn.svm import SVC
+from xgboost import XGBClassifier
+
+
+STATE_NAMES = ["畅通", "缓行", "拥挤", "堵塞"]
+STATE_NAMES_EN = ["Free", "Slow", "Crowded", "Congested"]
+
+
+NUMERIC_FEATURES_OBB = [
+    "vehicle_count",
+    "density_veh_per_m",
+    "flow_veh_per_s",
+    "mean_speed_kmh",
+    "std_speed_kmh",
+    "speed_ratio",
+    "mean_abs_acc",
+    "std_acc",
+    "mean_headway_s",
+    "min_headway_s",
+    "mean_space_gap_m",
+    "headway_sample_count",
+    "acceleration_interference",
+    "mgti",
+    "obb_occupancy",
+    "hfgo_occupancy",
+    "occupancy_reduction",
+    "hfgo_occupancy_reduction",
+    "lane_change_rate",
+    "direction_fluctuation",
+    "obb_grid_entropy_mean",
+    "grid_entropy_reduction",
+    "theta_conf_mean",
+]
+
+NUMERIC_FEATURES_HBB = [
+    "vehicle_count",
+    "density_veh_per_m",
+    "flow_veh_per_s",
+    "mean_speed_kmh",
+    "std_speed_kmh",
+    "speed_ratio",
+    "mean_abs_acc",
+    "std_acc",
+    "mean_headway_s",
+    "min_headway_s",
+    "mean_space_gap_m",
+    "headway_sample_count",
+    "acceleration_interference",
+    "mgti",
+    "hbb_occupancy",
+    "hbb_hfgo_occupancy",
+    "lane_change_rate",
+]
+
+FEATURES_VD = [
+    "vehicle_count",
+    "density_veh_per_m",
+    "flow_veh_per_s",
+    "mean_speed_kmh",
+    "std_speed_kmh",
+    "speed_ratio",
+    "hfgo_occupancy",
+]
+
+FEATURES_VDR = FEATURES_VD + [
+    "lane_change_rate",
+]
+
+FEATURES_VDRF = FEATURES_VDR + [
+    "direction_fluctuation",
+    "theta_conf_mean",
+]
+
+FEATURES_OURS = FEATURES_VDRF + [
+    "mean_headway_s",
+    "min_headway_s",
+    "headway_sample_count",
+    "acceleration_interference",
+    "mean_abs_acc",
+    "std_acc",
+    "mgti",
+    "hfgo_occupancy_reduction",
+    "obb_grid_entropy_mean",
+    "grid_entropy_reduction",
+]
+
+ABLATION_FEATURE_SETS = {
+    "M1: V+D": FEATURES_VD,
+    "M2: V+D+R": FEATURES_VDR,
+    "M3: V+D+R+F": FEATURES_VDRF,
+    "M4: Ours+headway+acc+MGTI": FEATURES_OURS,
+}
+
+DETERIORATION_ABLATION_SETS = {
+    "M1: V+D": FEATURES_VD,
+    "M2: V+D+R": FEATURES_VDR,
+    "M3: V+D+R+F": FEATURES_VDRF,
+    "M4: Ours+headway+acc+MGTI": [f if f != "mgti" else "mgti_composite" for f in FEATURES_OURS],
+}
+
+
+@dataclass
+class FeatureTable:
+    rows: list[dict[str, str]]
+    x_obb: np.ndarray
+    x_hbb: np.ndarray
+    dataset: np.ndarray
+    start_s: np.ndarray
+    y: np.ndarray | None = None
+    score: np.ndarray | None = None
+    mgti_composite: np.ndarray | None = None
+
+
+def read_feature_table(path: Path) -> FeatureTable:
+    rows: list[dict[str, str]] = []
+    with path.open("r", encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            rows.append(row)
+    x_obb = np.asarray([[float(row[k]) for k in NUMERIC_FEATURES_OBB] for row in rows], dtype=np.float32)
+    x_hbb = np.asarray([[float(row[k]) for k in NUMERIC_FEATURES_HBB] for row in rows], dtype=np.float32)
+    dataset = np.asarray([row["dataset"] for row in rows])
+    start_s = np.asarray([float(row["start_s"]) for row in rows], dtype=np.float32)
+    return FeatureTable(rows=rows, x_obb=x_obb, x_hbb=x_hbb, dataset=dataset, start_s=start_s)
+
+
+def matrix_from_rows(rows: list[dict[str, str]], features: list[str]) -> np.ndarray:
+    return np.asarray([[float(row[k]) for k in features] for row in rows], dtype=np.float32)
+
+
+def _z(values: np.ndarray) -> np.ndarray:
+    return (values - values.mean()) / (values.std() + 1e-6)
+
+
+def compute_composite_mgti(table: FeatureTable, cfg: dict) -> np.ndarray:
+    w = cfg["feature"]["mgti"]["weights"]
+    ia = np.asarray([float(r["acceleration_interference"]) for r in table.rows], dtype=np.float32)
+    density = np.asarray([float(r["density_veh_per_m"]) for r in table.rows], dtype=np.float32)
+    occ_key = "hfgo_occupancy" if "hfgo_occupancy" in table.rows[0] else "obb_occupancy"
+    occ = np.asarray([float(r[occ_key]) for r in table.rows], dtype=np.float32)
+    sr = np.asarray([float(r["speed_ratio"]) for r in table.rows], dtype=np.float32)
+    thw = np.asarray([float(r["mean_headway_s"]) for r in table.rows], dtype=np.float32)
+    return (
+        w["acc_interference"] * _z(ia)
+        + w["density"] * _z(density)
+        + w["obb_occupancy"] * _z(occ)
+        + w["speed_ratio"] * _z(sr)
+        + w["headway"] * _z(thw)
+    )
+
+
+def make_state_labels(table: FeatureTable, cfg: dict, main_dataset: str = "xamn6") -> tuple[np.ndarray, np.ndarray]:
+    n_states = int(cfg["feature"].get("n_states", 3))
+    quantiles = cfg["feature"].get("quantiles", [0.40, 0.75])
+    assert len(quantiles) == n_states - 1
+
+    mask = table.dataset == main_dataset
+    rows = [table.rows[i] for i in np.where(mask)[0]]
+    speed_ratio = np.asarray([float(r["speed_ratio"]) for r in rows], dtype=np.float32)
+    density = np.asarray([float(r["density_veh_per_m"]) for r in rows], dtype=np.float32)
+    occ_key = "hfgo_occupancy" if "hfgo_occupancy" in rows[0] else "obb_occupancy"
+    occ = np.asarray([float(r[occ_key]) for r in rows], dtype=np.float32)
+    score_main = 0.65 * _z(1.0 - speed_ratio) + 0.25 * _z(density) + 0.10 * _z(occ)
+    thresholds = np.quantile(score_main, quantiles)
+
+    speed_ratio_all = np.asarray([float(r["speed_ratio"]) for r in table.rows], dtype=np.float32)
+    density_all = np.asarray([float(r["density_veh_per_m"]) for r in table.rows], dtype=np.float32)
+    occ_all = np.asarray([float(r[occ_key]) for r in table.rows], dtype=np.float32)
+    score_all = (
+        0.65 * ((1.0 - speed_ratio_all - (1.0 - speed_ratio).mean()) / ((1.0 - speed_ratio).std() + 1e-6))
+        + 0.25 * ((density_all - density.mean()) / (density.std() + 1e-6))
+        + 0.10 * ((occ_all - occ.mean()) / (occ.std() + 1e-6))
+    )
+    labels = np.digitize(score_all, thresholds).astype(np.int64)
+    labels = np.clip(labels, 0, n_states - 1)
+    table.y = labels
+    table.score = score_all
+    return labels, thresholds.astype(np.float32)
+
+
+def make_deterioration_labels(y: np.ndarray, horizon_steps: int) -> np.ndarray:
+    n = len(y)
+    labels = np.full(n, -1, dtype=np.int64)
+    for i in range(n - horizon_steps):
+        labels[i] = 1 if int(y[i + horizon_steps]) > int(y[i]) else 0
+    return labels
+
+
+def make_deterioration_labels_score(scores: np.ndarray, horizon_steps: int, threshold_pct: float = 0.5) -> np.ndarray:
+    n = len(scores)
+    labels = np.full(n, -1, dtype=np.int64)
+    diffs = np.full(n, np.nan, dtype=np.float32)
+    for i in range(n - horizon_steps):
+        diffs[i] = scores[i + horizon_steps] - scores[i]
+    valid = ~np.isnan(diffs)
+    if valid.sum() == 0:
+        return labels
+    threshold = float(np.quantile(diffs[valid], threshold_pct))
+    for i in range(n - horizon_steps):
+        labels[i] = 1 if diffs[i] > threshold else 0
+    return labels
+
+
+def compute_sample_weights(y_train: np.ndarray, n_classes: int) -> np.ndarray:
+    counts = np.bincount(y_train, minlength=n_classes).astype(np.float32)
+    total = float(len(y_train))
+    weights = np.zeros(n_classes, dtype=np.float32)
+    for c in range(n_classes):
+        weights[c] = total / (n_classes * max(1.0, float(counts[c])))
+    return weights[y_train]
+
+
+def time_split_indices(mask: np.ndarray, test_ratio: float) -> tuple[np.ndarray, np.ndarray]:
+    idx = np.where(mask)[0]
+    n_test = max(1, int(round(idx.shape[0] * test_ratio)))
+    split = idx.shape[0] - n_test
+    return idx[:split], idx[split:]
+
+
+def stratified_split_indices(mask: np.ndarray, y: np.ndarray, test_ratio: float, seed: int, n_classes: int = 0) -> tuple[np.ndarray, np.ndarray]:
+    if n_classes <= 0:
+        n_classes = int(y.max()) + 1
+    rng = np.random.default_rng(seed)
+    scoped_idx = np.where(mask)[0]
+    train_parts = []
+    test_parts = []
+    for cls in range(n_classes):
+        cls_idx = scoped_idx[y[scoped_idx] == cls]
+        if cls_idx.size == 0:
+            continue
+        shuffled = cls_idx.copy()
+        rng.shuffle(shuffled)
+        n_test = max(1, int(round(cls_idx.size * test_ratio))) if cls_idx.size > 1 else 1
+        test_parts.append(shuffled[:n_test])
+        train_parts.append(shuffled[n_test:])
+    train = np.sort(np.concatenate(train_parts)) if train_parts else np.asarray([], dtype=np.int64)
+    test = np.sort(np.concatenate(test_parts)) if test_parts else np.asarray([], dtype=np.int64)
+    return train, test
+
+
+def standardize(train: np.ndarray, test: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    mean = train.mean(axis=0)
+    std = train.std(axis=0) + 1e-6
+    return (train - mean) / std, (test - mean) / std, mean, std
+
+
+def temporal_context_features(
+    base: np.ndarray,
+    score: np.ndarray | None = None,
+    state: np.ndarray | None = None,
+    lags: tuple[int, ...] = (1, 3, 5),
+    windows: tuple[int, ...] = (3, 5, 8),
+) -> np.ndarray:
+    """Build causal lag, delta, and rolling-trend features for one ordered sequence."""
+    parts = [base.astype(np.float32)]
+    if score is not None:
+        parts.append(score.reshape(-1, 1).astype(np.float32))
+    if state is not None:
+        parts.append(state.reshape(-1, 1).astype(np.float32))
+
+    for lag in lags:
+        prev = np.vstack([np.repeat(base[:1], lag, axis=0), base[:-lag]])
+        parts.append(prev.astype(np.float32))
+        parts.append((base - prev).astype(np.float32))
+        if score is not None:
+            prev_score = np.concatenate([np.repeat(score[:1], lag), score[:-lag]]).reshape(-1, 1)
+            score_col = score.reshape(-1, 1)
+            parts.append(prev_score.astype(np.float32))
+            parts.append((score_col - prev_score).astype(np.float32))
+
+    for window in windows:
+        means = []
+        stds = []
+        slopes = []
+        for i in range(base.shape[0]):
+            start = max(0, i - window + 1)
+            vals = base[start : i + 1]
+            means.append(vals.mean(axis=0))
+            stds.append(vals.std(axis=0))
+            slopes.append(vals[-1] - vals[0])
+        parts.append(np.asarray(means, dtype=np.float32))
+        parts.append(np.asarray(stds, dtype=np.float32))
+        parts.append(np.asarray(slopes, dtype=np.float32))
+
+        if score is not None:
+            score_means = []
+            score_stds = []
+            score_slopes = []
+            for i in range(score.shape[0]):
+                start = max(0, i - window + 1)
+                vals = score[start : i + 1]
+                score_means.append(float(vals.mean()))
+                score_stds.append(float(vals.std()))
+                score_slopes.append(float(vals[-1] - vals[0]))
+            parts.append(np.asarray(score_means, dtype=np.float32).reshape(-1, 1))
+            parts.append(np.asarray(score_stds, dtype=np.float32).reshape(-1, 1))
+            parts.append(np.asarray(score_slopes, dtype=np.float32).reshape(-1, 1))
+
+    return np.hstack(parts).astype(np.float32)
+
+
+def metrics_dict(y_true: np.ndarray, y_pred: np.ndarray, num_classes: int | None = None) -> dict[str, float]:
+    if num_classes is None:
+        num_classes = int(max(y_true.max(), y_pred.max())) + 1
+    cm = confusion_matrix_np(y_true, y_pred, num_classes)
+    precision = []
+    recall = []
+    f1 = []
+    supports = []
+    for i in range(num_classes):
+        tp = float(cm[i, i])
+        fp = float(cm[:, i].sum() - cm[i, i])
+        fn = float(cm[i, :].sum() - cm[i, i])
+        support = float(cm[i, :].sum())
+        p = tp / (tp + fp) if tp + fp > 0 else 0.0
+        r = tp / (tp + fn) if tp + fn > 0 else 0.0
+        score = 2 * p * r / (p + r) if p + r > 0 else 0.0
+        precision.append(p)
+        recall.append(r)
+        f1.append(score)
+        supports.append(support)
+    supports_arr = np.asarray(supports, dtype=np.float64)
+    f1_arr = np.asarray(f1, dtype=np.float64)
+    weighted = float((f1_arr * supports_arr).sum() / max(1.0, supports_arr.sum()))
+    return {
+        "accuracy": float((y_true == y_pred).mean()) if y_true.size else 0.0,
+        "precision_macro": float(np.mean(precision)),
+        "recall_macro": float(np.mean(recall)),
+        "f1_macro": float(np.mean(f1)),
+        "f1_weighted": weighted,
+    }
+
+
+def confusion_matrix_np(y_true: np.ndarray, y_pred: np.ndarray, num_classes: int = 3) -> np.ndarray:
+    cm = np.zeros((num_classes, num_classes), dtype=np.int64)
+    for true, pred in zip(y_true, y_pred):
+        if 0 <= int(true) < num_classes and 0 <= int(pred) < num_classes:
+            cm[int(true), int(pred)] += 1
+    return cm
+
+
+def compute_roc_auc(y_true: np.ndarray, y_prob: np.ndarray, num_classes: int | None = None) -> float:
+    if num_classes is None:
+        num_classes = int(y_true.max()) + 1
+    if num_classes == 2:
+        return float(roc_auc_score(y_true, y_prob[:, 1]))
+    return float(roc_auc_score(y_true, y_prob, multi_class="ovr", average="macro"))
+
+
+def class_predictions(pred: np.ndarray) -> np.ndarray:
+    arr = np.asarray(pred)
+    if arr.ndim > 1:
+        return np.argmax(arr, axis=1).astype(np.int64)
+    return arr.astype(np.int64)
+
+
+def xgb_model(seed: int, params: dict[str, float | int], num_classes: int = 3) -> XGBClassifier:
+    return XGBClassifier(
+        objective="multi:softprob",
+        num_class=num_classes,
+        eval_metric="mlogloss",
+        random_state=seed,
+        tree_method="hist",
+        n_estimators=int(params["n_estimators"]),
+        max_depth=int(params["max_depth"]),
+        learning_rate=float(params["learning_rate"]),
+        subsample=float(params["subsample"]),
+        colsample_bytree=float(params["colsample_bytree"]),
+        min_child_weight=int(params.get("min_child_weight", 1)),
+        gamma=float(params.get("gamma", 0.0)),
+        reg_alpha=float(params.get("reg_alpha", 0.0)),
+        reg_lambda=float(params.get("reg_lambda", 1.0)),
+    )
+
+
+def xgb_binary_model(seed: int, params: dict[str, float | int], scale_pos_weight: float = 1.0) -> XGBClassifier:
+    return XGBClassifier(
+        objective="binary:logistic",
+        eval_metric="logloss",
+        random_state=seed,
+        tree_method="hist",
+        n_estimators=int(params["n_estimators"]),
+        max_depth=int(params["max_depth"]),
+        learning_rate=float(params["learning_rate"]),
+        subsample=float(params["subsample"]),
+        colsample_bytree=float(params["colsample_bytree"]),
+        scale_pos_weight=scale_pos_weight,
+        min_child_weight=int(params.get("min_child_weight", 1)),
+        gamma=float(params.get("gamma", 0.0)),
+        reg_alpha=float(params.get("reg_alpha", 0.0)),
+        reg_lambda=float(params.get("reg_lambda", 1.0)),
+    )
+
+
+class LinearClassifier(nn.Module):
+    def __init__(self, input_size: int, num_classes: int = 3):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_size, 32),
+            nn.ReLU(),
+            nn.Linear(32, num_classes),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.net(x)
+
+
+def fit_torch_linear(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarray, seed: int, num_classes: int = 3) -> np.ndarray:
+    torch.manual_seed(seed)
+    model = LinearClassifier(x_train.shape[1], num_classes)
+    opt = torch.optim.Adam(model.parameters(), lr=0.01)
+    loss_fn = nn.CrossEntropyLoss()
+    tx = torch.tensor(x_train, dtype=torch.float32)
+    ty = torch.tensor(y_train, dtype=torch.long)
+    for _ in range(180):
+        logits = model(tx)
+        loss = loss_fn(logits, ty)
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+    with torch.no_grad():
+        pred = model(torch.tensor(x_test, dtype=torch.float32)).argmax(dim=1).cpu().numpy()
+    return pred
+
+
+def run_classification(table: FeatureTable, cfg: dict) -> dict[str, object]:
+    seed = int(cfg["experiment"]["random_seed"])
+    test_ratio = float(cfg["experiment"]["test_ratio"])
+    xgb_params = cfg["experiment"]["xgboost"]
+    n_states = int(cfg["feature"].get("n_states", 3))
+    primary_split = cfg["feature"].get("primary_split", "time_series")
+    main_mask = table.dataset == "xamn6"
+    y = table.y
+    assert y is not None
+
+    if primary_split == "time_series":
+        train_idx, test_idx = time_split_indices(main_mask, test_ratio)
+    else:
+        train_idx, test_idx = stratified_split_indices(main_mask, y, test_ratio, seed, n_states)
+
+    results: dict[str, object] = {}
+    sw_train = compute_sample_weights(y[train_idx], n_states)
+
+    def fit_eval(name: str, model, x: np.ndarray, feature_names: list[str] | None = None) -> None:
+        x_train, x_test, _, _ = standardize(x[train_idx], x[test_idx])
+        model.fit(x_train, y[train_idx], sample_weight=sw_train)
+        pred = class_predictions(model.predict(x_test))
+        item: dict[str, object] = {
+            "metrics": metrics_dict(y[test_idx], pred, n_states),
+            "confusion_matrix": confusion_matrix_np(y[test_idx], pred, n_states).tolist(),
+            "pred": pred.tolist(),
+            "true": y[test_idx].tolist(),
+        }
+        if hasattr(model, "predict_proba"):
+            prob = model.predict_proba(x_test)
+            try:
+                item["roc_auc"] = compute_roc_auc(y[test_idx], prob, n_states)
+            except ValueError:
+                item["roc_auc"] = None
+        if feature_names is not None and hasattr(model, "feature_importances_"):
+            importances = np.asarray(model.feature_importances_, dtype=np.float32)
+            order = np.argsort(importances)[::-1][:12]
+            item["feature_importance"] = [
+                {"feature": feature_names[int(i)], "importance": float(importances[int(i)])}
+                for i in order
+            ]
+        results[name] = item
+
+    majority = int(np.bincount(y[train_idx], minlength=n_states).argmax())
+    majority_pred = np.full_like(y[test_idx], majority)
+    results["Majority"] = {
+        "metrics": metrics_dict(y[test_idx], majority_pred, n_states),
+        "confusion_matrix": confusion_matrix_np(y[test_idx], majority_pred, n_states).tolist(),
+        "pred": majority_pred.tolist(),
+        "true": y[test_idx].tolist(),
+    }
+    x_train_lin, x_test_lin, _, _ = standardize(table.x_obb[train_idx], table.x_obb[test_idx])
+    lin_pred = fit_torch_linear(x_train_lin, y[train_idx], x_test_lin, seed, n_states)
+    results["TorchLinear-OBB"] = {
+        "metrics": metrics_dict(y[test_idx], lin_pred, n_states),
+        "confusion_matrix": confusion_matrix_np(y[test_idx], lin_pred, n_states).tolist(),
+        "pred": lin_pred.tolist(),
+        "true": y[test_idx].tolist(),
+    }
+    fit_eval("XGBoost-HBB", xgb_model(seed, xgb_params, n_states), table.x_hbb, NUMERIC_FEATURES_HBB)
+    fit_eval("XGBoost-OBB", xgb_model(seed, xgb_params, n_states), table.x_obb, NUMERIC_FEATURES_OBB)
+    x_mgti = matrix_from_rows(table.rows, ABLATION_FEATURE_SETS["M4: Ours+headway+acc+MGTI"])
+    fit_eval("XGBoost-OBB-MGTI", xgb_model(seed, xgb_params, n_states), x_mgti, ABLATION_FEATURE_SETS["M4: Ours+headway+acc+MGTI"])
+
+    # SVM baseline (OBB features)
+    x_obb_train, x_obb_test, _, _ = standardize(table.x_obb[train_idx], table.x_obb[test_idx])
+    x_obb_train_64 = np.ascontiguousarray(x_obb_train, dtype=np.float64)
+    x_obb_test_64 = np.ascontiguousarray(x_obb_test, dtype=np.float64)
+    sw_64 = np.ascontiguousarray(sw_train, dtype=np.float64)
+    svm = SVC(kernel="rbf", C=1.0, probability=True, random_state=seed)
+    svm.fit(x_obb_train_64, y[train_idx], sample_weight=sw_64)
+    svm_pred = class_predictions(svm.predict(x_obb_test_64))
+    svm_prob = svm.predict_proba(x_obb_test_64)
+    results["SVM-OBB"] = {
+        "metrics": metrics_dict(y[test_idx], svm_pred, n_states),
+        "confusion_matrix": confusion_matrix_np(y[test_idx], svm_pred, n_states).tolist(),
+        "pred": svm_pred.tolist(),
+        "true": y[test_idx].tolist(),
+    }
+    try:
+        results["SVM-OBB"]["roc_auc"] = compute_roc_auc(y[test_idx], svm_prob, n_states)
+    except ValueError:
+        pass
+
+    # Logistic Regression baseline (OBB features)
+    lr = LogisticRegression(max_iter=500, C=1.0, random_state=seed, multi_class="multinomial")
+    lr.fit(x_obb_train_64, y[train_idx], sample_weight=sw_64)
+    lr_pred = class_predictions(lr.predict(x_obb_test_64))
+    lr_prob = lr.predict_proba(x_obb_test_64)
+    results["LR-OBB"] = {
+        "metrics": metrics_dict(y[test_idx], lr_pred, n_states),
+        "confusion_matrix": confusion_matrix_np(y[test_idx], lr_pred, n_states).tolist(),
+        "pred": lr_pred.tolist(),
+        "true": y[test_idx].tolist(),
+    }
+    try:
+        results["LR-OBB"]["roc_auc"] = compute_roc_auc(y[test_idx], lr_prob, n_states)
+    except ValueError:
+        pass
+    results["test_support"] = {STATE_NAMES[i] if i < len(STATE_NAMES) else str(i): int(np.sum(y[test_idx] == i)) for i in range(n_states)}
+    results["test_indices"] = test_idx.tolist()
+    results["train_indices"] = train_idx.tolist()
+    results["split_method"] = primary_split
+
+    # Supplementary stratified result
+    if primary_split == "time_series":
+        strat_train, strat_test = stratified_split_indices(main_mask, y, test_ratio, seed, n_states)
+        x_tr, x_te, _, _ = standardize(table.x_obb[strat_train], table.x_obb[strat_test])
+        m = xgb_model(seed, xgb_params, n_states)
+        strat_sw = compute_sample_weights(y[strat_train], n_states)
+        m.fit(x_tr, y[strat_train], sample_weight=strat_sw)
+        strat_pred = class_predictions(m.predict(x_te))
+        results["stratified_supplementary"] = {
+            "metrics": metrics_dict(y[strat_test], strat_pred, n_states),
+            "note": "Random stratified split (not time-respecting). Shown for reference only.",
+        }
+
+    # Supplementary time-series result
+    if primary_split == "stratified":
+        ts_train, ts_test = time_split_indices(main_mask, test_ratio)
+        x_tr, x_te, _, _ = standardize(table.x_obb[ts_train], table.x_obb[ts_test])
+        m = xgb_model(seed, xgb_params, n_states)
+        ts_sw = compute_sample_weights(y[ts_train], n_states)
+        m.fit(x_tr, y[ts_train], sample_weight=ts_sw)
+        ts_pred = class_predictions(m.predict(x_te))
+        results["time_series_supplementary"] = {
+            "metrics": metrics_dict(y[ts_test], ts_pred, n_states),
+            "note": "Time-series split (last 25% as test). Shown for temporal generalization reference.",
+        }
+        main_idx = np.where(main_mask)[0]
+        y_main = y[main_idx]
+        x_temporal_main = temporal_context_features(table.x_obb[main_idx])
+        rel_train = np.arange(0, ts_train.shape[0])
+        rel_test = np.arange(ts_train.shape[0], main_idx.shape[0])
+        x_tr_raw = x_temporal_main[rel_train]
+        x_te_raw = x_temporal_main[rel_test]
+        x_tr, x_te, _, _ = standardize(x_tr_raw, x_te_raw)
+        m = xgb_model(seed, xgb_params, n_states)
+        ts_sw = compute_sample_weights(y_main[rel_train], n_states)
+        m.fit(x_tr, y_main[rel_train], sample_weight=ts_sw)
+        ts_temporal_pred = class_predictions(m.predict(x_te))
+        results["time_series_temporal_supplementary"] = {
+            "metrics": metrics_dict(y_main[rel_test], ts_temporal_pred, n_states),
+            "confusion_matrix": confusion_matrix_np(y_main[rel_test], ts_temporal_pred, n_states).tolist(),
+            "pred": ts_temporal_pred.tolist(),
+            "true": y_main[rel_test].tolist(),
+            "note": "Time-series split with causal lag/delta/rolling trend features.",
+        }
+
+    return results
+
+
+def run_ablation(table: FeatureTable, cfg: dict) -> dict[str, object]:
+    seed = int(cfg["experiment"]["random_seed"])
+    xgb_params = dict(cfg["experiment"]["xgboost"])
+    n_states = int(cfg["feature"].get("n_states", 3))
+    y = table.y
+    assert y is not None
+    main_mask = table.dataset == "xamn6"
+    idx = np.where(main_mask)[0]
+    y_main = y[idx]
+
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
+    results = {}
+    for name, features in ABLATION_FEATURE_SETS.items():
+        x = matrix_from_rows(table.rows, features)
+        x_main = x[idx]
+
+        fold_metrics = []
+        for train_pos, test_pos in skf.split(x_main, y_main):
+            train_fold_idx = idx[train_pos]
+            test_fold_idx = idx[test_pos]
+            x_train, x_test, _, _ = standardize(x[train_fold_idx], x[test_fold_idx])
+            sw = compute_sample_weights(y[train_fold_idx], n_states)
+            model = xgb_model(seed, xgb_params, n_states)
+            model.fit(x_train, y[train_fold_idx], sample_weight=sw)
+            pred = class_predictions(model.predict(x_test))
+            fold_metrics.append(metrics_dict(y[test_fold_idx], pred, n_states))
+
+        f1_macros = [m["f1_macro"] for m in fold_metrics]
+        f1_weighteds = [m["f1_weighted"] for m in fold_metrics]
+        accs = [m["accuracy"] for m in fold_metrics]
+        results[name] = {
+            "features": features,
+            "metrics": {
+                "f1_macro": float(np.mean(f1_macros)),
+                "f1_macro_std": float(np.std(f1_macros)),
+                "f1_weighted": float(np.mean(f1_weighteds)),
+                "f1_weighted_std": float(np.std(f1_weighteds)),
+                "accuracy": float(np.mean(accs)),
+                "accuracy_std": float(np.std(accs)),
+                "precision_macro": float(np.mean([m["precision_macro"] for m in fold_metrics])),
+                "recall_macro": float(np.mean([m["recall_macro"] for m in fold_metrics])),
+            },
+            "fold_details": fold_metrics,
+        }
+    return results
+
+
+def run_parameter_sensitivity(table: FeatureTable, cfg: dict) -> dict[str, object]:
+    seed = int(cfg["experiment"]["random_seed"])
+    test_ratio = float(cfg["experiment"]["test_ratio"])
+    n_states = int(cfg["feature"].get("n_states", 3))
+    y = table.y
+    assert y is not None
+    main_mask = table.dataset == "xamn6"
+    idx = np.where(main_mask)[0]
+    y_main = y[idx]
+    x_main = table.x_obb[idx]
+
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
+
+    depth_results = []
+    for depth in [2, 3, 4, 5, 6]:
+        params = dict(cfg["experiment"]["xgboost"])
+        params["max_depth"] = depth
+        fold_f1s = []
+        fold_accs = []
+        for train_pos, test_pos in skf.split(x_main, y_main):
+            x_train, x_test, _, _ = standardize(x_main[train_pos], x_main[test_pos])
+            sw = compute_sample_weights(y_main[train_pos], n_states)
+            model = xgb_model(seed, params, n_states)
+            model.fit(x_train, y_main[train_pos], sample_weight=sw)
+            pred = class_predictions(model.predict(x_test))
+            m = metrics_dict(y_main[test_pos], pred, n_states)
+            fold_f1s.append(m["f1_macro"])
+            fold_accs.append(m["accuracy"])
+        depth_results.append({
+            "max_depth": depth,
+            "metrics": {
+                "f1_macro": float(np.mean(fold_f1s)),
+                "f1_macro_std": float(np.std(fold_f1s)),
+                "accuracy": float(np.mean(fold_accs)),
+            },
+        })
+
+    horizon_results = []
+    x = table.x_obb[idx]
+    split = int(round(x.shape[0] * (1.0 - test_ratio)))
+    x_train_raw = x[:split]
+    x_test_raw = x[split:]
+    _, _, mean, std = standardize(x_train_raw, x_test_raw)
+    x_scaled = (x - mean) / std
+    for horizon in [1, 3, 5, 8]:
+        valid_end = x.shape[0] - horizon
+        train_end = min(split, valid_end)
+        test_positions = np.arange(split, valid_end)
+        if test_positions.size < 5:
+            continue
+        model = xgb_model(seed, cfg["experiment"]["xgboost"], n_states)
+        model.fit(x_scaled[:train_end], y_main[horizon : train_end + horizon])
+        pred = class_predictions(model.predict(x_scaled[test_positions]))
+        horizon_results.append(
+            {
+                "horizon_steps": horizon,
+                "horizon_seconds": float(horizon * float(cfg["feature"]["step_s"])),
+                "metrics": metrics_dict(y_main[test_positions + horizon], pred, n_states),
+            }
+        )
+    return {"max_depth": depth_results, "prediction_horizon": horizon_results}
+
+
+def run_time_series_cv(table: FeatureTable, cfg: dict, folds: int = 5) -> dict[str, object]:
+    seed = int(cfg["experiment"]["random_seed"])
+    xgb_params = cfg["experiment"]["xgboost"]
+    n_states = int(cfg["feature"].get("n_states", 3))
+    y = table.y
+    assert y is not None
+    idx = np.where(table.dataset == "xamn6")[0]
+    fold_size = max(8, idx.shape[0] // (folds + 1))
+    rows = []
+    for fold in range(folds):
+        train_end = fold_size * (fold + 1)
+        test_start = train_end
+        test_end = min(test_start + fold_size, idx.shape[0])
+        if test_end - test_start < 8:
+            continue
+        train_idx = idx[:train_end]
+        test_idx = idx[test_start:test_end]
+        x_train, x_test, _, _ = standardize(table.x_obb[train_idx], table.x_obb[test_idx])
+        model = xgb_model(seed + fold, xgb_params, n_states)
+        model.fit(x_train, y[train_idx])
+        pred = class_predictions(model.predict(x_test))
+        fold_metrics = metrics_dict(y[test_idx], pred, n_states)
+        fold_item: dict[str, object] = {
+            "fold": fold + 1,
+            "train_windows": int(train_idx.shape[0]),
+            "test_windows": int(test_idx.shape[0]),
+            "test_support": {STATE_NAMES[i] if i < len(STATE_NAMES) else str(i): int(np.sum(y[test_idx] == i)) for i in range(n_states)},
+            "metrics": fold_metrics,
+        }
+        if hasattr(model, "predict_proba"):
+            prob = model.predict_proba(x_test)
+            try:
+                fold_item["roc_auc"] = compute_roc_auc(y[test_idx], prob, n_states)
+            except ValueError:
+                pass
+        rows.append(fold_item)
+    if rows:
+        macro_f1 = np.asarray([row["metrics"]["f1_macro"] for row in rows], dtype=np.float32)
+        accuracy = np.asarray([row["metrics"]["accuracy"] for row in rows], dtype=np.float32)
+        summary = {
+            "folds": len(rows),
+            "accuracy_mean": float(np.mean(accuracy)),
+            "accuracy_std": float(np.std(accuracy)),
+            "f1_macro_mean": float(np.mean(macro_f1)),
+            "f1_macro_std": float(np.std(macro_f1)),
+        }
+    else:
+        summary = {"folds": 0, "accuracy_mean": 0.0, "accuracy_std": 0.0, "f1_macro_mean": 0.0, "f1_macro_std": 0.0}
+    return {"method": "expanding_time_series_cv", "model": "XGBoost-OBB", "summary": summary, "folds": rows}
+
+
+def _summary_from_metric_rows(rows: list[dict[str, float]]) -> dict[str, float]:
+    if not rows:
+        return {
+            "accuracy_mean": 0.0,
+            "accuracy_std": 0.0,
+            "f1_macro_mean": 0.0,
+            "f1_macro_std": 0.0,
+        }
+    acc = np.asarray([row["accuracy"] for row in rows], dtype=np.float32)
+    f1 = np.asarray([row["f1_macro"] for row in rows], dtype=np.float32)
+    return {
+        "accuracy_mean": float(np.mean(acc)),
+        "accuracy_std": float(np.std(acc)),
+        "f1_macro_mean": float(np.mean(f1)),
+        "f1_macro_std": float(np.std(f1)),
+    }
+
+
+def run_robustness(table: FeatureTable, cfg: dict) -> dict[str, object]:
+    seeds = [7, 21, 42, 84, 2026]
+    test_ratio = float(cfg["experiment"]["test_ratio"])
+    xgb_params = cfg["experiment"]["xgboost"]
+    n_states = int(cfg["feature"].get("n_states", 3))
+    horizon = int(cfg["feature"]["prediction_horizon_steps"])
+    y = table.y
+    assert y is not None
+
+    main_mask = table.dataset == "xamn6"
+    idx = np.where(main_mask)[0]
+    y_main = y[idx]
+    x_main = table.x_obb[idx]
+    split = int(round(x_main.shape[0] * (1.0 - test_ratio)))
+    valid_end = x_main.shape[0] - horizon
+
+    cls_rows: dict[str, list[dict[str, float]]] = {
+        "XGBoost-HBB": [],
+        "XGBoost-OBB": [],
+        "LR-OBB": [],
+    }
+    pred_rows: dict[str, list[dict[str, float]]] = {"XGBoost-future": []}
+
+    for seed in seeds:
+        train_idx, test_idx = stratified_split_indices(main_mask, y, test_ratio, seed, n_states)
+        sw_train = compute_sample_weights(y[train_idx], n_states)
+
+        x_hbb_train, x_hbb_test, _, _ = standardize(table.x_hbb[train_idx], table.x_hbb[test_idx])
+        hbb_model = xgb_model(seed, xgb_params, n_states)
+        hbb_model.fit(x_hbb_train, y[train_idx], sample_weight=sw_train)
+        hbb_pred = class_predictions(hbb_model.predict(x_hbb_test))
+        cls_rows["XGBoost-HBB"].append(metrics_dict(y[test_idx], hbb_pred, n_states))
+
+        x_obb_train, x_obb_test, _, _ = standardize(table.x_obb[train_idx], table.x_obb[test_idx])
+        obb_model = xgb_model(seed, xgb_params, n_states)
+        obb_model.fit(x_obb_train, y[train_idx], sample_weight=sw_train)
+        obb_pred = class_predictions(obb_model.predict(x_obb_test))
+        cls_rows["XGBoost-OBB"].append(metrics_dict(y[test_idx], obb_pred, n_states))
+
+        lr = LogisticRegression(max_iter=500, C=1.0, random_state=seed, multi_class="multinomial")
+        lr.fit(np.ascontiguousarray(x_obb_train, dtype=np.float64), y[train_idx], sample_weight=np.ascontiguousarray(sw_train, dtype=np.float64))
+        lr_pred = class_predictions(lr.predict(np.ascontiguousarray(x_obb_test, dtype=np.float64)))
+        cls_rows["LR-OBB"].append(metrics_dict(y[test_idx], lr_pred, n_states))
+
+        if valid_end > split + 5:
+            _, _, mean, std = standardize(x_main[:split], x_main[split:])
+            x_scaled = (x_main - mean) / std
+            train_end = min(split, valid_end)
+            train_y = y_main[horizon : train_end + horizon]
+            future_model = xgb_model(seed, xgb_params, n_states)
+            future_model.fit(
+                x_scaled[:train_end],
+                train_y,
+                sample_weight=compute_sample_weights(train_y, n_states),
+            )
+            test_positions = np.arange(split, valid_end)
+            future_pred = class_predictions(future_model.predict(x_scaled[test_positions]))
+            pred_rows["XGBoost-future"].append(metrics_dict(y_main[test_positions + horizon], future_pred, n_states))
+
+    return {
+        "seeds": seeds,
+        "classification": {
+            name: {**_summary_from_metric_rows(rows), "runs": rows}
+            for name, rows in cls_rows.items()
+        },
+        "prediction": {
+            name: {**_summary_from_metric_rows(rows), "runs": rows}
+            for name, rows in pred_rows.items()
+        },
+    }
+
+
+class LSTMClassifier(nn.Module):
+    def __init__(self, input_size: int, hidden_size: int, num_classes: int = 3):
+        super().__init__()
+        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True)
+        self.fc = nn.Linear(hidden_size, num_classes)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        out, _ = self.lstm(x)
+        return self.fc(out[:, -1, :])
+
+
+def sequence_dataset(x: np.ndarray, y: np.ndarray, seq_len: int, horizon: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    xs = []
+    ys = []
+    end_positions = []
+    for end in range(seq_len - 1, x.shape[0] - horizon):
+        xs.append(x[end - seq_len + 1 : end + 1])
+        ys.append(y[end + horizon])
+        end_positions.append(end)
+    return np.asarray(xs, dtype=np.float32), np.asarray(ys, dtype=np.int64), np.asarray(end_positions, dtype=np.int64)
+
+
+def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
+    seed = int(cfg["experiment"]["random_seed"])
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    lstm_cfg = cfg["experiment"]["lstm"]
+    xgb_params = cfg["experiment"]["xgboost"]
+    n_states = int(cfg["feature"].get("n_states", 3))
+    horizon = int(cfg["feature"]["prediction_horizon_steps"])
+    seq_len = int(lstm_cfg["sequence_length"])
+    y = table.y
+    assert y is not None
+    main_idx = np.where(table.dataset == "xamn6")[0]
+    x = table.x_obb[main_idx]
+    y_main = y[main_idx]
+
+    split = int(round(x.shape[0] * (1.0 - float(cfg["experiment"]["test_ratio"]))))
+    x_train_raw = x[:split]
+    x_test_raw = x[split:]
+    x_train, x_test, mean, std = standardize(x_train_raw, x_test_raw)
+    x_scaled = (x - mean) / std
+
+    valid_end = x.shape[0] - horizon
+    train_end = min(split, valid_end)
+    xgb = xgb_model(seed, xgb_params, n_states)
+    xgb.fit(x_scaled[:train_end], y_main[horizon : train_end + horizon])
+    xgb_test_positions = np.arange(split, valid_end)
+    xgb_prob = xgb.predict_proba(x_scaled[xgb_test_positions])
+    xgb_pred = np.argmax(xgb_prob, axis=1)
+    y_future_true = y_main[xgb_test_positions + horizon]
+
+    score_main = table.score[main_idx] if table.score is not None else y_main.astype(np.float32)
+    x_temporal = temporal_context_features(x, score=score_main, state=y_main)
+    _, _, temporal_mean, temporal_std = standardize(x_temporal[:split], x_temporal[split:])
+    x_temporal_scaled = (x_temporal - temporal_mean) / temporal_std
+    temporal_xgb = xgb_model(seed, {**xgb_params, "max_depth": 2, "n_estimators": 80, "learning_rate": 0.08}, n_states)
+    temporal_xgb.fit(x_temporal_scaled[:train_end], y_main[horizon : train_end + horizon])
+    temporal_xgb_prob = temporal_xgb.predict_proba(x_temporal_scaled[xgb_test_positions])
+    temporal_xgb_pred = np.argmax(temporal_xgb_prob, axis=1)
+
+    seq_x, seq_y, end_positions = sequence_dataset(x_scaled, y_main, seq_len, horizon)
+    seq_train_mask = end_positions < split
+    seq_test_mask = end_positions >= split
+    train_positions = end_positions[seq_train_mask]
+    val_start = int(round(split * 0.80))
+    fit_mask = seq_train_mask & (end_positions < val_start)
+    if int(np.sum(fit_mask)) < max(8, seq_len):
+        fit_mask = seq_train_mask
+        val_mask = seq_train_mask
+    else:
+        val_mask = seq_train_mask & (end_positions >= val_start)
+    train_x = torch.tensor(seq_x[fit_mask], dtype=torch.float32)
+    train_y = torch.tensor(seq_y[fit_mask], dtype=torch.long)
+    test_x = torch.tensor(seq_x[seq_test_mask], dtype=torch.float32)
+    test_y = seq_y[seq_test_mask]
+
+    model = LSTMClassifier(input_size=x.shape[1], hidden_size=int(lstm_cfg["hidden_size"]), num_classes=n_states)
+    opt = torch.optim.Adam(model.parameters(), lr=float(lstm_cfg["learning_rate"]))
+    loss_fn = nn.CrossEntropyLoss()
+    batch_size = int(lstm_cfg["batch_size"])
+    epochs = int(lstm_cfg["epochs"])
+    model.train()
+    for _ in range(epochs):
+        perm = torch.randperm(train_x.shape[0])
+        for start in range(0, train_x.shape[0], batch_size):
+            idx = perm[start : start + batch_size]
+            logits = model(train_x[idx])
+            loss = loss_fn(logits, train_y[idx])
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+
+    model.eval()
+    with torch.no_grad():
+        logits = model(test_x)
+        lstm_prob = torch.softmax(logits, dim=1).cpu().numpy()
+    lstm_pred = np.argmax(lstm_prob, axis=1)
+
+    seq_test_positions = end_positions[seq_test_mask]
+    xgb_prob_aligned = xgb.predict_proba(x_scaled[seq_test_positions])
+    xgb_pred_aligned = np.argmax(xgb_prob_aligned, axis=1)
+    temporal_xgb_prob_aligned = temporal_xgb.predict_proba(x_temporal_scaled[seq_test_positions])
+    temporal_xgb_pred_aligned = np.argmax(temporal_xgb_prob_aligned, axis=1)
+    common_true = y_main[seq_test_positions + horizon]
+
+    static_weight = 1.0 / 3.0
+    temporal_weight = 1.0 / 3.0
+    lstm_weight = 1.0 / 3.0
+    fusion_selection_note = "temperature-softmax dynamic gate, default equal prior"
+    fusion_channel_errors: dict[str, float] = {}
+    fusion_temperature = 1.0
+    if np.any(val_mask):
+        val_x = torch.tensor(seq_x[val_mask], dtype=torch.float32)
+        val_y = seq_y[val_mask]
+        val_positions = end_positions[val_mask]
+        with torch.no_grad():
+            val_lstm_prob = torch.softmax(model(val_x), dim=1).cpu().numpy()
+        val_static_prob = xgb.predict_proba(x_scaled[val_positions])
+        val_temporal_prob = temporal_xgb.predict_proba(x_temporal_scaled[val_positions])
+        eps = 1e-8
+        val_probs = np.stack([
+            np.clip(val_static_prob[np.arange(val_y.shape[0]), val_y], eps, 1.0),
+            np.clip(val_temporal_prob[np.arange(val_y.shape[0]), val_y], eps, 1.0),
+            np.clip(val_lstm_prob[np.arange(val_y.shape[0]), val_y], eps, 1.0),
+        ], axis=1)
+        ce = -np.log(val_probs)
+        smooth_alpha = 0.35
+        smoothed = np.zeros_like(ce)
+        smoothed[0] = ce[0]
+        for i in range(1, ce.shape[0]):
+            smoothed[i] = smooth_alpha * ce[i] + (1.0 - smooth_alpha) * smoothed[i - 1]
+        channel_err = smoothed.mean(axis=0)
+        t0 = 1.0
+        temp_alpha = 0.45
+        t_min = 0.20
+        fusion_temperature = float(max(t_min, t0 * math.exp(-temp_alpha * float(np.mean(channel_err)))))
+        logits = -channel_err / max(fusion_temperature, 1e-6)
+        logits -= float(np.max(logits))
+        weights = np.exp(logits)
+        weights = weights / max(float(np.sum(weights)), eps)
+        static_weight, temporal_weight, lstm_weight = [float(v) for v in weights]
+        fusion_channel_errors = {
+            "static_xgb": float(channel_err[0]),
+            "temporal_xgb": float(channel_err[1]),
+            "lstm": float(channel_err[2]),
+        }
+        val_fusion_prob = static_weight * val_static_prob + temporal_weight * val_temporal_prob + lstm_weight * val_lstm_prob
+        val_fusion_pred = np.argmax(val_fusion_prob, axis=1)
+        val_fusion_score = metrics_dict(val_y, val_fusion_pred, n_states)["f1_macro"]
+        fusion_selection_note = (
+            f"temperature-softmax dynamic gate, validation Macro-F1={val_fusion_score:.4f}, "
+            f"T={fusion_temperature:.3f}, static_xgb={static_weight:.2f}, "
+            f"temporal_xgb={temporal_weight:.2f}, lstm={lstm_weight:.2f}"
+        )
+    fusion_prob = static_weight * xgb_prob_aligned + temporal_weight * temporal_xgb_prob_aligned + lstm_weight * lstm_prob
+    fusion_pred = np.argmax(fusion_prob, axis=1)
+
+    return {
+        "horizon_steps": horizon,
+        "horizon_seconds": float(horizon * float(cfg["feature"]["step_s"])),
+        "XGBoost-future": {
+            "metrics": metrics_dict(common_true, xgb_pred_aligned, n_states),
+            "confusion_matrix": confusion_matrix_np(common_true, xgb_pred_aligned, n_states).tolist(),
+            "pred": xgb_pred_aligned.tolist(),
+            "true": common_true.tolist(),
+        },
+        "XGBoost-temporal-future": {
+            "metrics": metrics_dict(common_true, temporal_xgb_pred_aligned, n_states),
+            "confusion_matrix": confusion_matrix_np(common_true, temporal_xgb_pred_aligned, n_states).tolist(),
+            "pred": temporal_xgb_pred_aligned.tolist(),
+            "true": common_true.tolist(),
+            "note": "XGBoost with current-state score, lag, delta and rolling trend features.",
+        },
+        "LSTM-future": {
+            "metrics": metrics_dict(common_true, lstm_pred, n_states),
+            "confusion_matrix": confusion_matrix_np(common_true, lstm_pred, n_states).tolist(),
+            "pred": lstm_pred.tolist(),
+            "true": common_true.tolist(),
+        },
+        "Fusion-future": {
+            "metrics": metrics_dict(common_true, fusion_pred, n_states),
+            "confusion_matrix": confusion_matrix_np(common_true, fusion_pred, n_states).tolist(),
+            "pred": fusion_pred.tolist(),
+            "true": common_true.tolist(),
+            "xgb_weight": static_weight + temporal_weight,
+            "static_xgb_weight": static_weight,
+            "temporal_xgb_weight": temporal_weight,
+            "lstm_weight": lstm_weight,
+            "selection_note": fusion_selection_note,
+            "fusion_method": "temperature_softmax_with_ema_cross_entropy",
+            "temperature": fusion_temperature,
+            "validation_channel_errors": fusion_channel_errors,
+        },
+        "test_positions": seq_test_positions.tolist(),
+    }
+
+
+def run_deterioration_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
+    seed = int(cfg["experiment"]["random_seed"])
+    det_xgb_params = cfg["experiment"].get("deterioration_xgboost", cfg["experiment"]["xgboost"])
+    step_s = float(cfg["feature"]["step_s"])
+    horizons_s = cfg["feature"]["deterioration_horizons_s"]
+    det_test_ratio = float(cfg["experiment"].get("deterioration_test_ratio", 0.25))
+    min_positive = int(cfg["experiment"].get("deterioration_min_positive", 10))
+    y = table.y
+    assert y is not None
+
+    table.mgti_composite = compute_composite_mgti(table, cfg)
+    main_idx = np.where(table.dataset == "xamn6")[0]
+    y_main = y[main_idx]
+    score_main = table.score[main_idx] if table.score is not None else y_main.astype(np.float32)
+    mgti_main = table.mgti_composite[main_idx]
+
+    results = {}
+    for horizon_s in horizons_s:
+        horizon_steps = max(1, int(round(horizon_s / step_s)))
+        det_labels = make_deterioration_labels_score(score_main, horizon_steps, threshold_pct=0.35)
+
+        valid_mask = det_labels >= 0
+        valid_idx = main_idx[valid_mask]
+        valid_labels = det_labels[valid_mask]
+        pos_count = int(np.sum(valid_labels == 1))
+        neg_count = int(np.sum(valid_labels == 0))
+
+        if pos_count < min_positive:
+            results[f"horizon_{horizon_s}s"] = {
+                "status": "skipped",
+                "reason": f"Only {pos_count} positive samples (need {min_positive})",
+                "horizon_seconds": horizon_s,
+            }
+            continue
+
+        base_x = table.x_obb[valid_idx]
+        mgti_col = mgti_main[valid_mask].reshape(-1, 1)
+        full_x = np.column_stack([base_x, mgti_col])
+
+        n_valid = valid_idx.shape[0]
+        split = int(round(n_valid * (1.0 - det_test_ratio)))
+        train_full = full_x[:split]
+        test_full = full_x[split:]
+        train_labels = valid_labels[:split]
+        test_labels = valid_labels[split:]
+
+        train_pos = int(np.sum(train_labels == 1))
+        train_neg = int(np.sum(train_labels == 0))
+        scale_pos = float(train_neg) / max(1.0, float(train_pos))
+
+        ablation_results = {}
+        for abl_name, abl_features in DETERIORATION_ABLATION_SETS.items():
+            feat_indices = []
+            for feat_name in abl_features:
+                if feat_name == "mgti_composite":
+                    feat_indices.append(full_x.shape[1] - 1)
+                elif feat_name in NUMERIC_FEATURES_OBB:
+                    feat_indices.append(NUMERIC_FEATURES_OBB.index(feat_name))
+                else:
+                    continue
+            x_train_abl = train_full[:, feat_indices]
+            x_test_abl = test_full[:, feat_indices]
+
+            x_tr, x_te, _, _ = standardize(x_train_abl, x_test_abl)
+            model = xgb_binary_model(seed, det_xgb_params, scale_pos_weight=scale_pos)
+            model.fit(x_tr, train_labels)
+            pred = class_predictions(model.predict(x_te))
+            prob = model.predict_proba(x_te)
+
+            abl_metrics = metrics_dict(test_labels, pred, 2)
+            try:
+                roc_auc = float(roc_auc_score(test_labels, prob[:, 1]))
+            except ValueError:
+                roc_auc = None
+
+            abl_item: dict[str, object] = {
+                "metrics": abl_metrics,
+                "roc_auc": roc_auc,
+                "confusion_matrix": confusion_matrix_np(test_labels, pred, 2).tolist(),
+                "features": abl_features,
+            }
+            if hasattr(model, "feature_importances_"):
+                importances = np.asarray(model.feature_importances_, dtype=np.float32)
+                order = np.argsort(importances)[::-1][:8]
+                abl_item["feature_importance"] = [
+                    {"feature": abl_features[int(i)], "importance": float(importances[int(i)])}
+                    for i in order
+                ]
+            ablation_results[abl_name] = abl_item
+
+        results[f"horizon_{horizon_s}s"] = {
+            "status": "completed",
+            "horizon_seconds": horizon_s,
+            "horizon_steps": horizon_steps,
+            "positive_count": pos_count,
+            "negative_count": neg_count,
+            "positive_rate": pos_count / max(1, pos_count + neg_count),
+            "train_windows": split,
+            "test_windows": n_valid - split,
+            "ablation": ablation_results,
+        }
+
+    return results
+
+
+def pkdd_generalization(table: FeatureTable, cfg: dict) -> dict[str, object]:
+    seed = int(cfg["experiment"]["random_seed"])
+    xgb_params = cfg["experiment"]["xgboost"]
+    n_states = int(cfg["feature"].get("n_states", 3))
+    y = table.y
+    assert y is not None
+    train_idx = np.where(table.dataset == "xamn6")[0]
+    pkdd_idx = np.where(table.dataset == "pkdd8")[0]
+    x_train, x_pkdd, _, _ = standardize(table.x_obb[train_idx], table.x_obb[pkdd_idx])
+    model = xgb_model(seed, xgb_params, n_states)
+    model.fit(x_train, y[train_idx])
+    pred = class_predictions(model.predict(x_pkdd))
+    names = STATE_NAMES if n_states <= len(STATE_NAMES) else [str(i) for i in range(n_states)]
+    distribution = {names[i]: int(np.sum(pred == i)) for i in range(n_states)}
+    return {
+        "windows": int(pkdd_idx.shape[0]),
+        "predicted_distribution": distribution,
+        "note": "PKDD-8 is used as a free-flow transfer check. Metrics against transferred proxy labels are intentionally not reported.",
+    }
+
+
+def save_results(path: Path, payload: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")

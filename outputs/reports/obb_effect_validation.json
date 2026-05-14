@@ -1,0 +1,128 @@
+{
+  "xamn6": {
+    "windows": 324,
+    "label_distribution": {
+      "畅通": 81,
+      "缓行": 81,
+      "拥挤": 81,
+      "堵塞": 81
+    },
+    "spatial_effect": {
+      "occupancy_reduction_mean": 7.993827160493824e-09,
+      "hfgo_occupancy_reduction_mean": 0.00016989641975308638
+    },
+    "method1_vd": {
+      "accuracy": 0.925,
+      "precision_macro": 0.9267857142857143,
+      "recall_macro": 0.9249999999999999,
+      "f1_macro": 0.9256019387116948,
+      "f1_weighted": 0.9256019387116948
+    },
+    "method3_vdrf": {
+      "accuracy": 0.925,
+      "precision_macro": 0.9267857142857143,
+      "recall_macro": 0.9249999999999999,
+      "f1_macro": 0.9256019387116948,
+      "f1_weighted": 0.9256019387116948
+    },
+    "method4_ours": {
+      "accuracy": 0.9375,
+      "precision_macro": 0.9392857142857143,
+      "recall_macro": 0.9375,
+      "f1_macro": 0.9381019387116948,
+      "f1_weighted": 0.9381019387116949
+    },
+    "reference_minus_baseline": {
+      "accuracy_point": 0.0,
+      "f1_macro_point": 0.0
+    },
+    "ours_minus_reference": {
+      "accuracy_point": 0.012499999999999956,
+      "f1_macro_point": 0.012499999999999956
+    }
+  },
+  "xamn5": {
+    "windows": 261,
+    "label_distribution": {
+      "畅通": 65,
+      "缓行": 65,
+      "拥挤": 65,
+      "堵塞": 66
+    },
+    "spatial_effect": {
+      "occupancy_reduction_mean": 0.048466225095785444,
+      "hfgo_occupancy_reduction_mean": 0.0005555644444444444
+    },
+    "method1_vd": {
+      "accuracy": 0.953125,
+      "precision_macro": 0.9540441176470589,
+      "recall_macro": 0.953125,
+      "f1_macro": 0.9531097262952102,
+      "f1_weighted": 0.9531097262952102
+    },
+    "method3_vdrf": {
+      "accuracy": 0.953125,
+      "precision_macro": 0.9540441176470589,
+      "recall_macro": 0.953125,
+      "f1_macro": 0.9531097262952102,
+      "f1_weighted": 0.9531097262952102
+    },
+    "method4_ours": {
+      "accuracy": 0.953125,
+      "precision_macro": 0.957516339869281,
+      "recall_macro": 0.953125,
+      "f1_macro": 0.9529871772756023,
+      "f1_weighted": 0.9529871772756023
+    },
+    "reference_minus_baseline": {
+      "accuracy_point": 0.0,
+      "f1_macro_point": 0.0
+    },
+    "ours_minus_reference": {
+      "accuracy_point": 0.0,
+      "f1_macro_point": -0.0001225490196078427
+    }
+  },
+  "pkdd8": {
+    "windows": 1059,
+    "label_distribution": {
+      "畅通": 265,
+      "缓行": 264,
+      "拥挤": 265,
+      "堵塞": 265
+    },
+    "spatial_effect": {
+      "occupancy_reduction_mean": 6.620396600566571e-08,
+      "hfgo_occupancy_reduction_mean": 0.002605505099150142
+    },
+    "method1_vd": {
+      "accuracy": 0.946969696969697,
+      "precision_macro": 0.9470210138120586,
+      "recall_macro": 0.946969696969697,
+      "f1_macro": 0.9469681751220521,
+      "f1_weighted": 0.9469681751220522
+    },
+    "method3_vdrf": {
+      "accuracy": 0.9318181818181818,
+      "precision_macro": 0.9315145710945465,
+      "recall_macro": 0.9318181818181819,
+      "f1_macro": 0.931322466519835,
+      "f1_weighted": 0.931322466519835
+    },
+    "method4_ours": {
+      "accuracy": 0.9204545454545454,
+      "precision_macro": 0.921141267224994,
+      "recall_macro": 0.9204545454545455,
+      "f1_macro": 0.9200904020670115,
+      "f1_weighted": 0.9200904020670115
+    },
+    "reference_minus_baseline": {
+      "accuracy_point": -0.015151515151515249,
+      "f1_macro_point": -0.015645708602217145
+    },
+    "ours_minus_reference": {
+      "accuracy_point": -0.011363636363636354,
+      "f1_macro_point": -0.011232064452823431
+    }
+  }
+}

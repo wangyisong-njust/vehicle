@@ -1,0 +1,120 @@
+{
+  "obb_geometry": {
+    "xamn6": {
+      "sample_rows": 200000,
+      "valid_size_rate": 1.0,
+      "valid_obb_area_rate": 1.0,
+      "high_theta_conf_rate": 0.998405,
+      "center_x_min": 65.35049438476562,
+      "center_x_max": 1863.8780517578125,
+      "center_y_min": 262.0,
+      "center_y_max": 845.5
+    },
+    "pkdd8": {
+      "sample_rows": 200000,
+      "valid_size_rate": 1.0,
+      "valid_obb_area_rate": 1.0,
+      "high_theta_conf_rate": 0.972635,
+      "center_x_min": 118.541748046875,
+      "center_x_max": 1860.9200439453125,
+      "center_y_min": 394.5,
+      "center_y_max": 691.0
+    }
+  },
+  "xamn6_state_stats": {
+    "畅通": {
+      "count": 81,
+      "mean_speed_kmh": 28.036933876543213,
+      "density_veh_per_m": 0.43447975308641973,
+      "obb_occupancy": 0.05520537728395062,
+      "mean_headway_s": 2.0929677901234567,
+      "mean_space_gap_m": 14.438253037037036,
+      "acceleration_interference": 1.81413412345679,
+      "mgti": 2.385620355606079
+    },
+    "缓行": {
+      "count": 81,
+      "mean_speed_kmh": 23.488217555555554,
+      "density_veh_per_m": 0.46975308641975316,
+      "obb_occupancy": 0.06271240333333333,
+      "mean_headway_s": 2.3085786790123457,
+      "mean_space_gap_m": 12.83531762962963,
+      "acceleration_interference": 1.3289934567901236,
+      "mgti": 3.480003833770752
+    },
+    "拥挤": {
+      "count": 81,
+      "mean_speed_kmh": 19.15028387654321,
+      "density_veh_per_m": 0.46331564197530867,
+      "obb_occupancy": 0.06470375925925927,
+      "mean_headway_s": 2.678466654320988,
+      "mean_space_gap_m": 11.01758349382716,
+      "acceleration_interference": 1.638133,
+      "mgti": 4.291240692138672
+    },
+    "堵塞": {
+      "count": 81,
+      "mean_speed_kmh": 14.618974481481484,
+      "density_veh_per_m": 0.5209877037037036,
+      "obb_occupancy": 0.07531912913580247,
+      "mean_headway_s": 4.529662604938272,
+      "mean_space_gap_m": 9.757609888888888,
+      "acceleration_interference": 1.3176946666666667,
+      "mgti": 7.438460826873779
+    }
+  },
+  "xamn6_monotonic_checks": {
+    "speed_generally_decreases": true,
+    "worst_speed_lower_than_free": true,
+    "worst_density_is_highest": true,
+    "worst_occupancy_is_highest": true
+  },
+  "mgti_composite_check": {
+    "by_state": {
+      "畅通": {
+        "mean_mgti_composite": 2.385620355606079,
+        "count": 81
+      },
+      "缓行": {
+        "mean_mgti_composite": 3.480003833770752,
+        "count": 81
+      },
+      "拥挤": {
+        "mean_mgti_composite": 4.291240692138672,
+        "count": 81
+      },
+      "堵塞": {
+        "mean_mgti_composite": 7.438460826873779,
+        "count": 81
+      }
+    },
+    "monotonically_increases": true
+  },
+  "deterioration_label_check": {
+    "horizon_3s": {
+      "positive_count": 208,
+      "negative_count": 113,
+      "positive_rate": 0.6479750778816199,
+      "sufficient": true
+    },
+    "horizon_5s": {
+      "positive_count": 207,
+      "negative_count": 112,
+      "positive_rate": 0.6489028213166145,
+      "sufficient": true
+    },
+    "horizon_8s": {
+      "positive_count": 205,
+      "negative_count": 111,
+      "positive_rate": 0.6487341772151899,
+      "sufficient": true
+    }
+  },
+  "pkdd_predicted_distribution": {
+    "畅通": 1059,
+    "缓行": 0,
+    "拥挤": 0,
+    "堵塞": 0
+  },
+  "conclusion": "自动核验结果显示，OBB 几何合法率较高，XAM-N-6 的 4 类参考状态分组在速度、密度和占有率维度上整体可解释。MGTI 复合指标单调性通过。PKDD 泛化结果主要用于自由流迁移检查。当前标签仅作为论文仿真实验的代理标签使用。"
+}

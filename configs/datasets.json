@@ -1,0 +1,126 @@
+{
+  "datasets": {
+    "xamn6": {
+      "name": "XAM-N-6",
+      "role": "main",
+      "root": "data_check/XAM-N/XAM-N-6",
+      "pixel_csv": "pixel.csv",
+      "frenet_csv": "frenet.csv",
+      "video": "sample video.mp4",
+      "fps": 60.0,
+      "segment_length_m": 140.0,
+      "speed_limit_kmh": 60.0,
+      "frame_offset": 3901,
+      "pixel_columns": {
+        "frame": "frame",
+        "time": "time(s)",
+        "vehicle_id": "vehicleID",
+        "x": "x",
+        "y": "y",
+        "w": "w",
+        "h": "h",
+        "class": "class"
+      }
+    },
+    "xamn5": {
+      "name": "XAM-N-5",
+      "role": "supplement",
+      "root": "data_check/XAM-N/XAM-N-5",
+      "pixel_csv": "pixel.csv",
+      "frenet_csv": "frenet.csv",
+      "video": "sample video.mp4",
+      "fps": 30.0,
+      "segment_length_m": 140.0,
+      "speed_limit_kmh": 60.0,
+      "frame_offset": 1,
+      "pixel_columns": {
+        "frame": "frame",
+        "vehicle_id": "vehicleID",
+        "x": "x",
+        "y": "y",
+        "w": "w",
+        "h": "h",
+        "class": "class"
+      }
+    },
+    "pkdd8": {
+      "name": "PKDD-8",
+      "role": "generalization",
+      "root": "data_check/PKDD/PKDD-8",
+      "pixel_csv": "pixel.csv",
+      "frenet_csv": "frenet.csv",
+      "video": "sample video.mp4",
+      "fps": 30.0,
+      "segment_length_m": 280.0,
+      "speed_limit_kmh": 80.0,
+      "frame_offset": 31,
+      "pixel_columns": {
+        "frame": "frame",
+        "vehicle_id": "vehicleID",
+        "x": "bb_left",
+        "y": "bb_top",
+        "w": "bb_width",
+        "h": "bb_height"
+      }
+    }
+  },
+  "feature": {
+    "window_s": 5.0,
+    "step_s": 1.0,
+    "grid_cols": 12,
+    "grid_rows": 4,
+    "min_motion_px": 0.75,
+    "theta_search_radius": 8,
+    "n_states": 4,
+    "quantiles": [0.25, 0.50, 0.75],
+    "prediction_horizon_steps": 3,
+    "safe_headway_s": 2.0,
+    "deterioration_horizons_s": [3, 5, 8],
+    "primary_split": "stratified",
+    "mgti": {
+      "method": "composite",
+      "weights": {
+        "acc_interference": 0.0,
+        "density": 1.0,
+        "obb_occupancy": 1.0,
+        "speed_ratio": -1.0,
+        "headway": 1.0
+      }
+    }
+  },
+  "experiment": {
+    "test_ratio": 0.25,
+    "random_seed": 42,
+    "deterioration_test_ratio": 0.25,
+    "deterioration_min_positive": 10,
+    "xgboost": {
+      "n_estimators": 60,
+      "max_depth": 4,
+      "learning_rate": 0.1,
+      "subsample": 0.85,
+      "colsample_bytree": 0.85,
+      "min_child_weight": 1,
+      "gamma": 0.0,
+      "reg_alpha": 0.0,
+      "reg_lambda": 0.5
+    },
+    "deterioration_xgboost": {
+      "n_estimators": 50,
+      "max_depth": 3,
+      "learning_rate": 0.1,
+      "subsample": 0.8,
+      "colsample_bytree": 0.7,
+      "min_child_weight": 5,
+      "gamma": 0.5,
+      "reg_alpha": 0.5,
+      "reg_lambda": 2.0
+    },
+    "lstm": {
+      "sequence_length": 8,
+      "hidden_size": 64,
+      "epochs": 45,
+      "batch_size": 32,
+      "learning_rate": 0.001
+    }
+  }
+}

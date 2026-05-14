@@ -1,0 +1,38 @@
+{
+  "xamn5": {
+    "rows": 334721.0,
+    "vehicles": 901.0,
+    "direct_theta_rows": 334463.0,
+    "filled_theta_rows": 258.0,
+    "direct_theta_rate": 0.99922920880375,
+    "sample_overlays": [
+      "outputs/figures/xamn5_obb_overlay_f2000.jpg",
+      "outputs/figures/xamn5_obb_overlay_f4000.jpg",
+      "outputs/figures/xamn5_obb_overlay_f6000.jpg"
+    ]
+  },
+  "xamn6": {
+    "rows": 1043909.0,
+    "vehicles": 900.0,
+    "direct_theta_rows": 1009057.0,
+    "filled_theta_rows": 34852.0,
+    "direct_theta_rate": 0.9666139481506529,
+    "sample_overlays": [
+      "outputs/figures/xamn6_obb_overlay_f8841.jpg",
+      "outputs/figures/xamn6_obb_overlay_f13782.jpg",
+      "outputs/figures/xamn6_obb_overlay_f18723.jpg"
+    ]
+  },
+  "pkdd8": {
+    "rows": 586534.0,
+    "vehicles": 1472.0,
+    "direct_theta_rows": 578459.0,
+    "filled_theta_rows": 8075.0,
+    "direct_theta_rate": 0.9862326821633528,
+    "sample_overlays": [
+      "outputs/figures/pkdd8_obb_overlay_f8023.jpg",
+      "outputs/figures/pkdd8_obb_overlay_f16016.jpg",
+      "outputs/figures/pkdd8_obb_overlay_f24008.jpg"
+    ]
+  }
+}
