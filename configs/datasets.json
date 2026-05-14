@@ -72,6 +72,8 @@
     "min_motion_px": 0.75,
     "theta_search_radius": 8,
     "n_states": 4,
+    "label_method": "cluster_vdrf",
+    "label_smoothing_window": 5,
     "quantiles": [0.25, 0.50, 0.75],
     "prediction_horizon_steps": 3,
     "safe_headway_s": 2.0,
@@ -89,9 +91,9 @@
     }
   },
   "experiment": {
-    "test_ratio": 0.25,
+    "test_ratio": 0.30,
     "random_seed": 42,
-    "deterioration_test_ratio": 0.25,
+    "deterioration_test_ratio": 0.30,
     "deterioration_min_positive": 10,
     "xgboost": {
       "n_estimators": 60,

@@ -418,6 +418,9 @@ def write_report(root: Path) -> None:
     state_names = configure_plot_font()
     n_states = len(state_names)
     cfg = load_config(root / "configs" / "datasets.json")
+    test_ratio = float(cfg["experiment"].get("test_ratio", 0.25))
+    train_pct = int(round((1.0 - test_ratio) * 100))
+    test_pct = int(round(test_ratio * 100))
 
     obb = read_json(root / "outputs" / "reports" / "obb_summary.json")
     feat = read_json(root / "outputs" / "reports" / "feature_summary.json")
@@ -485,14 +488,16 @@ def write_report(root: Path) -> None:
         )
     if ts_supp:
         supp_note = (
-            f"\n\n补充：时间序列划分（后 25% 作为测试集）的 XGBoost-OBB Macro-F1 为 {ts_supp['metrics']['f1_macro']:.4f}。"
+            f"\n\n补充：时间序列划分（后 {test_pct}% 作为测试集）的 XGBoost-OBB Macro-F1 为 {ts_supp['metrics']['f1_macro']:.4f}。"
             "时间序列划分存在训练/测试分布偏移（训练覆盖拥堵积累期，测试覆盖恢复期），"
             "因此分类难度显著高于分层划分。该结果反映了模型对未见时间段的泛化能力。"
         )
         if ts_temporal_supp:
-            supp_note += (
-                f"加入因果滞后、差分和滚动趋势特征后，时间序列测试 Macro-F1 提升至 {ts_temporal_supp['metrics']['f1_macro']:.4f}。"
-            )
+            ts_delta = ts_temporal_supp["metrics"]["f1_macro"] - ts_supp["metrics"]["f1_macro"]
+            if ts_delta >= 0:
+                supp_note += f"加入因果滞后、差分和滚动趋势特征后，时间序列测试 Macro-F1 提升至 {ts_temporal_supp['metrics']['f1_macro']:.4f}。"
+            else:
+                supp_note += f"加入因果滞后、差分和滚动趋势特征后，时间序列测试 Macro-F1 为 {ts_temporal_supp['metrics']['f1_macro']:.4f}，未超过静态特征。"
 
     if temporal_delta >= 0:
         prediction_note = (
@@ -502,6 +507,8 @@ def write_report(root: Path) -> None:
             f"带温 Softmax 门控得到{fusion_weight_text}，"
             f"Fusion-future 的 Macro-F1 为 {fusion_future['f1_macro']:.4f}，相比趋势 XGBoost 变化 {fusion_delta * 100:.2f} 个百分点。"
         )
+        if fusion_future["f1_macro"] < 0.50:
+            prediction_note += "由于聚类状态标签在时间维度上变化较快，该任务当前更适合作为探索性预测实验，不作为本文最主要的性能结论。"
         if fusion_lstm_weight <= 0.001:
             prediction_note += "这说明在当前样本规模下，门控机制会自动抑制弱时序通道，避免融合结果被拉低。"
     else:
@@ -514,6 +521,8 @@ def write_report(root: Path) -> None:
         )
         if fusion_lstm_weight <= 0.001:
             prediction_note += "门控机制自动抑制 LSTM 通道。"
+        if fusion_future["f1_macro"] < 0.50:
+            prediction_note += "由于聚类状态标签在时间维度上变化较快，该任务当前更适合作为探索性预测实验，不作为本文最主要的性能结论。"
 
     # Deterioration summary
     det_summary_lines = []
@@ -566,7 +575,7 @@ def write_report(root: Path) -> None:
         "## 核心结论",
         "",
         f"- **当前状态识别可用**：`XGBoost-OBB` 在 XAM-N-6 分层测试集上的 Macro-F1 为 {xgb_obb['f1_macro']:.4f}，SVM 与 LR 基线已纳入对比。",
-        f"- **未来状态预测**：3s 预测步长下静态 `XGBoost-future` Macro-F1 为 {xgb_future['f1_macro']:.4f}，趋势增强后 `XGBoost-temporal-future` 为 {xgb_temporal_future['f1_macro']:.4f}。",
+        f"- **未来状态预测**：3s 预测步长下 `Fusion-future` Macro-F1 为 {fusion_future['f1_macro']:.4f}，该任务受样本量和聚类标签时序波动影响，作为补充预测实验呈现。",
         det_core_text,
         "- **数据边界已明确**：XAM-N-5 的公开视频为降采样版本，因此该数据集用于 pixel 表级 OBB 验证，不作为完整逐帧视频主实验。",
         "",
@@ -592,9 +601,9 @@ def write_report(root: Path) -> None:
         "",
         "### 1.2.1 训练、验证与测试划分",
         "",
-        "主实验均以 XAM-N-6 为准。当前状态识别采用 75%/25% 的分层随机划分，保证四类状态在训练集和测试集中的比例基本一致。消融实验和参数敏感性分析采用 5 折分层交叉验证，不再单独划验证集。",
+        f"主实验均以 XAM-N-6 为准。当前状态识别采用 {train_pct}%/{test_pct}% 的分层随机划分，保证四类状态在训练集和测试集中的比例基本一致。消融实验和参数敏感性分析采用 5 折分层交叉验证，不再单独划验证集。",
         "",
-        "未来状态预测和恶化预测按时间顺序划分，前 75% 时间窗口用于训练，后 25% 时间窗口用于测试。LSTM 与 Fusion 使用训练段后 20% 作为验证段，用来估计门控参数；最终指标只在后 25% 测试段上统计。XAM-N-5 和 PKDD-8 不参与主模型训练，分别用于 OBB 效果验证和自由流场景检查。",
+        f"未来状态预测和恶化预测按时间顺序划分，前 {train_pct}% 时间窗口用于训练，后 {test_pct}% 时间窗口用于测试。LSTM 与 Fusion 使用训练段后 20% 作为验证段，用来估计门控参数；最终指标只在后 {test_pct}% 测试段上统计。XAM-N-5 和 PKDD-8 不参与主模型训练，分别用于 OBB 效果验证和自由流场景检查。",
         "",
         "## 1.3 方法设计",
         "",
@@ -610,7 +619,7 @@ def write_report(root: Path) -> None:
         "",
         "$$O_{HBB}=\\frac{\\sum_i w_i h_i}{N_f A},\\qquad O_{HFGO}=\\frac{\\sum_{i,g} area(P_i^{OBB}\\cap G_g)}{N_f A}.$$",
         "",
-        "HF-GO 使用 Sutherland-Hodgman 多边形裁剪计算 OBB 与物理网格单元的交叠面积，再进行解析面积累加。与简单采样点计数相比，该方法能保留车辆跨网格、斜向占用和边界截断时的真实占用比例，更适合作为本文区别于参考文献的空间表达增强模块。",
+        "HF-GO 使用 Sutherland-Hodgman 多边形裁剪计算 OBB 与物理网格单元的交叠面积，再进行解析面积累加。与简单采样点计数相比，该方法能保留车辆跨网格、斜向占用和边界截断时的真实占用比例，更适合作为本文区别于参考文献的空间表达增强模块。进一步地，本文计算空间梯度湍流指标 SGT，度量每个网格 HF-GO 占有率与相邻网格均值的偏差，用于捕捉拥堵形成时的局部空间不均匀性。",
         "",
         "![HF-GO热力图](../outputs/figures/hfgo_hbb_vs_obb_heatmap.png)",
         "",
@@ -634,11 +643,11 @@ def write_report(root: Path) -> None:
         "",
         "### 1.3.6 状态标签构造",
         "",
-        "为降低消融实验中的标签泄露，参考标签只使用速度比、密度和 OBB 占有率构造，不使用车头时距、加速度干扰和 MGTI：",
+        "为降低由单一 V+D 规则阈值带来的标签泄露，参考标签采用无监督 K-Means 在速度比、密度、变道干扰率 R 和方向波动指数 F 四维空间聚类得到，再按簇中心风险从低到高映射为畅通、缓行、拥挤、堵塞：",
         "",
-        "$$S=0.65\\,z(1-v/v_{lim})+0.25\\,z(\\rho)+0.10\\,z(O_{HFGO}).$$",
+        "$$X=[v/v_{lim},\\rho,R,F],\\qquad c=KMeans(X),\\qquad state=rank(-v/v_{lim}+\\rho+0.5R+0.5F).$$",
         "",
-        f"在 XAM-N-6 上按分位数 [{', '.join(str(q) for q in cfg['feature'].get('quantiles', [0.40, 0.75]))}] 切分为 {n_states} 类。标签分布：" + "，".join(
+        f"在 XAM-N-6 上聚类并排序为 {n_states} 类。标签分布：" + "，".join(
             [f"{exp['state_counts'].get(str(i), 0)} 窗口为{STATE_NAMES[i] if i < len(STATE_NAMES) else str(i)}类" for i in range(n_states)]
         ) + "。",
         "",
@@ -688,7 +697,7 @@ def write_report(root: Path) -> None:
             "",
             prediction_note,
             "",
-            f"结果说明：当前预测任务只有 324 个 XAM-N-6 时间窗，LSTM 的有效训练样本更少，因此端到端序列模型没有形成稳定优势。静态 XGBoost-future 的 Macro-F1 已达 {xgb_future['f1_macro']:.4f}，复合 MGTI 提供了较强的状态变化信号，使得简单静态特征即可达到较好的预测效果。",
+            f"结果说明：当前预测任务只有 324 个 XAM-N-6 时间窗，LSTM 的有效训练样本更少，因此端到端序列模型没有形成稳定优势。聚类标签虽然降低了 V+D 标签泄露，但也增加了短时标签波动，导致未来状态预测明显难于当前状态识别。该部分建议作为补充预测实验呈现，论文主贡献应放在当前状态识别、R/F 消融、HF-GO/SGT 空间表征和 OBB 标注链路上。",
             "",
             "![未来预测曲线](../outputs/figures/future_prediction_curve.png)",
             "",
@@ -711,7 +720,7 @@ def write_report(root: Path) -> None:
             "",
             f"最优消融组合是 `{best_ablation_name}`，5 折 CV Macro-F1 为 {best_ablation['metrics']['f1_macro']:.4f}±{ablation_std:.4f}。相比 `M1: V+D` 的 {hbb_basic['f1_macro']:.4f}，{_effect_phrase(ablation_delta)}。",
             "",
-            "**分析**：消融实验按参考文献的阶梯组织：`M1: V+D` 为速度与密度基线，`M2` 加入变道干扰率 R，`M3` 加入方向波动指数 F，`M4` 进一步加入本文的 HF-GO、车头时距、加速度干扰和 MGTI。这样可以直接回答 R/F 是否有效，以及本文新增微观行为与高保真空间占有率是否带来额外增益。",
+            "**分析**：消融实验按参考文献的阶梯组织：`M1: V+D` 为速度与密度基线，`M2` 加入变道干扰率 R，`M3` 加入方向波动指数 F，`M4` 进一步加入本文的 HF-GO、SGT、车头时距、加速度干扰和 MGTI。这样可以直接回答 R/F 是否有效，以及本文新增微观行为与高保真空间占有率是否带来额外增益。",
             "",
             "![消融实验](../outputs/figures/ablation_macro_f1.png)",
             "",
@@ -774,7 +783,7 @@ def write_report(root: Path) -> None:
     lines.extend(
         [
             "",
-            'PKDD 以自由流为主，预测结果集中在"畅通"类，符合该数据集的交通状态描述。该结果用于跨场景合理性检查，不作为与 XAM-N-6 同分布混合训练的证据。',
+            'PKDD 以自由流为主，预测结果多数落在"畅通/缓行"类，少量窗口被判为较高状态，反映跨场景域差异仍然存在。该结果用于跨场景合理性检查，不作为与 XAM-N-6 同分布混合训练的证据。',
             "",
             "---",
             "",

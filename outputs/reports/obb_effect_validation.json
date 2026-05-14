@@ -2,127 +2,127 @@
   "xamn6": {
     "windows": 324,
     "label_distribution": {
-      "畅通": 81,
-      "缓行": 81,
-      "拥挤": 81,
-      "堵塞": 81
+      "畅通": 23,
+      "缓行": 120,
+      "拥挤": 151,
+      "堵塞": 30
     },
     "spatial_effect": {
       "occupancy_reduction_mean": 7.993827160493824e-09,
       "hfgo_occupancy_reduction_mean": 0.00016989641975308638
     },
     "method1_vd": {
-      "accuracy": 0.925,
-      "precision_macro": 0.9267857142857143,
-      "recall_macro": 0.9249999999999999,
-      "f1_macro": 0.9256019387116948,
-      "f1_weighted": 0.9256019387116948
+      "accuracy": 0.8170731707317073,
+      "precision_macro": 0.7099212398373984,
+      "recall_macro": 0.6882675438596492,
+      "f1_macro": 0.6867196876894712,
+      "f1_weighted": 0.7962492496598005
     },
     "method3_vdrf": {
-      "accuracy": 0.925,
-      "precision_macro": 0.9267857142857143,
-      "recall_macro": 0.9249999999999999,
-      "f1_macro": 0.9256019387116948,
-      "f1_weighted": 0.9256019387116948
+      "accuracy": 0.9146341463414634,
+      "precision_macro": 0.9167017101205495,
+      "recall_macro": 0.8642543859649123,
+      "f1_macro": 0.885609822130955,
+      "f1_weighted": 0.913533008349362
     },
     "method4_ours": {
-      "accuracy": 0.9375,
-      "precision_macro": 0.9392857142857143,
-      "recall_macro": 0.9375,
-      "f1_macro": 0.9381019387116948,
-      "f1_weighted": 0.9381019387116949
+      "accuracy": 0.926829268292683,
+      "precision_macro": 0.9250145180023229,
+      "recall_macro": 0.8955043859649123,
+      "f1_macro": 0.9086025025461952,
+      "f1_weighted": 0.9267394860766592
     },
     "reference_minus_baseline": {
-      "accuracy_point": 0.0,
-      "f1_macro_point": 0.0
+      "accuracy_point": 0.09756097560975618,
+      "f1_macro_point": 0.19889013444148373
     },
     "ours_minus_reference": {
-      "accuracy_point": 0.012499999999999956,
-      "f1_macro_point": 0.012499999999999956
+      "accuracy_point": 0.012195121951219523,
+      "f1_macro_point": 0.022992680415240274
     }
   },
   "xamn5": {
     "windows": 261,
     "label_distribution": {
-      "畅通": 65,
-      "缓行": 65,
-      "拥挤": 65,
-      "堵塞": 66
+      "畅通": 54,
+      "缓行": 59,
+      "拥挤": 53,
+      "堵塞": 95
     },
     "spatial_effect": {
       "occupancy_reduction_mean": 0.048466225095785444,
       "hfgo_occupancy_reduction_mean": 0.0005555644444444444
     },
     "method1_vd": {
-      "accuracy": 0.953125,
-      "precision_macro": 0.9540441176470589,
-      "recall_macro": 0.953125,
-      "f1_macro": 0.9531097262952102,
-      "f1_weighted": 0.9531097262952102
+      "accuracy": 0.7575757575757576,
+      "precision_macro": 0.736441798941799,
+      "recall_macro": 0.725503663003663,
+      "f1_macro": 0.7244637039768885,
+      "f1_weighted": 0.7476002883341994
     },
     "method3_vdrf": {
-      "accuracy": 0.953125,
-      "precision_macro": 0.9540441176470589,
-      "recall_macro": 0.953125,
-      "f1_macro": 0.9531097262952102,
-      "f1_weighted": 0.9531097262952102
+      "accuracy": 0.8181818181818182,
+      "precision_macro": 0.8061378205128205,
+      "recall_macro": 0.7984890109890109,
+      "f1_macro": 0.7987063201348916,
+      "f1_weighted": 0.8167663024805882
     },
     "method4_ours": {
-      "accuracy": 0.953125,
-      "precision_macro": 0.957516339869281,
-      "recall_macro": 0.953125,
-      "f1_macro": 0.9529871772756023,
-      "f1_weighted": 0.9529871772756023
+      "accuracy": 0.8181818181818182,
+      "precision_macro": 0.8045236013986015,
+      "recall_macro": 0.7959249084249084,
+      "f1_macro": 0.7967857142857142,
+      "f1_weighted": 0.8135425685425685
     },
     "reference_minus_baseline": {
-      "accuracy_point": 0.0,
-      "f1_macro_point": 0.0
+      "accuracy_point": 0.06060606060606066,
+      "f1_macro_point": 0.0742426161580031
     },
     "ours_minus_reference": {
       "accuracy_point": 0.0,
-      "f1_macro_point": -0.0001225490196078427
+      "f1_macro_point": -0.0019206058491774147
     }
   },
   "pkdd8": {
     "windows": 1059,
     "label_distribution": {
-      "畅通": 265,
-      "缓行": 264,
-      "拥挤": 265,
-      "堵塞": 265
+      "畅通": 333,
+      "缓行": 300,
+      "拥挤": 29,
+      "堵塞": 397
     },
     "spatial_effect": {
       "occupancy_reduction_mean": 6.620396600566571e-08,
       "hfgo_occupancy_reduction_mean": 0.002605505099150142
     },
     "method1_vd": {
-      "accuracy": 0.946969696969697,
-      "precision_macro": 0.9470210138120586,
-      "recall_macro": 0.946969696969697,
-      "f1_macro": 0.9469681751220521,
-      "f1_weighted": 0.9469681751220522
+      "accuracy": 0.7954545454545454,
+      "precision_macro": 0.6853639614817288,
+      "recall_macro": 0.6337658860550426,
+      "f1_macro": 0.6444665283005594,
+      "f1_weighted": 0.7846734218748501
     },
     "method3_vdrf": {
-      "accuracy": 0.9318181818181818,
-      "precision_macro": 0.9315145710945465,
-      "recall_macro": 0.9318181818181819,
-      "f1_macro": 0.931322466519835,
-      "f1_weighted": 0.931322466519835
+      "accuracy": 0.9053030303030303,
+      "precision_macro": 0.8875599058622166,
+      "recall_macro": 0.860929953580556,
+      "f1_macro": 0.8722164698612858,
+      "f1_weighted": 0.9046721008028267
     },
     "method4_ours": {
-      "accuracy": 0.9204545454545454,
-      "precision_macro": 0.921141267224994,
-      "recall_macro": 0.9204545454545455,
-      "f1_macro": 0.9200904020670115,
-      "f1_weighted": 0.9200904020670115
+      "accuracy": 0.9053030303030303,
+      "precision_macro": 0.8803677348503712,
+      "recall_macro": 0.8280622055320851,
+      "f1_macro": 0.84809083663357,
+      "f1_weighted": 0.9036875984262328
     },
     "reference_minus_baseline": {
-      "accuracy_point": -0.015151515151515249,
-      "f1_macro_point": -0.015645708602217145
+      "accuracy_point": 0.10984848484848486,
+      "f1_macro_point": 0.22774994156072637
     },
     "ours_minus_reference": {
-      "accuracy_point": -0.011363636363636354,
-      "f1_macro_point": -0.011232064452823431
+      "accuracy_point": 0.0,
+      "f1_macro_point": -0.02412563322771577
     }
   }
 }

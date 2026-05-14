@@ -343,7 +343,8 @@ def _rect_grid_stats(
     height: int,
     grid_cols: int,
     grid_rows: int,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    keep_cells: bool = False,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray | None]:
     n = len(polygons)
     cell_count = grid_cols * grid_rows
     cell_w = width / max(1, grid_cols)
@@ -353,6 +354,7 @@ def _rect_grid_stats(
     entropy = np.zeros(n, dtype=np.float32)
     peak = np.zeros(n, dtype=np.float32)
     clipped_area = np.zeros(n, dtype=np.float32)
+    cell_matrix = np.zeros((n, cell_count), dtype=np.float32) if keep_cells else None
 
     for i, poly in enumerate(polygons):
         if not poly:
@@ -374,7 +376,10 @@ def _rect_grid_stats(
                 right = min(width, (gx + 1) * cell_w)
                 area = _polygon_area(_clip_polygon_to_rect(poly, left, top, right, bottom))
                 if area > 1e-6:
-                    cell_areas.append(area / max(cell_area, 1e-6))
+                    frac = area / max(cell_area, 1e-6)
+                    cell_areas.append(frac)
+                    if cell_matrix is not None:
+                        cell_matrix[i, gy * grid_cols + gx] = frac
         if not cell_areas:
             continue
         vals = np.asarray(cell_areas, dtype=np.float32)
@@ -384,7 +389,28 @@ def _rect_grid_stats(
         peak[i] = float(np.max(vals) / max(total, 1e-9))
         entropy[i] = float(-(probs * np.log(probs + 1e-9)).sum() / math.log(cell_count))
         clipped_area[i] = total * cell_area
-    return active, entropy, peak, clipped_area
+    return active, entropy, peak, clipped_area, cell_matrix
+
+
+def _spatial_gradient_turbulence(cell_occ: np.ndarray, grid_cols: int, grid_rows: int) -> float:
+    if cell_occ.size == 0:
+        return 0.0
+    grid = cell_occ.reshape(grid_rows, grid_cols)
+    diffs: list[float] = []
+    for gy in range(grid_rows):
+        for gx in range(grid_cols):
+            neighbors = []
+            if gy > 0:
+                neighbors.append(grid[gy - 1, gx])
+            if gy + 1 < grid_rows:
+                neighbors.append(grid[gy + 1, gx])
+            if gx > 0:
+                neighbors.append(grid[gy, gx - 1])
+            if gx + 1 < grid_cols:
+                neighbors.append(grid[gy, gx + 1])
+            if neighbors:
+                diffs.append(abs(float(grid[gy, gx]) - float(np.mean(neighbors))))
+    return float(np.mean(diffs)) if diffs else 0.0
 
 
 def high_fidelity_grid_stats(
@@ -404,6 +430,7 @@ def high_fidelity_grid_stats(
     obb_peak = np.zeros(n, dtype=np.float32)
     hbb_area_px = np.zeros(n, dtype=np.float32)
     obb_area_px = np.zeros(n, dtype=np.float32)
+    obb_cell_frac = np.zeros((n, grid_cols * grid_rows), dtype=np.float32)
 
     for start in range(0, n, chunk_size):
         end = min(n, start + chunk_size)
@@ -432,12 +459,16 @@ def high_fidelity_grid_stats(
                 for lx, ly in local
             ])
 
-        hbb_active[sl], hbb_entropy[sl], hbb_peak[sl], hbb_area_px[sl] = _rect_grid_stats(
+        hbb_a, hbb_e, hbb_p, hbb_area, _ = _rect_grid_stats(
             hbb_polys, width, height, grid_cols, grid_rows
         )
-        obb_active[sl], obb_entropy[sl], obb_peak[sl], obb_area_px[sl] = _rect_grid_stats(
-            obb_polys, width, height, grid_cols, grid_rows
+        obb_a, obb_e, obb_p, obb_area, obb_cells = _rect_grid_stats(
+            obb_polys, width, height, grid_cols, grid_rows, keep_cells=True
         )
+        hbb_active[sl], hbb_entropy[sl], hbb_peak[sl], hbb_area_px[sl] = hbb_a, hbb_e, hbb_p, hbb_area
+        obb_active[sl], obb_entropy[sl], obb_peak[sl], obb_area_px[sl] = obb_a, obb_e, obb_p, obb_area
+        if obb_cells is not None:
+            obb_cell_frac[sl] = obb_cells
 
     return {
         "hbb_grid_active": hbb_active,
@@ -448,6 +479,7 @@ def high_fidelity_grid_stats(
         "obb_grid_entropy": obb_entropy,
         "obb_grid_peak_frac": obb_peak,
         "obb_grid_area_px": obb_area_px,
+        "obb_grid_cell_frac": obb_cell_frac,
     }
 
 
@@ -567,6 +599,11 @@ def extract_window_features(
         obb_entropy_mean = _safe_mean(grid_stats["obb_grid_entropy"][ob_idx])
         hbb_peak_mean = _safe_mean(grid_stats["hbb_grid_peak_frac"][ob_idx])
         obb_peak_mean = _safe_mean(grid_stats["obb_grid_peak_frac"][ob_idx])
+        if ob_idx.size:
+            cell_occ = np.sum(grid_stats["obb_grid_cell_frac"][ob_idx], axis=0) / max(1, frame_count)
+            sgt_hfgo = _spatial_gradient_turbulence(cell_occ, grid_cols, grid_rows)
+        else:
+            sgt_hfgo = 0.0
         row = {
             "dataset": dataset_key,
             "dataset_name": dataset_name,
@@ -606,6 +643,7 @@ def extract_window_features(
             "hbb_grid_peak_frac_mean": f"{hbb_peak_mean:.6f}",
             "obb_grid_peak_frac_mean": f"{obb_peak_mean:.6f}",
             "grid_peak_gain": f"{(obb_peak_mean - hbb_peak_mean):.6f}",
+            "sgt_hfgo": f"{sgt_hfgo:.8f}",
             "direction_fluctuation": f"{direction_std:.8f}",
             "theta_conf_mean": f"{_safe_mean(obb.theta_conf[ob_idx], 0.0):.6f}",
         }
@@ -650,6 +688,7 @@ def extract_window_features(
         "hbb_grid_peak_frac_mean",
         "obb_grid_peak_frac_mean",
         "grid_peak_gain",
+        "sgt_hfgo",
         "direction_fluctuation",
         "theta_conf_mean",
     ]

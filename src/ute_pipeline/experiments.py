@@ -10,6 +10,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.cluster import KMeans
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold
@@ -42,6 +43,7 @@ NUMERIC_FEATURES_OBB = [
     "hfgo_occupancy_reduction",
     "lane_change_rate",
     "direction_fluctuation",
+    "sgt_hfgo",
     "obb_grid_entropy_mean",
     "grid_entropy_reduction",
     "theta_conf_mean",
@@ -95,6 +97,7 @@ FEATURES_OURS = FEATURES_VDRF + [
     "std_acc",
     "mgti",
     "hfgo_occupancy_reduction",
+    "sgt_hfgo",
     "obb_grid_entropy_mean",
     "grid_entropy_reduction",
 ]
@@ -164,32 +167,86 @@ def compute_composite_mgti(table: FeatureTable, cfg: dict) -> np.ndarray:
     )
 
 
+def smooth_labels_by_dataset(labels: np.ndarray, table: FeatureTable, n_states: int, window: int) -> np.ndarray:
+    if window <= 1:
+        return labels
+    radius = window // 2
+    smoothed = labels.copy()
+    for dataset in np.unique(table.dataset):
+        idx = np.where(table.dataset == dataset)[0]
+        order = idx[np.argsort(table.start_s[idx])]
+        seq = labels[order]
+        out = seq.copy()
+        for pos in range(seq.shape[0]):
+            left = max(0, pos - radius)
+            right = min(seq.shape[0], pos + radius + 1)
+            counts = np.bincount(seq[left:right], minlength=n_states)
+            if counts.max() > 1:
+                out[pos] = int(np.argmax(counts))
+        smoothed[order] = out
+    return smoothed
+
+
 def make_state_labels(table: FeatureTable, cfg: dict, main_dataset: str = "xamn6") -> tuple[np.ndarray, np.ndarray]:
     n_states = int(cfg["feature"].get("n_states", 3))
     quantiles = cfg["feature"].get("quantiles", [0.40, 0.75])
     assert len(quantiles) == n_states - 1
 
     mask = table.dataset == main_dataset
-    rows = [table.rows[i] for i in np.where(mask)[0]]
-    speed_ratio = np.asarray([float(r["speed_ratio"]) for r in rows], dtype=np.float32)
-    density = np.asarray([float(r["density_veh_per_m"]) for r in rows], dtype=np.float32)
-    occ_key = "hfgo_occupancy" if "hfgo_occupancy" in rows[0] else "obb_occupancy"
-    occ = np.asarray([float(r[occ_key]) for r in rows], dtype=np.float32)
-    score_main = 0.65 * _z(1.0 - speed_ratio) + 0.25 * _z(density) + 0.10 * _z(occ)
-    thresholds = np.quantile(score_main, quantiles)
+    main_indices = np.where(mask)[0]
+    rows = [table.rows[i] for i in main_indices]
+    label_method = cfg["feature"].get("label_method", "cluster_vdrf")
 
-    speed_ratio_all = np.asarray([float(r["speed_ratio"]) for r in table.rows], dtype=np.float32)
-    density_all = np.asarray([float(r["density_veh_per_m"]) for r in table.rows], dtype=np.float32)
-    occ_all = np.asarray([float(r[occ_key]) for r in table.rows], dtype=np.float32)
-    score_all = (
-        0.65 * ((1.0 - speed_ratio_all - (1.0 - speed_ratio).mean()) / ((1.0 - speed_ratio).std() + 1e-6))
-        + 0.25 * ((density_all - density.mean()) / (density.std() + 1e-6))
-        + 0.10 * ((occ_all - occ.mean()) / (occ.std() + 1e-6))
+    if label_method == "cluster_vdrf":
+        label_features = ["speed_ratio", "density_veh_per_m", "lane_change_rate", "direction_fluctuation"]
+        x_main = matrix_from_rows(rows, label_features)
+        mean = x_main.mean(axis=0)
+        std = x_main.std(axis=0) + 1e-6
+        x_main_z = (x_main - mean) / std
+        kmeans = KMeans(n_clusters=n_states, random_state=int(cfg["experiment"].get("random_seed", 42)), n_init=50)
+        main_cluster = kmeans.fit_predict(x_main_z)
+        centers = kmeans.cluster_centers_
+        risk = -centers[:, 0] + centers[:, 1] + 0.5 * centers[:, 2] + 0.5 * centers[:, 3]
+        order = np.argsort(risk)
+        cluster_to_state = {int(cluster): int(state) for state, cluster in enumerate(order)}
+
+        x_all = matrix_from_rows(table.rows, label_features)
+        x_all_z = (x_all - mean) / std
+        all_cluster = kmeans.predict(x_all_z)
+        labels = np.asarray([cluster_to_state[int(c)] for c in all_cluster], dtype=np.int64)
+        score_all = (
+            -x_all_z[:, 0]
+            + x_all_z[:, 1]
+            + 0.5 * x_all_z[:, 2]
+            + 0.5 * x_all_z[:, 3]
+        ).astype(np.float32)
+        thresholds = np.asarray([float(risk[int(cluster)]) for cluster in order], dtype=np.float32)
+    else:
+        speed_ratio = np.asarray([float(r["speed_ratio"]) for r in rows], dtype=np.float32)
+        density = np.asarray([float(r["density_veh_per_m"]) for r in rows], dtype=np.float32)
+        occ_key = "hfgo_occupancy" if "hfgo_occupancy" in rows[0] else "obb_occupancy"
+        occ = np.asarray([float(r[occ_key]) for r in rows], dtype=np.float32)
+        score_main = 0.65 * _z(1.0 - speed_ratio) + 0.25 * _z(density) + 0.10 * _z(occ)
+        thresholds = np.quantile(score_main, quantiles)
+
+        speed_ratio_all = np.asarray([float(r["speed_ratio"]) for r in table.rows], dtype=np.float32)
+        density_all = np.asarray([float(r["density_veh_per_m"]) for r in table.rows], dtype=np.float32)
+        occ_all = np.asarray([float(r[occ_key]) for r in table.rows], dtype=np.float32)
+        score_all = (
+            0.65 * ((1.0 - speed_ratio_all - (1.0 - speed_ratio).mean()) / ((1.0 - speed_ratio).std() + 1e-6))
+            + 0.25 * ((density_all - density.mean()) / (density.std() + 1e-6))
+            + 0.10 * ((occ_all - occ.mean()) / (occ.std() + 1e-6))
+        )
+        labels = np.digitize(score_all, thresholds).astype(np.int64)
+        labels = np.clip(labels, 0, n_states - 1)
+    labels = smooth_labels_by_dataset(
+        labels,
+        table,
+        n_states,
+        int(cfg["feature"].get("label_smoothing_window", 1)),
     )
-    labels = np.digitize(score_all, thresholds).astype(np.int64)
-    labels = np.clip(labels, 0, n_states - 1)
-    table.y = labels
     table.score = score_all
+    table.y = labels
     return labels, thresholds.astype(np.float32)
 
 
@@ -388,6 +445,29 @@ def xgb_model(seed: int, params: dict[str, float | int], num_classes: int = 3) -
     )
 
 
+def fit_xgb_multiclass(
+    model: XGBClassifier,
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    num_classes: int,
+    sample_weight: np.ndarray | None = None,
+) -> None:
+    present = set(int(v) for v in np.unique(y_train))
+    missing = [c for c in range(num_classes) if c not in present]
+    if not missing:
+        model.fit(x_train, y_train, sample_weight=sample_weight)
+        return
+    filler_x = np.repeat(x_train[:1], len(missing), axis=0)
+    filler_y = np.asarray(missing, dtype=np.int64)
+    x_aug = np.vstack([x_train, filler_x])
+    y_aug = np.concatenate([y_train, filler_y])
+    if sample_weight is None:
+        w_aug = np.concatenate([np.ones(y_train.shape[0], dtype=np.float32), np.full(len(missing), 1e-6, dtype=np.float32)])
+    else:
+        w_aug = np.concatenate([sample_weight, np.full(len(missing), 1e-6, dtype=np.float32)])
+    model.fit(x_aug, y_aug, sample_weight=w_aug)
+
+
 def xgb_binary_model(seed: int, params: dict[str, float | int], scale_pos_weight: float = 1.0) -> XGBClassifier:
     return XGBClassifier(
         objective="binary:logistic",
@@ -458,7 +538,7 @@ def run_classification(table: FeatureTable, cfg: dict) -> dict[str, object]:
 
     def fit_eval(name: str, model, x: np.ndarray, feature_names: list[str] | None = None) -> None:
         x_train, x_test, _, _ = standardize(x[train_idx], x[test_idx])
-        model.fit(x_train, y[train_idx], sample_weight=sw_train)
+        fit_xgb_multiclass(model, x_train, y[train_idx], n_states, sample_weight=sw_train)
         pred = class_predictions(model.predict(x_test))
         item: dict[str, object] = {
             "metrics": metrics_dict(y[test_idx], pred, n_states),
@@ -548,7 +628,7 @@ def run_classification(table: FeatureTable, cfg: dict) -> dict[str, object]:
         x_tr, x_te, _, _ = standardize(table.x_obb[strat_train], table.x_obb[strat_test])
         m = xgb_model(seed, xgb_params, n_states)
         strat_sw = compute_sample_weights(y[strat_train], n_states)
-        m.fit(x_tr, y[strat_train], sample_weight=strat_sw)
+        fit_xgb_multiclass(m, x_tr, y[strat_train], n_states, sample_weight=strat_sw)
         strat_pred = class_predictions(m.predict(x_te))
         results["stratified_supplementary"] = {
             "metrics": metrics_dict(y[strat_test], strat_pred, n_states),
@@ -561,11 +641,11 @@ def run_classification(table: FeatureTable, cfg: dict) -> dict[str, object]:
         x_tr, x_te, _, _ = standardize(table.x_obb[ts_train], table.x_obb[ts_test])
         m = xgb_model(seed, xgb_params, n_states)
         ts_sw = compute_sample_weights(y[ts_train], n_states)
-        m.fit(x_tr, y[ts_train], sample_weight=ts_sw)
+        fit_xgb_multiclass(m, x_tr, y[ts_train], n_states, sample_weight=ts_sw)
         ts_pred = class_predictions(m.predict(x_te))
         results["time_series_supplementary"] = {
             "metrics": metrics_dict(y[ts_test], ts_pred, n_states),
-            "note": "Time-series split (last 25% as test). Shown for temporal generalization reference.",
+            "note": f"Time-series split (last {test_ratio:.0%} as test). Shown for temporal generalization reference.",
         }
         main_idx = np.where(main_mask)[0]
         y_main = y[main_idx]
@@ -577,7 +657,7 @@ def run_classification(table: FeatureTable, cfg: dict) -> dict[str, object]:
         x_tr, x_te, _, _ = standardize(x_tr_raw, x_te_raw)
         m = xgb_model(seed, xgb_params, n_states)
         ts_sw = compute_sample_weights(y_main[rel_train], n_states)
-        m.fit(x_tr, y_main[rel_train], sample_weight=ts_sw)
+        fit_xgb_multiclass(m, x_tr, y_main[rel_train], n_states, sample_weight=ts_sw)
         ts_temporal_pred = class_predictions(m.predict(x_te))
         results["time_series_temporal_supplementary"] = {
             "metrics": metrics_dict(y_main[rel_test], ts_temporal_pred, n_states),
@@ -613,7 +693,7 @@ def run_ablation(table: FeatureTable, cfg: dict) -> dict[str, object]:
             x_train, x_test, _, _ = standardize(x[train_fold_idx], x[test_fold_idx])
             sw = compute_sample_weights(y[train_fold_idx], n_states)
             model = xgb_model(seed, xgb_params, n_states)
-            model.fit(x_train, y[train_fold_idx], sample_weight=sw)
+            fit_xgb_multiclass(model, x_train, y[train_fold_idx], n_states, sample_weight=sw)
             pred = class_predictions(model.predict(x_test))
             fold_metrics.append(metrics_dict(y[test_fold_idx], pred, n_states))
 
@@ -660,7 +740,7 @@ def run_parameter_sensitivity(table: FeatureTable, cfg: dict) -> dict[str, objec
             x_train, x_test, _, _ = standardize(x_main[train_pos], x_main[test_pos])
             sw = compute_sample_weights(y_main[train_pos], n_states)
             model = xgb_model(seed, params, n_states)
-            model.fit(x_train, y_main[train_pos], sample_weight=sw)
+            fit_xgb_multiclass(model, x_train, y_main[train_pos], n_states, sample_weight=sw)
             pred = class_predictions(model.predict(x_test))
             m = metrics_dict(y_main[test_pos], pred, n_states)
             fold_f1s.append(m["f1_macro"])
@@ -688,7 +768,7 @@ def run_parameter_sensitivity(table: FeatureTable, cfg: dict) -> dict[str, objec
         if test_positions.size < 5:
             continue
         model = xgb_model(seed, cfg["experiment"]["xgboost"], n_states)
-        model.fit(x_scaled[:train_end], y_main[horizon : train_end + horizon])
+        fit_xgb_multiclass(model, x_scaled[:train_end], y_main[horizon : train_end + horizon], n_states)
         pred = class_predictions(model.predict(x_scaled[test_positions]))
         horizon_results.append(
             {
@@ -719,7 +799,7 @@ def run_time_series_cv(table: FeatureTable, cfg: dict, folds: int = 5) -> dict[s
         test_idx = idx[test_start:test_end]
         x_train, x_test, _, _ = standardize(table.x_obb[train_idx], table.x_obb[test_idx])
         model = xgb_model(seed + fold, xgb_params, n_states)
-        model.fit(x_train, y[train_idx])
+        fit_xgb_multiclass(model, x_train, y[train_idx], n_states)
         pred = class_predictions(model.predict(x_test))
         fold_metrics = metrics_dict(y[test_idx], pred, n_states)
         fold_item: dict[str, object] = {
@@ -798,13 +878,13 @@ def run_robustness(table: FeatureTable, cfg: dict) -> dict[str, object]:
 
         x_hbb_train, x_hbb_test, _, _ = standardize(table.x_hbb[train_idx], table.x_hbb[test_idx])
         hbb_model = xgb_model(seed, xgb_params, n_states)
-        hbb_model.fit(x_hbb_train, y[train_idx], sample_weight=sw_train)
+        fit_xgb_multiclass(hbb_model, x_hbb_train, y[train_idx], n_states, sample_weight=sw_train)
         hbb_pred = class_predictions(hbb_model.predict(x_hbb_test))
         cls_rows["XGBoost-HBB"].append(metrics_dict(y[test_idx], hbb_pred, n_states))
 
         x_obb_train, x_obb_test, _, _ = standardize(table.x_obb[train_idx], table.x_obb[test_idx])
         obb_model = xgb_model(seed, xgb_params, n_states)
-        obb_model.fit(x_obb_train, y[train_idx], sample_weight=sw_train)
+        fit_xgb_multiclass(obb_model, x_obb_train, y[train_idx], n_states, sample_weight=sw_train)
         obb_pred = class_predictions(obb_model.predict(x_obb_test))
         cls_rows["XGBoost-OBB"].append(metrics_dict(y[test_idx], obb_pred, n_states))
 
@@ -819,9 +899,11 @@ def run_robustness(table: FeatureTable, cfg: dict) -> dict[str, object]:
             train_end = min(split, valid_end)
             train_y = y_main[horizon : train_end + horizon]
             future_model = xgb_model(seed, xgb_params, n_states)
-            future_model.fit(
+            fit_xgb_multiclass(
+                future_model,
                 x_scaled[:train_end],
                 train_y,
+                n_states,
                 sample_weight=compute_sample_weights(train_y, n_states),
             )
             test_positions = np.arange(split, valid_end)
@@ -887,7 +969,7 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
     valid_end = x.shape[0] - horizon
     train_end = min(split, valid_end)
     xgb = xgb_model(seed, xgb_params, n_states)
-    xgb.fit(x_scaled[:train_end], y_main[horizon : train_end + horizon])
+    fit_xgb_multiclass(xgb, x_scaled[:train_end], y_main[horizon : train_end + horizon], n_states)
     xgb_test_positions = np.arange(split, valid_end)
     xgb_prob = xgb.predict_proba(x_scaled[xgb_test_positions])
     xgb_pred = np.argmax(xgb_prob, axis=1)
@@ -898,7 +980,7 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
     _, _, temporal_mean, temporal_std = standardize(x_temporal[:split], x_temporal[split:])
     x_temporal_scaled = (x_temporal - temporal_mean) / temporal_std
     temporal_xgb = xgb_model(seed, {**xgb_params, "max_depth": 2, "n_estimators": 80, "learning_rate": 0.08}, n_states)
-    temporal_xgb.fit(x_temporal_scaled[:train_end], y_main[horizon : train_end + horizon])
+    fit_xgb_multiclass(temporal_xgb, x_temporal_scaled[:train_end], y_main[horizon : train_end + horizon], n_states)
     temporal_xgb_prob = temporal_xgb.predict_proba(x_temporal_scaled[xgb_test_positions])
     temporal_xgb_pred = np.argmax(temporal_xgb_prob, axis=1)
 
@@ -1154,7 +1236,7 @@ def pkdd_generalization(table: FeatureTable, cfg: dict) -> dict[str, object]:
     pkdd_idx = np.where(table.dataset == "pkdd8")[0]
     x_train, x_pkdd, _, _ = standardize(table.x_obb[train_idx], table.x_obb[pkdd_idx])
     model = xgb_model(seed, xgb_params, n_states)
-    model.fit(x_train, y[train_idx])
+    fit_xgb_multiclass(model, x_train, y[train_idx], n_states)
     pred = class_predictions(model.predict(x_pkdd))
     names = STATE_NAMES if n_states <= len(STATE_NAMES) else [str(i) for i in range(n_states)]
     distribution = {names[i]: int(np.sum(pred == i)) for i in range(n_states)}
