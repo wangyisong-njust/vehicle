@@ -37,6 +37,7 @@
 | 状态特征 | V+D+R+F | V+D+HF-GO+MGTI | V、D、R、F、HF-GO、SGT、$\Delta SGT$、THW、加速度、MGTI |
 | 预测任务 | 主要做状态识别 | 计划做未来预测 | 当前识别、未来预测、恶化预警三条实验线均已实现 |
 | 可解释与可靠性 | 未系统展开 | 未系统展开 | TreeSHAP、反事实曲线、split conformal、配对 t 检验矩阵 |
+| 近五年方法对比 | 通常对比 SVM/RF/KNN/XGBoost 等机器学习模型 | 通常对比 LSTM/Fusion | 增补 SVM、RF、KNN、GBDT、XGBoost、LSTM、GRU 与本文方法统一评测 |
 
 ## 1.2 数据使用与分工
 
@@ -112,18 +113,46 @@ $$S=0.65\,Robust(1-v/v_{lim})+0.25\,Robust(\rho)+0.10\,Robust(O_{HFGO}),\qquad s
 
 主要评价采用分层随机划分（stratified split），确保训练集和测试集各类别比例一致。消融实验和参数敏感性分析使用 5 折分层交叉验证（stratified 5-fold CV），以交叉验证均值作为报告指标。
 
+为对齐近五年文献中的方法对比，本节不只比较项目内部模型，还补充交通状态识别与短时交通预测文献中常见的基线。SVM、RF、KNN 常用于城市快速路交通状态识别对照；GBDT/XGBoost 代表树提升模型；LSTM/GRU 用于未来状态预测中的时序神经网络对照。状态识别模型使用同一份 XAM-N-6 四类状态标签、同一训练/测试划分和同一评价指标；未来预测模型统一预测 3 秒后的交通状态。
+
+| 对比类别 | 本报告实现 | 近五年文献中的作用 |
+|---|---|---|
+| 传统机器学习 | SVM-OBB、RF-OBB、KNN-OBB、LR-OBB | 交通状态识别常用基线，检验特征是否只依赖简单分类器即可区分 |
+| 树提升模型 | GBDT-OBB、XGBoost-HBB、XGBoost-OBB | 近年交通状态识别与拥堵识别常用强基线，检验非线性组合能力 |
+| 时序深度模型 | LSTM-future、GRU-future | 近年短时交通预测常用循环神经网络基线 |
+| 本文方法 | M4 消融、Fusion-future、HF-GO/SGT/MGTI 特征 | 验证 OBB 角度、局部占有率和微观扰动特征的增益 |
+
+文献依据如下，后续写论文正文时可把这些条目整理进参考文献列表。
+
+| 对比方法 | 对应近五年文献依据 | 本文采用方式 |
+|---|---|---|
+| SVM / RF / KNN / XGBoost | 2023 年城市快速路交通状态识别研究采用 PSO-XGBoost，并与 SVM、RF、KNN 对比 | 在当前状态识别中加入 SVM-OBB、RF-OBB、KNN-OBB、XGBoost-OBB |
+| CNN/LSTM 类时序预测 | Reza 等 2022 年交通状态预测研究采用 1D-CNN 与 LSTM，并讨论 LSTM/GRU 在交通状态预测中的作用 | 在未来状态预测中加入 LSTM-future，并保留 XGBoost 静态/趋势通道 |
+| 深度学习交通拥堵预测 | 2023 年交通拥堵预测研究总结了神经网络、SVM 与深度学习方法在拥堵预测中的应用 | 把 XGBoost、SVM、LSTM/GRU 作为未来状态预测和识别任务的对照组 |
+| LSTM / GRU 记忆型循环网络 | 2023 年交通量预测研究直接比较 LSTM 与 GRU 两类记忆型循环网络 | 在未来状态预测中新增 GRU-future，与 LSTM-future 同口径比较 |
+
+参考文献链接：
+
+- Traffic State Recognition on Urban Expressways Based on BO-FCM and PSO-XGBoost, 2023, <https://www.tr-cats.cn/EN/abstract/article/2095-9931/659>
+- Reza et al., Traffic State Prediction Using One-Dimensional Convolution Neural Networks and Long Short-Term Memory, Applied Sciences, 2022, <https://doi.org/10.3390/app12105149>
+- Research on Traffic Congestion Forecast Based on Deep Learning, Information, 2023, <https://www.mdpi.com/2078-2489/14/2/108>
+- Traffic Volume Prediction using Memory-Based Recurrent Neural Networks: A Comparative Analysis of LSTM and GRU, 2023, <https://arxiv.org/abs/2303.12643>
+
 | 模型 | Accuracy | Precision | Recall | Macro-F1 | Weighted-F1 |
 |---|---:|---:|---:|---:|---:|
 | Majority | 0.2577 | 0.0644 | 0.2500 | 0.1025 | 0.1056 |
 | TorchLinear-OBB | 0.9485 | 0.9530 | 0.9483 | 0.9488 | 0.9489 |
 | XGBoost-HBB | 0.9381 | 0.9416 | 0.9379 | 0.9384 | 0.9387 |
 | XGBoost-OBB | 0.9588 | 0.9596 | 0.9588 | 0.9590 | 0.9590 |
+| RF-OBB | 0.9278 | 0.9305 | 0.9275 | 0.9280 | 0.9279 |
+| GBDT-OBB | 0.9381 | 0.9415 | 0.9383 | 0.9391 | 0.9389 |
+| KNN-OBB | 0.8660 | 0.8669 | 0.8654 | 0.8635 | 0.8635 |
 | SVM-OBB | 0.9072 | 0.9083 | 0.9071 | 0.9075 | 0.9076 |
 | LR-OBB | 0.9381 | 0.9430 | 0.9375 | 0.9377 | 0.9379 |
 
 测试集各状态样本数：畅通 25，缓行 24，拥挤 24，堵塞 24。
 
-六个模型按容量和用途分层设置：Majority 检查类别失衡下的退化基线；TorchLinear-OBB 是 32 隐元单层 MLP，用来观察特征的近似线性可分性；LR-OBB 与 SVM-OBB 是经典统计学习基线；XGBoost-HBB 与 XGBoost-OBB 直接比较水平框和旋转框特征。XGBoost-OBB 的 Macro-F1 为 0.9590，比 XGBoost-HBB 高 2.05 个百分点，是“OBB 角度补全 + HF-GO 空间增强”在主任务上的直接证据。
+这些模型按容量和用途分层设置：Majority 检查类别失衡下的退化基线；TorchLinear-OBB 是 32 隐元单层 MLP，用来观察特征的近似线性可分性；SVM、RF、KNN、LR 与 GBDT 是近五年交通状态识别文献常用机器学习对比方法；XGBoost-HBB 与 XGBoost-OBB 直接比较水平框和旋转框特征。XGBoost-OBB 的 Macro-F1 为 0.9590，比 XGBoost-HBB 高 2.05 个百分点，是“OBB 角度补全 + HF-GO 空间增强”在主任务上的直接证据。
 
 
 补充：时间序列划分（后 30% 作为测试集）的 XGBoost-OBB Macro-F1 为 0.4834。时间序列划分存在训练/测试分布偏移（训练覆盖拥堵积累期，测试覆盖恢复期），分类难度显著高于分层划分。这个结果反映了模型在未见时间段的泛化能力。加入因果滞后、差分和滚动趋势特征后，时间序列测试 Macro-F1 为 0.4774，未超过静态特征。
@@ -194,12 +223,13 @@ SHAP 反事实分析选取低置信或误判样本，对 Top 特征做单变量�
 |---|---:|---:|---:|---:|---:|
 | XGBoost-future | 0.6064 | 0.5741 | 0.4957 | 0.4620 | 0.6531 |
 | XGBoost-temporal-future | 0.4043 | 0.4866 | 0.3314 | 0.3298 | 0.5019 |
-| LSTM-future | 0.6702 | 0.4649 | 0.4552 | 0.4481 | 0.7030 |
-| Fusion-future | 0.6064 | 0.5488 | 0.4944 | 0.4671 | 0.6557 |
+| LSTM-future | 0.7021 | 0.4182 | 0.4023 | 0.4098 | 0.7132 |
+| GRU-future | 0.6915 | 0.4963 | 0.4820 | 0.4705 | 0.7342 |
+| Fusion-future | 0.6170 | 0.5633 | 0.5011 | 0.4724 | 0.6649 |
 
 Fusion-future 使用双通道/多通道门控融合：先计算验证段各通道的交叉熵误差，并用指数平滑得到稳定误差 $\bar e_m$；再按 $T=\max(T_{min},T_0\exp(-\alpha\bar e))$ 得到动态温度，最后用 $w_m=softmax(-\bar e_m/T)$ 生成 XGBoost、趋势 XGBoost 和 LSTM 的融合权重。实现方式与 docx 中“带温 Softmax 动态门控”的公式保持一致，且不使用测试标签调权。
 
-静态 `XGBoost-future` 的 Macro-F1 为 0.4620。加入滞后、差分和滚动趋势后的 `XGBoost-temporal-future` 为 0.3298，相比静态模型下降 13.22 个百分点。这可能是因为复合 MGTI 已经提供了较强的状态变化信息，额外的高维时序特征在小样本条件下引入了噪声。LSTM 在当前小样本条件下表现不如 XGBoost（0.4481）。带温 Softmax 门控得到静态 XGBoost 47% + 趋势 XGBoost 47% + LSTM 6%，Fusion-future Macro-F1 为 0.4671。受 324 个时间窗和后 30% 测试段缺少堵塞样本的限制，未来预测 Macro-F1 低于当前状态识别；论文中应同步报告混淆矩阵和类别支持数，避免只看单一均值指标。
+静态 `XGBoost-future` 的 Macro-F1 为 0.4620。加入滞后、差分和滚动趋势后的 `XGBoost-temporal-future` 为 0.3298，相比静态模型下降 13.22 个百分点。这可能是因为复合 MGTI 已经提供了较强的状态变化信息，额外的高维时序特征在小样本条件下引入了噪声。LSTM 与 GRU 两个近五年短时交通预测常用时序基线的 Macro-F1 分别为 0.4098 和 0.4705。带温 Softmax 门控得到静态 XGBoost 47% + 趋势 XGBoost 48% + LSTM 5%，Fusion-future Macro-F1 为 0.4724。受 324 个时间窗和后 30% 测试段缺少堵塞样本的限制，未来预测 Macro-F1 低于当前状态识别；论文中应同步报告混淆矩阵和类别支持数，避免只看单一均值指标。
 
 结果说明：当前预测任务只有 324 个 XAM-N-6 时间窗，LSTM 的有效训练样本更少，端到端序列模型相较 XGBoost 的优势受样本量限制。这部分主要说明本文特征在短时状态预测中的可迁移性，主结论仍以当前状态识别、R/F 消融、HF-GO/SGT 空间表征和 OBB 标注链路为核心。
 
@@ -287,7 +317,7 @@ R/F 相关性用于解释 `M2`、`M3'` 和 `M3` 的差异：F 在方向扰动上
 
 | 任务 | 模型 | Accuracy 均值 | Accuracy 标准差 | Macro-F1 均值 | Macro-F1 标准差 |
 |---|---|---:|---:|---:|---:|
-| 当前状态识别 | XGBoost-HBB | 0.9299 | 0.0256 | 0.9302 | 0.0254 |
+| 当前状态识别 | XGBoost-HBB | 0.9340 | 0.0154 | 0.9336 | 0.0163 |
 | 当前状态识别 | XGBoost-OBB | 0.9361 | 0.0137 | 0.9355 | 0.0145 |
 | 当前状态识别 | LR-OBB | 0.9443 | 0.0140 | 0.9442 | 0.0142 |
 | 未来状态预测 | XGBoost-future | 0.6404 | 0.0124 | 0.4888 | 0.0078 |

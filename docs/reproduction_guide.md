@@ -154,9 +154,10 @@ data_check/PKDD/PKDD-8/sample video.mp4
 | 实验任务 | 数据来源 | 划分方式 |
 |---|---|---|
 | 当前状态识别 | XAM-N-6 | 70% 训练、30% 测试，按四类状态分层随机划分 |
+| 近五年文献方法对比 | XAM-N-6 | 与当前状态识别共用同一分层划分，补充 SVM/RF/KNN/GBDT/XGBoost 等基线 |
 | 消融实验 | XAM-N-6 | 5 折分层交叉验证 |
 | 参数敏感性 | XAM-N-6 | 5 折交叉验证 |
-| 未来状态预测 | XAM-N-6 | 按时间顺序前 70% 训练、后 30% 测试 |
+| 未来状态预测 | XAM-N-6 | 按时间顺序前 70% 训练、后 30% 测试，默认预测 3 秒后状态 |
 | LSTM/Fusion | XAM-N-6 | 训练段后 20% 作为验证段，用于融合权重选择 |
 | 恶化预测 | XAM-N-6 | 连续时间分组 GroupKFold out-of-fold 评估 |
 | OBB 补充验证 | XAM-N-5、PKDD-8 | 不参与主训练，只做标注效果和场景合理性检查 |
@@ -164,6 +165,7 @@ data_check/PKDD/PKDD-8/sample video.mp4
 划分方式说明：
 
 - 当前状态识别用分层随机划分，目的是检验四类状态在特征空间中的可分性；时间序列划分另作为补充，专门观察未见时段泛化。
+- 近五年文献方法对比使用 SVM、RF、KNN、GBDT、XGBoost、LSTM、GRU 等常见基线；状态识别基线共用同一分层划分，时序模型在未来预测任务中比较。
 - 未来状态预测必须按时间顺序训练和测试，避免把未来窗口信息泄露到训练段。
 - 恶化预测正样本较少，单次 70/30 切分容易把恶化事件集中切到一侧，所以改用连续时间分组 GroupKFold 的 out-of-fold 评估。
 - LSTM 使用低维 V+D+F 时序通道，减少 324 个窗口小样本下的过拟合；XGBoost 使用完整 OBB/HF-GO/MGTI 特征，承担高维非线性判别。
@@ -240,10 +242,14 @@ python scripts/04_make_report.py
 | PKDD-8 特征窗口 | 1,059 |
 | 状态类别数 | 4（畅通/缓行/拥挤/堵塞） |
 | XGBoost-OBB Macro-F1（分层划分，主结果） | ~0.96 |
+| RF-OBB Macro-F1（近五年文献基线） | ~0.93 |
+| GBDT-OBB Macro-F1（近五年文献基线） | ~0.94 |
+| KNN-OBB Macro-F1（近五年文献基线） | ~0.86 |
 | SVM-OBB Macro-F1（分层划分，基线） | ~0.90 |
 | LR-OBB Macro-F1（分层划分，基线） | ~0.93 |
 | XGBoost-OBB Macro-F1（时间序列划分，补充） | ~0.48 |
 | XGBoost-future Macro-F1（3s 预测） | ~0.46 |
+| GRU-future Macro-F1（3s 预测，近五年文献基线） | ~0.47 |
 | Fusion-future Macro-F1（3s 预测） | ~0.47 |
 | XGBoost-OBB 多随机种子 Macro-F1 均值 | ~0.94 |
 | XGBoost-future 多随机种子 Macro-F1 均值 | ~0.49 |

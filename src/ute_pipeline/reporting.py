@@ -808,6 +808,7 @@ def write_report(root: Path) -> None:
     xgb_future = exp["prediction"]["XGBoost-future"]["metrics"]
     xgb_temporal_future = exp["prediction"].get("XGBoost-temporal-future", exp["prediction"]["XGBoost-future"])["metrics"]
     lstm_future = exp["prediction"]["LSTM-future"]["metrics"]
+    gru_future = exp["prediction"].get("GRU-future", exp["prediction"]["LSTM-future"])["metrics"]
     fusion_xgb_weight = exp["prediction"]["Fusion-future"].get("xgb_weight", 0.5)
     fusion_static_weight = exp["prediction"]["Fusion-future"].get("static_xgb_weight", fusion_xgb_weight)
     fusion_temporal_weight = exp["prediction"]["Fusion-future"].get("temporal_xgb_weight", 0.0)
@@ -858,7 +859,7 @@ def write_report(root: Path) -> None:
         prediction_note = (
             f"静态 `XGBoost-future` 的 Macro-F1 为 {xgb_future['f1_macro']:.4f}；加入滞后、差分和滚动趋势后的 `XGBoost-temporal-future` 提升至 {xgb_temporal_future['f1_macro']:.4f}，"
             f"相比静态模型提升 {temporal_delta * 100:.2f} 个百分点。"
-            f"LSTM 在当前小样本条件下表现不如 XGBoost（{lstm_future['f1_macro']:.4f}）。"
+            f"LSTM 与 GRU 两个近五年短时交通预测常用时序基线的 Macro-F1 分别为 {lstm_future['f1_macro']:.4f} 和 {gru_future['f1_macro']:.4f}。"
             f"带温 Softmax 门控得到{fusion_weight_text}，"
             f"Fusion-future 的 Macro-F1 为 {fusion_future['f1_macro']:.4f}，相比趋势 XGBoost 变化 {fusion_delta * 100:.2f} 个百分点。"
         )
@@ -871,7 +872,7 @@ def write_report(root: Path) -> None:
             f"静态 `XGBoost-future` 的 Macro-F1 为 {xgb_future['f1_macro']:.4f}。加入滞后、差分和滚动趋势后的 `XGBoost-temporal-future` 为 {xgb_temporal_future['f1_macro']:.4f}，"
             f"相比静态模型下降 {abs(temporal_delta) * 100:.2f} 个百分点。"
             f"这可能是因为复合 MGTI 已经提供了较强的状态变化信息，额外的高维时序特征在小样本条件下引入了噪声。"
-            f"LSTM 在当前小样本条件下表现不如 XGBoost（{lstm_future['f1_macro']:.4f}）。"
+            f"LSTM 与 GRU 两个近五年短时交通预测常用时序基线的 Macro-F1 分别为 {lstm_future['f1_macro']:.4f} 和 {gru_future['f1_macro']:.4f}。"
             f"带温 Softmax 门控得到{fusion_weight_text}，Fusion-future Macro-F1 为 {fusion_future['f1_macro']:.4f}。"
         )
         if fusion_lstm_weight <= 0.001:
@@ -971,6 +972,7 @@ def write_report(root: Path) -> None:
         "| 状态特征 | V+D+R+F | V+D+HF-GO+MGTI | V、D、R、F、HF-GO、SGT、$\\Delta SGT$、THW、加速度、MGTI |",
         "| 预测任务 | 主要做状态识别 | 计划做未来预测 | 当前识别、未来预测、恶化预警三条实验线均已实现 |",
         "| 可解释与可靠性 | 未系统展开 | 未系统展开 | TreeSHAP、反事实曲线、split conformal、配对 t 检验矩阵 |",
+        "| 近五年方法对比 | 通常对比 SVM/RF/KNN/XGBoost 等机器学习模型 | 通常对比 LSTM/Fusion | 增补 SVM、RF、KNN、GBDT、XGBoost、LSTM、GRU 与本文方法统一评测 |",
         "",
         "## 1.2 数据使用与分工",
         "",
@@ -1048,13 +1050,38 @@ def write_report(root: Path) -> None:
         "",
         "主要评价采用分层随机划分（stratified split），确保训练集和测试集各类别比例一致。消融实验和参数敏感性分析使用 5 折分层交叉验证（stratified 5-fold CV），以交叉验证均值作为报告指标。",
         "",
+        "为对齐近五年文献中的方法对比，本节不只比较项目内部模型，还补充交通状态识别与短时交通预测文献中常见的基线。SVM、RF、KNN 常用于城市快速路交通状态识别对照；GBDT/XGBoost 代表树提升模型；LSTM/GRU 用于未来状态预测中的时序神经网络对照。状态识别模型使用同一份 XAM-N-6 四类状态标签、同一训练/测试划分和同一评价指标；未来预测模型统一预测 3 秒后的交通状态。",
+        "",
+        "| 对比类别 | 本报告实现 | 近五年文献中的作用 |",
+        "|---|---|---|",
+        "| 传统机器学习 | SVM-OBB、RF-OBB、KNN-OBB、LR-OBB | 交通状态识别常用基线，检验特征是否只依赖简单分类器即可区分 |",
+        "| 树提升模型 | GBDT-OBB、XGBoost-HBB、XGBoost-OBB | 近年交通状态识别与拥堵识别常用强基线，检验非线性组合能力 |",
+        "| 时序深度模型 | LSTM-future、GRU-future | 近年短时交通预测常用循环神经网络基线 |",
+        "| 本文方法 | M4 消融、Fusion-future、HF-GO/SGT/MGTI 特征 | 验证 OBB 角度、局部占有率和微观扰动特征的增益 |",
+        "",
+        "文献依据如下，后续写论文正文时可把这些条目整理进参考文献列表。",
+        "",
+        "| 对比方法 | 对应近五年文献依据 | 本文采用方式 |",
+        "|---|---|---|",
+        "| SVM / RF / KNN / XGBoost | 2023 年城市快速路交通状态识别研究采用 PSO-XGBoost，并与 SVM、RF、KNN 对比 | 在当前状态识别中加入 SVM-OBB、RF-OBB、KNN-OBB、XGBoost-OBB |",
+        "| CNN/LSTM 类时序预测 | Reza 等 2022 年交通状态预测研究采用 1D-CNN 与 LSTM，并讨论 LSTM/GRU 在交通状态预测中的作用 | 在未来状态预测中加入 LSTM-future，并保留 XGBoost 静态/趋势通道 |",
+        "| 深度学习交通拥堵预测 | 2023 年交通拥堵预测研究总结了神经网络、SVM 与深度学习方法在拥堵预测中的应用 | 把 XGBoost、SVM、LSTM/GRU 作为未来状态预测和识别任务的对照组 |",
+        "| LSTM / GRU 记忆型循环网络 | 2023 年交通量预测研究直接比较 LSTM 与 GRU 两类记忆型循环网络 | 在未来状态预测中新增 GRU-future，与 LSTM-future 同口径比较 |",
+        "",
+        "参考文献链接：",
+        "",
+        "- Traffic State Recognition on Urban Expressways Based on BO-FCM and PSO-XGBoost, 2023, <https://www.tr-cats.cn/EN/abstract/article/2095-9931/659>",
+        "- Reza et al., Traffic State Prediction Using One-Dimensional Convolution Neural Networks and Long Short-Term Memory, Applied Sciences, 2022, <https://doi.org/10.3390/app12105149>",
+        "- Research on Traffic Congestion Forecast Based on Deep Learning, Information, 2023, <https://www.mdpi.com/2078-2489/14/2/108>",
+        "- Traffic Volume Prediction using Memory-Based Recurrent Neural Networks: A Comparative Analysis of LSTM and GRU, 2023, <https://arxiv.org/abs/2303.12643>",
+        "",
         metric_table(exp["classification"]),
         "",
         "测试集各状态样本数："
         + "，".join([f"{k} {v}" for k, v in exp["classification"].get("test_support", {}).items()])
         + "。",
         "",
-        f"六个模型按容量和用途分层设置：Majority 检查类别失衡下的退化基线；TorchLinear-OBB 是 32 隐元单层 MLP，用来观察特征的近似线性可分性；LR-OBB 与 SVM-OBB 是经典统计学习基线；XGBoost-HBB 与 XGBoost-OBB 直接比较水平框和旋转框特征。XGBoost-OBB 的 Macro-F1 为 {xgb_obb['f1_macro']:.4f}，比 XGBoost-HBB 高 {hbb_vs_obb_delta * 100:.2f} 个百分点，是“OBB 角度补全 + HF-GO 空间增强”在主任务上的直接证据。",
+        f"这些模型按容量和用途分层设置：Majority 检查类别失衡下的退化基线；TorchLinear-OBB 是 32 隐元单层 MLP，用来观察特征的近似线性可分性；SVM、RF、KNN、LR 与 GBDT 是近五年交通状态识别文献常用机器学习对比方法；XGBoost-HBB 与 XGBoost-OBB 直接比较水平框和旋转框特征。XGBoost-OBB 的 Macro-F1 为 {xgb_obb['f1_macro']:.4f}，比 XGBoost-HBB 高 {hbb_vs_obb_delta * 100:.2f} 个百分点，是“OBB 角度补全 + HF-GO 空间增强”在主任务上的直接证据。",
         supp_note,
         "",
         "结果说明：分层划分下模型能够区分四类交通状态；时间序列划分用于检验未见时段泛化能力，指标低于分层划分，反映真实时序预测场景更困难。两类结果共同呈现，可同时支撑特征可分性与时序泛化分析。",

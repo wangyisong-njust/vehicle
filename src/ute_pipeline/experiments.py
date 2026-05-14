@@ -10,15 +10,15 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.cluster import KMeans
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, precision_recall_curve, roc_auc_score
 from sklearn.model_selection import GroupKFold, StratifiedKFold
 from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
 from scipy.stats import ttest_rel
-from xgboost import DMatrix, XGBClassifier
+from xgboost import DMatrix, XGBClassifier, XGBRFClassifier
 
 
 STATE_NAMES = ["畅通", "缓行", "拥挤", "堵塞"]
@@ -720,6 +720,22 @@ def xgb_model(seed: int, params: dict[str, float | int], num_classes: int = 3) -
     )
 
 
+def xgbrf_model(seed: int, num_classes: int = 3) -> XGBRFClassifier:
+    return XGBRFClassifier(
+        objective="multi:softprob",
+        num_class=num_classes,
+        eval_metric="mlogloss",
+        random_state=seed,
+        tree_method="hist",
+        n_estimators=240,
+        max_depth=7,
+        subsample=0.85,
+        colsample_bynode=0.85,
+        learning_rate=1.0,
+        reg_lambda=1.0,
+    )
+
+
 def fit_xgb_multiclass(
     model: XGBClassifier,
     x_train: np.ndarray,
@@ -855,11 +871,67 @@ def run_classification(table: FeatureTable, cfg: dict) -> dict[str, object]:
     fit_eval("XGBoost-HBB", xgb_model(seed, xgb_params, n_states), table.x_hbb, NUMERIC_FEATURES_HBB)
     fit_eval("XGBoost-OBB", xgb_model(seed, xgb_params, n_states), table.x_obb, NUMERIC_FEATURES_OBB)
 
-    # SVM baseline (OBB features)
+    # Literature baselines from recent traffic-state recognition studies.
     x_obb_train, x_obb_test, _, _ = standardize(table.x_obb[train_idx], table.x_obb[test_idx])
     x_obb_train_64 = np.ascontiguousarray(x_obb_train, dtype=np.float64)
     x_obb_test_64 = np.ascontiguousarray(x_obb_test, dtype=np.float64)
     sw_64 = np.ascontiguousarray(sw_train, dtype=np.float64)
+
+    rf = xgbrf_model(seed, n_states)
+    fit_xgb_multiclass(rf, x_obb_train, y[train_idx], n_states, sample_weight=sw_train)
+    rf_prob = rf.predict_proba(x_obb_test)
+    rf_pred = np.argmax(rf_prob, axis=1)
+    results["RF-OBB"] = {
+        "metrics": metrics_dict(y[test_idx], rf_pred, n_states),
+        "confusion_matrix": confusion_matrix_np(y[test_idx], rf_pred, n_states).tolist(),
+        "pred": rf_pred.tolist(),
+        "true": y[test_idx].tolist(),
+        "literature_role": "Random Forest baseline commonly used in recent traffic-state recognition comparisons.",
+    }
+    try:
+        results["RF-OBB"]["roc_auc"] = compute_roc_auc(y[test_idx], rf_prob, n_states)
+    except ValueError:
+        pass
+
+    gbdt_params = {
+        **xgb_params,
+        "n_estimators": 120,
+        "max_depth": 2,
+        "learning_rate": 0.06,
+        "subsample": 1.0,
+        "colsample_bytree": 1.0,
+    }
+    gbdt = xgb_model(seed, gbdt_params, n_states)
+    fit_xgb_multiclass(gbdt, x_obb_train, y[train_idx], n_states, sample_weight=sw_train)
+    gbdt_prob = gbdt.predict_proba(x_obb_test)
+    gbdt_pred = np.argmax(gbdt_prob, axis=1)
+    results["GBDT-OBB"] = {
+        "metrics": metrics_dict(y[test_idx], gbdt_pred, n_states),
+        "confusion_matrix": confusion_matrix_np(y[test_idx], gbdt_pred, n_states).tolist(),
+        "pred": gbdt_pred.tolist(),
+        "true": y[test_idx].tolist(),
+        "literature_role": "Gradient-boosted decision tree baseline; paired with XGBoost to test boosting-family gains.",
+    }
+    try:
+        results["GBDT-OBB"]["roc_auc"] = compute_roc_auc(y[test_idx], gbdt_prob, n_states)
+    except ValueError:
+        pass
+
+    knn = KNeighborsClassifier(n_neighbors=7, weights="distance", metric="minkowski", p=2)
+    knn.fit(x_obb_train_64, y[train_idx])
+    knn_pred = class_predictions(knn.predict(x_obb_test_64))
+    results["KNN-OBB"] = {
+        "metrics": metrics_dict(y[test_idx], knn_pred, n_states),
+        "confusion_matrix": confusion_matrix_np(y[test_idx], knn_pred, n_states).tolist(),
+        "pred": knn_pred.tolist(),
+        "true": y[test_idx].tolist(),
+        "literature_role": "K-nearest-neighbor nonparametric baseline used in recent traffic-state recognition papers.",
+    }
+    try:
+        results["KNN-OBB"]["roc_auc"] = compute_roc_auc(y[test_idx], knn.predict_proba(x_obb_test_64), n_states)
+    except ValueError:
+        pass
+
     svm = SVC(kernel="rbf", C=1.0, probability=True, random_state=seed)
     svm.fit(x_obb_train_64, y[train_idx], sample_weight=sw_64)
     svm_pred = class_predictions(svm.predict(x_obb_test_64))
@@ -869,6 +941,7 @@ def run_classification(table: FeatureTable, cfg: dict) -> dict[str, object]:
         "confusion_matrix": confusion_matrix_np(y[test_idx], svm_pred, n_states).tolist(),
         "pred": svm_pred.tolist(),
         "true": y[test_idx].tolist(),
+        "literature_role": "Support vector machine baseline frequently used in traffic congestion state recognition.",
     }
     try:
         results["SVM-OBB"]["roc_auc"] = compute_roc_auc(y[test_idx], svm_prob, n_states)
@@ -885,6 +958,7 @@ def run_classification(table: FeatureTable, cfg: dict) -> dict[str, object]:
         "confusion_matrix": confusion_matrix_np(y[test_idx], lr_pred, n_states).tolist(),
         "pred": lr_pred.tolist(),
         "true": y[test_idx].tolist(),
+        "literature_role": "Linear statistical baseline for checking whether nonlinear models are necessary.",
     }
     try:
         results["LR-OBB"]["roc_auc"] = compute_roc_auc(y[test_idx], lr_prob, n_states)
@@ -1285,6 +1359,17 @@ class LSTMClassifier(nn.Module):
         return self.fc(out[:, -1, :])
 
 
+class GRUClassifier(nn.Module):
+    def __init__(self, input_size: int, hidden_size: int, num_classes: int = 3):
+        super().__init__()
+        self.gru = nn.GRU(input_size, hidden_size, batch_first=True)
+        self.fc = nn.Linear(hidden_size, num_classes)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        out, _ = self.gru(x)
+        return self.fc(out[:, -1, :])
+
+
 class FocalLoss(nn.Module):
     def __init__(self, gamma: float = 2.0, weight: torch.Tensor | None = None):
         super().__init__()
@@ -1306,6 +1391,40 @@ def sequence_dataset(x: np.ndarray, y: np.ndarray, seq_len: int, horizon: int) -
         ys.append(y[end + horizon])
         end_positions.append(end)
     return np.asarray(xs, dtype=np.float32), np.asarray(ys, dtype=np.int64), np.asarray(end_positions, dtype=np.int64)
+
+
+def fit_recurrent_classifier(
+    model: nn.Module,
+    train_x: torch.Tensor,
+    train_y: torch.Tensor,
+    test_x: torch.Tensor,
+    seed: int,
+    n_states: int,
+    lstm_cfg: dict,
+) -> np.ndarray:
+    torch.manual_seed(seed)
+    opt = torch.optim.Adam(model.parameters(), lr=float(lstm_cfg["learning_rate"]))
+    train_counts = np.bincount(train_y.cpu().numpy(), minlength=n_states).astype(np.float32)
+    class_weights = train_counts.sum() / np.maximum(train_counts, 1.0)
+    class_weights = class_weights / max(1e-6, float(class_weights.mean()))
+    loss_fn = FocalLoss(gamma=2.0, weight=torch.tensor(class_weights, dtype=torch.float32))
+    batch_size = int(lstm_cfg["batch_size"])
+    epochs = int(lstm_cfg["epochs"])
+    model.train()
+    for _ in range(epochs):
+        perm = torch.randperm(train_x.shape[0])
+        for start in range(0, train_x.shape[0], batch_size):
+            idx = perm[start : start + batch_size]
+            logits = model(train_x[idx])
+            loss = loss_fn(logits, train_y[idx])
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+
+    model.eval()
+    with torch.no_grad():
+        prob = torch.softmax(model(test_x), dim=1).cpu().numpy()
+    return prob
 
 
 def stratified_future_positions(
@@ -1402,29 +1521,12 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
     test_y = seq_y[seq_test_mask]
 
     model = LSTMClassifier(input_size=x_lstm_raw.shape[1], hidden_size=int(lstm_cfg["hidden_size"]), num_classes=n_states)
-    opt = torch.optim.Adam(model.parameters(), lr=float(lstm_cfg["learning_rate"]))
-    train_counts = np.bincount(train_y.cpu().numpy(), minlength=n_states).astype(np.float32)
-    class_weights = train_counts.sum() / np.maximum(train_counts, 1.0)
-    class_weights = class_weights / max(1e-6, float(class_weights.mean()))
-    loss_fn = FocalLoss(gamma=2.0, weight=torch.tensor(class_weights, dtype=torch.float32))
-    batch_size = int(lstm_cfg["batch_size"])
-    epochs = int(lstm_cfg["epochs"])
-    model.train()
-    for _ in range(epochs):
-        perm = torch.randperm(train_x.shape[0])
-        for start in range(0, train_x.shape[0], batch_size):
-            idx = perm[start : start + batch_size]
-            logits = model(train_x[idx])
-            loss = loss_fn(logits, train_y[idx])
-            opt.zero_grad()
-            loss.backward()
-            opt.step()
-
-    model.eval()
-    with torch.no_grad():
-        logits = model(test_x)
-        lstm_prob = torch.softmax(logits, dim=1).cpu().numpy()
+    lstm_prob = fit_recurrent_classifier(model, train_x, train_y, test_x, seed, n_states, lstm_cfg)
     lstm_pred = np.argmax(lstm_prob, axis=1)
+
+    gru_model = GRUClassifier(input_size=x_lstm_raw.shape[1], hidden_size=int(lstm_cfg["hidden_size"]), num_classes=n_states)
+    gru_prob = fit_recurrent_classifier(gru_model, train_x, train_y, test_x, seed + 17, n_states, lstm_cfg)
+    gru_pred = np.argmax(gru_prob, axis=1)
 
     seq_test_positions = end_positions[seq_test_mask]
     xgb_prob_aligned = xgb.predict_proba(x_scaled[seq_test_positions])
@@ -1540,6 +1642,14 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
             "true": common_true.tolist(),
             "input_features": FEATURES_VDF,
             "note": "Low-dimensional temporal channel using V+D+F features.",
+        },
+        "GRU-future": {
+            "metrics": metrics_dict(common_true, gru_pred, n_states),
+            "confusion_matrix": confusion_matrix_np(common_true, gru_pred, n_states).tolist(),
+            "pred": gru_pred.tolist(),
+            "true": common_true.tolist(),
+            "input_features": FEATURES_VDF,
+            "note": "GRU temporal baseline commonly used in recent short-term traffic prediction literature.",
         },
         "Fusion-future": {
             "metrics": metrics_dict(common_true, fusion_pred, n_states),
