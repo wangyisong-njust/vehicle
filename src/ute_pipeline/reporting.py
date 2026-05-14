@@ -1322,7 +1322,7 @@ def write_report(root: Path) -> None:
                 "",
                 "![PeMS长时交通流预测](../outputs/figures/long_horizon_forecasting.png)",
                 "",
-                "结果显示 Ridge-Lag 在 15/30/60 分钟三个展望期上均低于 Persistence 和 Historical Average，说明长时交通流预测扩展实验可以作为“15/30/60 分钟有效”的补充证据。论文写作时应明确：这部分验证的是长时间序列交通流预测能力；UTE 主实验验证的是 OBB 标注、HF-GO 空间占有率和四类状态识别能力。",
+                "结果显示 Ours-TSFusion 在 15/30/60 分钟三个展望期上均取得最低 MAE/RMSE。这个模型只使用训练集拟合 Ridge-Lag，并在验证集上学习 Persistence、Historical Average 与 Ridge-Lag 的非负融合权重，不使用测试集调参。论文写作时应明确：这部分验证的是长时间序列交通流预测能力；UTE 主实验验证的是 OBB 标注、HF-GO 空间占有率和四类状态识别能力。",
                 "",
             ]
         )

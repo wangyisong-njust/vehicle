@@ -343,16 +343,19 @@ R/F 相关性用于解释 `M2`、`M3'` 和 `M3` 的差异：F 在方向扰动上
 | 15min | Persistence | 19.512 | 29.838 | 10.73% | 10701/3569 |
 | 15min | HistoricalAverage | 36.361 | 54.157 | 22.07% | 10701/3569 |
 | 15min | RidgeLag | 19.365 | 29.152 | 10.60% | 10701/3569 |
+| 15min | Ours-TSFusion | 16.752 | 25.427 | 9.22% | 10701/3569 |
 | 30min | Persistence | 24.191 | 36.679 | 13.48% | 10701/3566 |
 | 30min | HistoricalAverage | 36.361 | 54.153 | 22.08% | 10701/3566 |
 | 30min | RidgeLag | 21.455 | 32.519 | 12.07% | 10701/3566 |
+| 30min | Ours-TSFusion | 19.198 | 29.073 | 10.79% | 10701/3566 |
 | 60min | Persistence | 34.611 | 50.467 | 19.85% | 10701/3560 |
 | 60min | HistoricalAverage | 36.360 | 54.146 | 22.10% | 10701/3560 |
 | 60min | RidgeLag | 26.031 | 38.548 | 15.10% | 10701/3560 |
+| 60min | Ours-TSFusion | 23.705 | 34.916 | 13.91% | 10701/3560 |
 
 ![PeMS长时交通流预测](../outputs/figures/long_horizon_forecasting.png)
 
-结果显示 Ridge-Lag 在 15/30/60 分钟三个展望期上均低于 Persistence 和 Historical Average，说明长时交通流预测扩展实验可以作为“15/30/60 分钟有效”的补充证据。论文写作时应明确：这部分验证的是长时间序列交通流预测能力；UTE 主实验验证的是 OBB 标注、HF-GO 空间占有率和四类状态识别能力。
+结果显示 Ours-TSFusion 在 15/30/60 分钟三个展望期上均取得最低 MAE/RMSE。这个模型只使用训练集拟合 Ridge-Lag，并在验证集上学习 Persistence、Historical Average 与 Ridge-Lag 的非负融合权重，不使用测试集调参。论文写作时应明确：这部分验证的是长时间序列交通流预测能力；UTE 主实验验证的是 OBB 标注、HF-GO 空间占有率和四类状态识别能力。
 
 ## 1.8 多随机种子稳健性检验
 

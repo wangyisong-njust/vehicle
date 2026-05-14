@@ -92,6 +92,34 @@ def historical_average(data: np.ndarray, train_end: int, target_positions: np.nd
     return np.asarray(preds, dtype=np.float32)
 
 
+def optimize_fusion_weights(true: np.ndarray, preds: dict[str, np.ndarray]) -> dict[str, float]:
+    names = list(preds)
+    if len(names) != 3:
+        raise ValueError("This lightweight fusion expects exactly three prediction channels.")
+    best_score = float("inf")
+    best_weights = {name: 1.0 / len(names) for name in names}
+    grid = np.linspace(0.0, 1.0, 41)
+    for w0 in grid:
+        for w1 in grid:
+            if w0 + w1 > 1.0:
+                continue
+            weights = np.array([w0, w1, 1.0 - w0 - w1], dtype=np.float32)
+            pred = sum(weights[i] * preds[name] for i, name in enumerate(names))
+            score = metrics(true, pred)["mae"]
+            if score < best_score:
+                best_score = score
+                best_weights = {name: float(weights[i]) for i, name in enumerate(names)}
+    return best_weights
+
+
+def weighted_sum(preds: dict[str, np.ndarray], weights: dict[str, float]) -> np.ndarray:
+    first = next(iter(preds.values()))
+    out = np.zeros_like(first, dtype=np.float32)
+    for name, pred in preds.items():
+        out += float(weights.get(name, 0.0)) * pred
+    return out
+
+
 def run_dataset(dataset: str, auto_download: bool) -> dict[str, object]:
     meta = DATASETS[dataset]
     interval_minutes = int(meta["interval_minutes"])
@@ -130,30 +158,52 @@ def run_dataset(dataset: str, auto_download: bool) -> dict[str, object]:
         horizon_steps = max(1, int(round(horizon_minutes / interval_minutes)))
         positions, x, y = make_supervised(flow, horizon_steps, lags)
         train_mask = positions < train_end
+        val_mask = (positions >= train_end) & (positions < test_start)
         test_mask = positions >= test_start
         x_train, y_train = x[train_mask], y[train_mask]
+        x_val, y_val = x[val_mask], y[val_mask]
         x_test, y_test = x[test_mask], y[test_mask]
+        val_target_positions = positions[val_mask] + horizon_steps
         target_positions = positions[test_mask] + horizon_steps
 
+        persistence_val = flow[positions[val_mask]]
         persistence_pred = flow[positions[test_mask]]
+        ha_val = historical_average(flow, train_end, val_target_positions, slots_per_day)
         ha_pred = historical_average(flow, train_end, target_positions, slots_per_day)
 
         scaler = StandardScaler()
         x_train_scaled = scaler.fit_transform(x_train)
+        x_val_scaled = scaler.transform(x_val)
         x_test_scaled = scaler.transform(x_test)
         ridge = Ridge(alpha=10.0)
         ridge.fit(x_train_scaled, y_train)
+        ridge_val = ridge.predict(x_val_scaled)
         ridge_pred = ridge.predict(x_test_scaled)
+        val_preds = {
+            "Persistence": persistence_val,
+            "HistoricalAverage": ha_val,
+            "RidgeLag": ridge_val,
+        }
+        test_preds = {
+            "Persistence": persistence_pred,
+            "HistoricalAverage": ha_pred,
+            "RidgeLag": ridge_pred,
+        }
+        fusion_weights = optimize_fusion_weights(y_val, val_preds)
+        fusion_pred = weighted_sum(test_preds, fusion_weights)
 
         results["horizons"][f"{horizon_minutes}min"] = {
             "horizon_minutes": horizon_minutes,
             "horizon_steps": int(horizon_steps),
             "train_samples": int(x_train.shape[0]),
+            "validation_samples": int(x_val.shape[0]),
             "test_samples": int(x_test.shape[0]),
+            "fusion_weights": fusion_weights,
             "models": {
                 "Persistence": metrics(y_test, persistence_pred),
                 "HistoricalAverage": metrics(y_test, ha_pred),
                 "RidgeLag": metrics(y_test, ridge_pred),
+                "Ours-TSFusion": metrics(y_test, fusion_pred),
             },
         }
     return results
@@ -161,16 +211,17 @@ def run_dataset(dataset: str, auto_download: bool) -> dict[str, object]:
 
 def plot_results(report: dict[str, object], out_path: Path) -> None:
     horizons = list(report["horizons"].keys())
-    models = ["Persistence", "HistoricalAverage", "RidgeLag"]
+    models = ["Persistence", "HistoricalAverage", "RidgeLag", "Ours-TSFusion"]
     x = np.arange(len(horizons))
-    width = 0.24
+    width = 0.19
     fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-    colors = ["#9aa0a6", "#4c78a8", "#f58518"]
+    colors = ["#9aa0a6", "#4c78a8", "#f58518", "#54a24b"]
     for i, model in enumerate(models):
         mae = [report["horizons"][h]["models"][model]["mae"] for h in horizons]
         rmse = [report["horizons"][h]["models"][model]["rmse"] for h in horizons]
-        axes[0].bar(x + (i - 1) * width, mae, width=width, label=model, color=colors[i])
-        axes[1].bar(x + (i - 1) * width, rmse, width=width, label=model, color=colors[i])
+        offset = (i - (len(models) - 1) / 2) * width
+        axes[0].bar(x + offset, mae, width=width, label=model, color=colors[i])
+        axes[1].bar(x + offset, rmse, width=width, label=model, color=colors[i])
     for ax, ylabel in [(axes[0], "MAE"), (axes[1], "RMSE")]:
         ax.set_xticks(x)
         ax.set_xticklabels(horizons)
