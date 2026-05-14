@@ -16,9 +16,10 @@ from ute_pipeline.experiments import (
     STATE_NAMES,
     STATE_NAMES_EN,
     compute_composite_mgti,
+    make_state_labels,
     read_feature_table,
 )
-from ute_pipeline.features import grid_area_heatmap, load_obb, video_shape
+from ute_pipeline.features import ObbData, grid_area_heatmap, load_obb, video_shape
 
 CHINESE_STATE_NAMES_4 = ["畅通", "缓行", "拥挤", "堵塞"]
 ENGLISH_STATE_NAMES_4 = ["Free", "Slow", "Crowded", "Congested"]
@@ -145,6 +146,155 @@ def plot_hfgo_heatmap(root: Path, cfg: dict, out_path: Path) -> None:
     fig.colorbar(im, ax=axes.ravel().tolist(), fraction=0.026, pad=0.02)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _slice_obb(obb: ObbData, mask: np.ndarray) -> ObbData:
+    return ObbData(
+        frame=obb.frame[mask],
+        time_s=obb.time_s[mask],
+        vehicle_id=obb.vehicle_id[mask],
+        x=obb.x[mask],
+        y=obb.y[mask],
+        w=obb.w[mask],
+        h=obb.h[mask],
+        obb_area=obb.obb_area[mask],
+        theta=obb.theta[mask],
+        theta_conf=obb.theta_conf[mask],
+    )
+
+
+def plot_hfgo_local_by_state(root: Path, cfg: dict, labels: np.ndarray, out_path: Path) -> None:
+    rows = [r for r in read_feature_rows(root / "outputs" / "features" / "all_windows.csv") if r["dataset"] == "xamn6"]
+    if not rows:
+        return
+    ds = cfg["datasets"]["xamn6"]
+    ds_root = root / ds["root"]
+    width, height, _, _ = video_shape(ds_root / ds["video"])
+    obb = load_obb(root / "outputs" / "processed" / "xamn6_pixel_obb.csv")
+    grid_cols = int(cfg["feature"].get("grid_cols", 12))
+    grid_rows = int(cfg["feature"].get("grid_rows", 4))
+    state_names = configure_plot_font()
+    fig, axes = plt.subplots(4, 2, figsize=(9.2, 8.5))
+    vmax = 1.0
+    maps: list[tuple[np.ndarray, np.ndarray]] = []
+    selected: list[int] = []
+    main_labels = labels[np.asarray([i for i, r in enumerate(read_feature_rows(root / "outputs" / "features" / "all_windows.csv")) if r["dataset"] == "xamn6"])]
+    for state in range(min(4, len(state_names))):
+        idx = np.where(main_labels == state)[0]
+        if idx.size == 0:
+            selected.append(-1)
+            maps.append((np.zeros((grid_rows, grid_cols)), np.zeros((grid_rows, grid_cols))))
+            continue
+        pos = int(idx[idx.size // 2])
+        selected.append(pos)
+        start = float(rows[pos]["start_s"])
+        end = float(rows[pos]["end_s"])
+        mask = (obb.time_s >= start) & (obb.time_s < end)
+        if int(mask.sum()) > 25000:
+            true_idx = np.where(mask)[0][:25000]
+            tmp = np.zeros(mask.shape, dtype=bool)
+            tmp[true_idx] = True
+            mask = tmp
+        sub = _slice_obb(obb, mask)
+        if sub.frame.size == 0:
+            hbb = np.zeros((grid_rows, grid_cols), dtype=np.float32)
+            hfgo = np.zeros((grid_rows, grid_cols), dtype=np.float32)
+        else:
+            hbb, hfgo = grid_area_heatmap(sub, width, height, grid_cols, grid_rows, max_rows=25000)
+        maps.append((hbb, hfgo))
+        vmax = max(vmax, float(hbb.max()), float(hfgo.max()))
+    for state, (hbb, hfgo) in enumerate(maps):
+        for col, (mat, title) in enumerate([(hbb, "HBB"), (hfgo, "HF-GO")]):
+            ax = axes[state, col]
+            ax.imshow(mat, cmap="YlOrRd", vmin=0, vmax=vmax, aspect="auto")
+            title_suffix = "" if selected[state] < 0 else f" t={float(rows[selected[state]]['start_s']):.0f}s"
+            ax.set_title(f"{state_names[state]} {title}{title_suffix}", fontsize=10)
+            ax.set_xticks([])
+            ax.set_yticks([])
+    fig.suptitle("Local HBB vs HF-GO Occupancy by State", fontsize=12)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=200)
+    plt.close(fig)
+
+
+def plot_state_spacetime(root: Path, cfg: dict, labels: np.ndarray, out_path: Path) -> None:
+    rows_all = read_feature_rows(root / "outputs" / "features" / "all_windows.csv")
+    xamn_rows = [r for r in rows_all if r["dataset"] == "xamn6"]
+    if not xamn_rows:
+        return
+    state_names = configure_plot_font()
+    ds = cfg["datasets"]["xamn6"]
+    width, height, _, _ = video_shape(root / ds["root"] / ds["video"])
+    obb = load_obb(root / "outputs" / "processed" / "xamn6_pixel_obb.csv")
+    grid_cols = int(cfg["feature"].get("grid_cols", 12))
+    grid_rows = int(cfg["feature"].get("grid_rows", 4))
+    starts = np.asarray([float(r["start_s"]) for r in xamn_rows], dtype=np.float32)
+    step = float(cfg["feature"].get("step_s", 1.0))
+    main_positions = np.asarray([i for i, r in enumerate(rows_all) if r["dataset"] == "xamn6"], dtype=np.int64)
+    main_labels = labels[main_positions]
+    mat = np.zeros((grid_rows * grid_cols, starts.shape[0]), dtype=np.float32)
+    win = np.floor((obb.time_s - starts[0]) / max(step, 1e-6)).astype(np.int64)
+    col = np.clip((obb.x + obb.w / 2.0) / max(width, 1) * grid_cols, 0, grid_cols - 1).astype(np.int64)
+    row = np.clip((obb.y + obb.h / 2.0) / max(height, 1) * grid_rows, 0, grid_rows - 1).astype(np.int64)
+    valid = (win >= 0) & (win < starts.shape[0])
+    cells = row[valid] * grid_cols + col[valid]
+    wins = win[valid]
+    mat[cells, wins] = main_labels[wins] + 1
+    fig, ax = plt.subplots(figsize=(11, 5.2))
+    cmap = plt.get_cmap("viridis", 5)
+    im = ax.imshow(mat, aspect="auto", interpolation="nearest", cmap=cmap, vmin=0, vmax=4)
+    ax.set_xlabel("time window")
+    ax.set_ylabel("grid cell (row-major 12x4)")
+    ax.set_title("Spatio-temporal State Map on XAM-N-6")
+    cbar = fig.colorbar(im, ax=ax, ticks=[0, 1, 2, 3, 4], fraction=0.025, pad=0.02)
+    cbar.ax.set_yticklabels(["empty"] + state_names[:4])
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=200)
+    plt.close(fig)
+
+
+def plot_pkdd_probability(pkdd: dict, out_path: Path) -> None:
+    hist = pkdd.get("free_probability_histogram", {})
+    counts = hist.get("counts", [])
+    edges = hist.get("bin_edges", [])
+    if not counts or not edges:
+        return
+    left = np.asarray(edges[:-1], dtype=np.float32)
+    width = np.diff(np.asarray(edges, dtype=np.float32))
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    ax.bar(left, counts, width=width, align="edge", color="#4c78a8", edgecolor="black", linewidth=0.4)
+    ax.set_xlabel("P(Free)")
+    ax.set_ylabel("PKDD windows")
+    ax.set_title("PKDD Free-state Probability Distribution")
+    ax.set_xlim(0, 1)
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=200)
+    plt.close(fig)
+
+
+def plot_shap_summary(shap_summary: dict, out_path: Path) -> None:
+    if not shap_summary or shap_summary.get("status") != "ok":
+        return
+    items = shap_summary.get("global_top_features", [])[:10]
+    if not items:
+        return
+    names = [item["feature"] for item in items][::-1]
+    vals = [item["mean_abs_shap"] for item in items][::-1]
+    fig, ax = plt.subplots(figsize=(7.5, 4.8))
+    ax.barh(np.arange(len(names)), vals, color="#72b7b2", edgecolor="black", linewidth=0.4)
+    ax.set_yticks(np.arange(len(names)))
+    ax.set_yticklabels(names)
+    ax.set_xlabel("mean |TreeSHAP contribution|")
+    ax.set_title("XGBoost-OBB TreeSHAP Feature Contribution")
+    ax.grid(axis="x", alpha=0.25)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=200)
     plt.close(fig)
 
 
@@ -387,7 +537,7 @@ def _effect_phrase(delta: float) -> str:
 
 
 def _deterioration_table(deterioration: dict) -> str:
-    lines = ["| Horizon | 消融集 | ROC-AUC | PR-AUC | F1 | Precision | Recall |", "|---|---|---:|---:|---:|---:|---:|"]
+    lines = ["| Horizon | 消融集 | ROC-AUC | PR-AUC | 默认F1 | CST阈值 | CST-F1 |", "|---|---|---:|---:|---:|---:|---:|"]
     for h_key in sorted(deterioration.keys()):
         h_data = deterioration[h_key]
         if h_data.get("status") != "completed":
@@ -400,8 +550,9 @@ def _deterioration_table(deterioration: dict) -> str:
             auc_str = f"{auc:.4f}" if auc is not None else "N/A"
             pr_auc = abl_data.get("pr_auc")
             pr_auc_str = f"{pr_auc:.4f}" if pr_auc is not None else "N/A"
+            cst = abl_data.get("cst_operating_point", {})
             lines.append(
-                f"| {hs}s | {abl_name} | {auc_str} | {pr_auc_str} | {m.get('f1_macro', 0):.4f} | {m.get('precision_macro', 0):.4f} | {m.get('recall_macro', 0):.4f} |"
+                f"| {hs}s | {abl_name} | {auc_str} | {pr_auc_str} | {m.get('f1_macro', 0):.4f} | {cst.get('threshold', 0.5):.3f} | {cst.get('f1_macro', 0):.4f} |"
             )
     return "\n".join(lines)
 
@@ -430,6 +581,8 @@ def write_report(root: Path) -> None:
     verify = read_json_optional(root / "outputs" / "reports" / "auto_verification.json")
     obb_effect = read_json_optional(root / "outputs" / "reports" / "obb_effect_validation.json")
     rows = read_feature_rows(root / "outputs" / "features" / "all_windows.csv")
+    feature_table = read_feature_table(root / "outputs" / "features" / "all_windows.csv")
+    labels, _ = make_state_labels(feature_table, cfg, main_dataset="xamn6")
     robustness = exp.get("robustness", {})
 
     fig_dir = root / "outputs" / "figures"
@@ -442,12 +595,16 @@ def write_report(root: Path) -> None:
     plot_ablation(exp["ablation"], fig_dir / "ablation_macro_f1.png")
     plot_sensitivity(exp["parameter_sensitivity"], fig_dir / "parameter_sensitivity.png")
     plot_robustness(exp.get("robustness", {}), fig_dir / "robustness_macro_f1.png")
-    best_name = "XGBoost-OBB-MGTI" if "XGBoost-OBB-MGTI" in exp["classification"] else "XGBoost-OBB"
+    best_name = "XGBoost-OBB"
     best_cm = exp["classification"][best_name]["confusion_matrix"]
     plot_confusion(best_cm, f"{best_name} Current State", fig_dir / "cm_xgboost_obb.png", state_names)
+    plot_shap_summary(exp["classification"]["XGBoost-OBB"].get("shap_summary", {}), fig_dir / "shap_summary_xgboost_obb.png")
+    plot_state_spacetime(root, cfg, labels, fig_dir / "xamn6_state_spacetime.png")
+    plot_hfgo_local_by_state(root, cfg, labels, fig_dir / "hfgo_local_by_state.png")
     fusion = exp["prediction"]["Fusion-future"]
     plot_confusion(fusion["confusion_matrix"], "Fusion Future State", fig_dir / "cm_fusion_future.png", state_names)
     plot_prediction_curve(fusion, fig_dir / "future_prediction_curve.png", state_names)
+    plot_pkdd_probability(exp.get("pkdd_generalization", {}), fig_dir / "pkdd_free_probability_hist.png")
 
     # Deterioration prediction figures
     deterioration = exp.get("deterioration", {})
@@ -458,7 +615,6 @@ def write_report(root: Path) -> None:
 
     # Extract key metrics
     xgb_obb = exp["classification"]["XGBoost-OBB"]["metrics"]
-    xgb_mgti = exp["classification"]["XGBoost-OBB-MGTI"]["metrics"]
     fusion_future = exp["prediction"]["Fusion-future"]["metrics"]
     xgb_future = exp["prediction"]["XGBoost-future"]["metrics"]
     xgb_temporal_future = exp["prediction"].get("XGBoost-temporal-future", exp["prediction"]["XGBoost-future"])["metrics"]
@@ -470,7 +626,6 @@ def write_report(root: Path) -> None:
     fusion_weight_text = (
         f"静态 XGBoost {fusion_static_weight:.0%} + 趋势 XGBoost {fusion_temporal_weight:.0%} + LSTM {fusion_lstm_weight:.0%}"
     )
-    mgti_delta = xgb_mgti["f1_macro"] - xgb_obb["f1_macro"]
     temporal_delta = xgb_temporal_future["f1_macro"] - xgb_future["f1_macro"]
     fusion_delta = fusion_future["f1_macro"] - xgb_temporal_future["f1_macro"]
     hbb_basic = exp["ablation"]["M1: V+D"]["metrics"]
@@ -548,7 +703,7 @@ def write_report(root: Path) -> None:
                 best_det_auc = auc
                 best_det_horizon = f"{hs}s"
                 best_det_ablation = abl_name
-            if abl_name in ("M3: V+D+R+F", "M4: Ours+headway+acc+MGTI"):
+            if abl_name in ("M3': V+D+F", "M3: V+D+R+F", "M4: Ours+headway+acc+MGTI"):
                 baseline_auc = abl.get("M1: V+D", {}).get("roc_auc") or 0.0
                 this_auc = auc or 0.0
                 delta_auc = this_auc - baseline_auc
@@ -622,9 +777,11 @@ def write_report(root: Path) -> None:
         "",
         "$$O_{HBB}=\\frac{\\sum_i w_i h_i}{N_f A},\\qquad O_{HFGO}=\\frac{\\sum_{i,g} area(P_i^{OBB}\\cap G_g)}{N_f A}.$$",
         "",
-        "HF-GO 使用 Sutherland-Hodgman 多边形裁剪计算 OBB 与物理网格单元的交叠面积，再进行解析面积累加。与简单采样点计数相比，该方法能保留车辆跨网格、斜向占用和边界截断时的真实占用比例，更适合作为本文区别于参考文献的空间表达增强模块。进一步地，本文计算空间梯度湍流指标 SGT，度量每个网格 HF-GO 占有率与相邻网格均值的偏差，用于捕捉拥堵形成时的局部空间不均匀性。",
+        "HF-GO 使用 Sutherland-Hodgman 多边形裁剪计算 OBB 与物理网格单元的交叠面积，再进行解析面积累加。与简单采样点计数相比，该方法能保留车辆跨网格、斜向占用和边界截断时的真实占用比例，更适合作为本文区别于参考文献的空间表达增强模块。进一步地，本文计算空间梯度湍流指标 SGT，度量每个网格 HF-GO 占有率与相邻网格均值的偏差；同时加入 $\\Delta SGT(t)=SGT(t)-SGT(t-\\Delta t)$，用于捕捉空间不均匀性变化速度和拥堵激波的前导信号。",
         "",
         "![HF-GO热力图](../outputs/figures/hfgo_hbb_vs_obb_heatmap.png)",
+        "",
+        "![HF-GO局部对比](../outputs/figures/hfgo_local_by_state.png)",
         "",
         "### 1.3.3 平均车头时距",
         "",
@@ -665,13 +822,13 @@ def write_report(root: Path) -> None:
         + "。",
         supp_note,
         "",
-        f"`XGBoost-OBB-MGTI` 的 Macro-F1 为 {xgb_mgti['f1_macro']:.4f}，相比 `XGBoost-OBB` {_effect_phrase(mgti_delta)}。",
-        "",
         "结果说明：分层划分下模型能够区分四类交通状态；时间序列划分用于检验未见时段泛化能力，指标低于分层划分，反映真实时序预测场景更困难。两类结果共同呈现，可同时支撑特征可分性与时序泛化分析。",
         "",
         "![分类指标](../outputs/figures/classification_metrics.png)",
         "",
         f"![混淆矩阵](../outputs/figures/cm_xgboost_obb.png)",
+        "",
+        "![状态时空热力图](../outputs/figures/xamn6_state_spacetime.png)",
         "",
         "### 1.4.1 时间序列交叉验证",
         "",
@@ -684,8 +841,14 @@ def write_report(root: Path) -> None:
         "| 排名 | 特征 | 重要性 |",
         "|---:|---|---:|",
     ]
-    for rank, item in enumerate(exp["classification"]["XGBoost-OBB-MGTI"].get("feature_importance", [])[:10], start=1):
+    for rank, item in enumerate(exp["classification"]["XGBoost-OBB"].get("feature_importance", [])[:10], start=1):
         lines.append(f"| {rank} | `{item['feature']}` | {item['importance']:.4f} |")
+
+    shap_items = exp["classification"]["XGBoost-OBB"].get("shap_summary", {}).get("global_top_features", [])
+    lines.extend(["", "TreeSHAP 全局贡献 Top-5："])
+    for item in shap_items[:5]:
+        lines.append(f"- `{item['feature']}`: {item['mean_abs_shap']:.4f}")
+    lines.extend(["", "![TreeSHAP特征贡献](../outputs/figures/shap_summary_xgboost_obb.png)"])
 
     lines.extend(
         [
@@ -706,6 +869,21 @@ def write_report(root: Path) -> None:
             "",
             "![融合预测混淆矩阵](../outputs/figures/cm_fusion_future.png)",
             "",
+            "状态均衡补充划分用于检查类别样本齐全时的预测上限，不替代时间顺序主结果：",
+            "",
+        ]
+    )
+    balanced_pred = exp["prediction"].get("state_balanced_supplementary", {})
+    if balanced_pred.get("status") == "completed":
+        lines.extend([
+            f"- 测试窗口数：{balanced_pred['test_windows']}，各类支持数：" + "，".join([f"{k} {v}" for k, v in balanced_pred.get("test_support", {}).items()]),
+            f"- XGBoost-future Macro-F1：{balanced_pred['metrics']['f1_macro']:.4f}，Accuracy：{balanced_pred['metrics']['accuracy']:.4f}",
+            "",
+        ])
+    else:
+        lines.extend([f"- 未生成：{balanced_pred.get('reason', '样本不足')}", ""])
+    lines.extend(
+        [
             "## 1.6 消融实验（5 折分层交叉验证）",
             "",
             "| 消融集 | Accuracy | Precision | Recall | Macro-F1 | Weighted-F1 |",
@@ -723,7 +901,7 @@ def write_report(root: Path) -> None:
             "",
             f"最优消融组合是 `{best_ablation_name}`，5 折 CV Macro-F1 为 {best_ablation['metrics']['f1_macro']:.4f}±{ablation_std:.4f}。相比 `M1: V+D` 的 {hbb_basic['f1_macro']:.4f}，{_effect_phrase(ablation_delta)}。",
             "",
-            "**分析**：消融实验按参考文献的阶梯组织：`M1: V+D` 为速度与密度基线，`M2` 加入变道干扰率 R，`M3` 加入方向波动指数 F，`M4` 进一步加入本文的 HF-GO、SGT、车头时距、加速度干扰和 MGTI。这样可以直接回答 R/F 是否有效，以及本文新增微观行为与高保真空间占有率是否带来额外增益。",
+            "**分析**：消融实验按参考文献的阶梯组织：`M1: V+D` 为速度与密度基线，`M2` 加入变道干扰率 R，`M3': V+D+F` 单独检验方向波动指数 F 的独立作用，`M3` 同时加入 R/F，`M4` 进一步加入本文的 HF-GO、SGT、$\\Delta SGT$、车头时距、加速度干扰和 MGTI。这样可以直接回答 R/F 是否有效，以及本文新增微观行为与高保真空间占有率是否带来额外增益。",
             "",
             "![消融实验](../outputs/figures/ablation_macro_f1.png)",
             "",
@@ -783,10 +961,15 @@ def write_report(root: Path) -> None:
     )
     for name, count in exp["pkdd_generalization"]["predicted_distribution"].items():
         lines.append(f"- {name}: {count}")
+    pkdd_q = exp["pkdd_generalization"].get("free_probability_quantiles", {})
     lines.extend(
         [
             "",
-            'PKDD 以自由流为主，修正标签方向后 1059 个窗口均预测为"畅通"类，说明跨场景检查未再出现自由流被误判为堵塞的问题。该结果用于自由流迁移合理性检查，不与 XAM-N-6 直接视作同分布混合训练数据。',
+            f"畅通类预测概率分位数：P05={pkdd_q.get('p05', 0):.3f}，P50={pkdd_q.get('p50', 0):.3f}，P95={pkdd_q.get('p95', 0):.3f}。",
+            "",
+            "![PKDD畅通概率分布](../outputs/figures/pkdd_free_probability_hist.png)",
+            "",
+            'PKDD 以自由流为主，修正标签方向后 1059 个窗口均预测为"畅通"类；概率分布用于说明模型是在高置信自由流区间内做出保守判断，而不是退化为无差别单类输出。该结果用于自由流迁移合理性检查，不与 XAM-N-6 直接视作同分布混合训练数据。',
             "",
             "---",
             "",
@@ -944,8 +1127,11 @@ def write_report(root: Path) -> None:
             "- `outputs/figures/ablation_macro_f1.png` — 消融实验 Macro-F1",
             "- `outputs/figures/parameter_sensitivity.png` — 参数敏感性",
             "- `outputs/figures/robustness_macro_f1.png` — 多随机种子稳健性",
+            "- `outputs/figures/xamn6_state_spacetime.png` — XAM-N-6 状态时空热力图",
             "- `outputs/figures/xamn6_hbb_obb_occupancy.png` — HBB/OBB 占有率对比",
             "- `outputs/figures/hfgo_hbb_vs_obb_heatmap.png` — HBB 与 HF-GO 网格占有率热力图",
+            "- `outputs/figures/hfgo_local_by_state.png` — 四类状态下 HBB/HF-GO 局部对比",
+            "- `outputs/figures/pkdd_free_probability_hist.png` — PKDD 畅通类预测概率分布",
             "",
             "**恶化预测图表：**",
             "- `outputs/figures/deterioration_ablation_auc.png` — 恶化预测消融 AUC",
@@ -954,6 +1140,7 @@ def write_report(root: Path) -> None:
             "",
             "**特征分析图表：**",
             "- `outputs/figures/mgti_risk_by_state.png` — MGTI 复合风险箱线图",
+            "- `outputs/figures/shap_summary_xgboost_obb.png` — XGBoost-OBB TreeSHAP 特征贡献",
             "",
             "**OBB 抽帧可视化：**",
             "- `outputs/figures/xamn5_obb_overlay_f*.jpg` — XAM-N-5 pixel 帧时间映射后的旋转框叠加图",

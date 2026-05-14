@@ -5,8 +5,8 @@
 ## 核心结论
 
 - **当前状态识别可用**：`XGBoost-OBB` 在 XAM-N-6 分层测试集上的 Macro-F1 为 0.9385，SVM 与 LR 基线已纳入对比。
-- **未来状态预测**：3s 预测步长下 `Fusion-future` Macro-F1 为 0.4595，用于评估模型对未见时间段状态变化的提前判别能力。
-- **微观特征对恶化预测有增益**：最佳恶化预测 ROC-AUC 达到 0.6194，最优组合为 `M4: Ours+headway+acc+MGTI`。
+- **未来状态预测**：3s 预测步长下 `Fusion-future` Macro-F1 为 0.4289，用于评估模型对未见时间段状态变化的提前判别能力。
+- **微观特征对恶化预测有增益**：最佳恶化预测 ROC-AUC 达到 0.6341，最优组合为 `M4: Ours+headway+acc+MGTI`。
 - **数据边界已明确**：XAM-N-5 的公开视频为降采样版本，因此该数据集用于 pixel 表级 OBB 验证，不作为完整逐帧视频主实验。
 
 ---
@@ -49,9 +49,11 @@
 
 $$O_{HBB}=\frac{\sum_i w_i h_i}{N_f A},\qquad O_{HFGO}=\frac{\sum_{i,g} area(P_i^{OBB}\cap G_g)}{N_f A}.$$
 
-HF-GO 使用 Sutherland-Hodgman 多边形裁剪计算 OBB 与物理网格单元的交叠面积，再进行解析面积累加。与简单采样点计数相比，该方法能保留车辆跨网格、斜向占用和边界截断时的真实占用比例，更适合作为本文区别于参考文献的空间表达增强模块。进一步地，本文计算空间梯度湍流指标 SGT，度量每个网格 HF-GO 占有率与相邻网格均值的偏差，用于捕捉拥堵形成时的局部空间不均匀性。
+HF-GO 使用 Sutherland-Hodgman 多边形裁剪计算 OBB 与物理网格单元的交叠面积，再进行解析面积累加。与简单采样点计数相比，该方法能保留车辆跨网格、斜向占用和边界截断时的真实占用比例，更适合作为本文区别于参考文献的空间表达增强模块。进一步地，本文计算空间梯度湍流指标 SGT，度量每个网格 HF-GO 占有率与相邻网格均值的偏差；同时加入 $\Delta SGT(t)=SGT(t)-SGT(t-\Delta t)$，用于捕捉空间不均匀性变化速度和拥堵激波的前导信号。
 
 ![HF-GO热力图](../outputs/figures/hfgo_hbb_vs_obb_heatmap.png)
+
+![HF-GO局部对比](../outputs/figures/hfgo_local_by_state.png)
 
 ### 1.3.3 平均车头时距
 
@@ -86,19 +88,16 @@ $$S=0.65\,Robust(1-v/v_{lim})+0.25\,Robust(\rho)+0.10\,Robust(O_{HFGO}),\qquad s
 | 模型 | Accuracy | Precision | Recall | Macro-F1 | Weighted-F1 |
 |---|---:|---:|---:|---:|---:|
 | Majority | 0.2577 | 0.0644 | 0.2500 | 0.1025 | 0.1056 |
-| TorchLinear-OBB | 0.9278 | 0.9309 | 0.9275 | 0.9282 | 0.9284 |
+| TorchLinear-OBB | 0.9485 | 0.9530 | 0.9483 | 0.9488 | 0.9489 |
 | XGBoost-HBB | 0.9381 | 0.9416 | 0.9379 | 0.9384 | 0.9387 |
 | XGBoost-OBB | 0.9381 | 0.9399 | 0.9379 | 0.9385 | 0.9385 |
-| XGBoost-OBB-MGTI | 0.9278 | 0.9301 | 0.9275 | 0.9282 | 0.9282 |
-| SVM-OBB | 0.9072 | 0.9103 | 0.9075 | 0.9079 | 0.9078 |
-| LR-OBB | 0.9278 | 0.9309 | 0.9275 | 0.9282 | 0.9284 |
+| SVM-OBB | 0.9072 | 0.9083 | 0.9071 | 0.9075 | 0.9076 |
+| LR-OBB | 0.9381 | 0.9430 | 0.9375 | 0.9377 | 0.9379 |
 
 测试集各状态样本数：畅通 25，缓行 24，拥挤 24，堵塞 24。
 
 
-补充：时间序列划分（后 30% 作为测试集）的 XGBoost-OBB Macro-F1 为 0.4557。时间序列划分存在训练/测试分布偏移（训练覆盖拥堵积累期，测试覆盖恢复期），因此分类难度显著高于分层划分。该结果反映了模型对未见时间段的泛化能力。加入因果滞后、差分和滚动趋势特征后，时间序列测试 Macro-F1 提升至 0.4594。
-
-`XGBoost-OBB-MGTI` 的 Macro-F1 为 0.9282，相比 `XGBoost-OBB` 下降 1.03 个百分点。
+补充：时间序列划分（后 30% 作为测试集）的 XGBoost-OBB Macro-F1 为 0.4922。时间序列划分存在训练/测试分布偏移（训练覆盖拥堵积累期，测试覆盖恢复期），因此分类难度显著高于分层划分。该结果反映了模型对未见时间段的泛化能力。加入因果滞后、差分和滚动趋势特征后，时间序列测试 Macro-F1 为 0.4766，未超过静态特征。
 
 结果说明：分层划分下模型能够区分四类交通状态；时间序列划分用于检验未见时段泛化能力，指标低于分层划分，反映真实时序预测场景更困难。两类结果共同呈现，可同时支撑特征可分性与时序泛化分析。
 
@@ -106,26 +105,37 @@ $$S=0.65\,Robust(1-v/v_{lim})+0.25\,Robust(\rho)+0.10\,Robust(O_{HFGO}),\qquad s
 
 ![混淆矩阵](../outputs/figures/cm_xgboost_obb.png)
 
+![状态时空热力图](../outputs/figures/xamn6_state_spacetime.png)
+
 ### 1.4.1 时间序列交叉验证
 
 | 方法 | 折数 | Accuracy 均值 | Accuracy 标准差 | Macro-F1 均值 | Macro-F1 标准差 |
 |---|---:|---:|---:|---:|---:|
-| expanding_time_series_cv | 5 | 0.6704 | 0.2010 | 0.4648 | 0.1306 |
+| expanding_time_series_cv | 5 | 0.6815 | 0.2040 | 0.4746 | 0.1457 |
 
 ### 1.4.2 特征重要性
 
 | 排名 | 特征 | 重要性 |
 |---:|---|---:|
-| 1 | `mgti` | 0.1393 |
-| 2 | `mean_speed_kmh` | 0.1199 |
-| 3 | `hfgo_occupancy` | 0.1192 |
-| 4 | `speed_ratio` | 0.0975 |
-| 5 | `theta_conf_mean` | 0.0958 |
-| 6 | `vehicle_count` | 0.0624 |
-| 7 | `hfgo_occupancy_reduction` | 0.0473 |
-| 8 | `std_speed_kmh` | 0.0381 |
-| 9 | `mean_headway_s` | 0.0380 |
-| 10 | `density_veh_per_m` | 0.0380 |
+| 1 | `hfgo_occupancy` | 0.1321 |
+| 2 | `mgti` | 0.1182 |
+| 3 | `mean_speed_kmh` | 0.1078 |
+| 4 | `obb_occupancy` | 0.1000 |
+| 5 | `theta_conf_mean` | 0.0864 |
+| 6 | `speed_ratio` | 0.0736 |
+| 7 | `hfgo_occupancy_reduction` | 0.0708 |
+| 8 | `vehicle_count` | 0.0438 |
+| 9 | `std_speed_kmh` | 0.0387 |
+| 10 | `headway_sample_count` | 0.0319 |
+
+TreeSHAP 全局贡献 Top-5：
+- `mgti`: 1.2219
+- `mean_speed_kmh`: 0.7675
+- `theta_conf_mean`: 0.1889
+- `speed_ratio`: 0.1781
+- `vehicle_count`: 0.1053
+
+![TreeSHAP特征贡献](../outputs/figures/shap_summary_xgboost_obb.png)
 
 ## 1.5 未来状态预测
 
@@ -133,14 +143,14 @@ $$S=0.65\,Robust(1-v/v_{lim})+0.25\,Robust(\rho)+0.10\,Robust(O_{HFGO}),\qquad s
 
 | 模型 | Accuracy | Precision | Recall | Macro-F1 | Weighted-F1 |
 |---|---:|---:|---:|---:|---:|
-| XGBoost-future | 0.6170 | 0.5781 | 0.5357 | 0.4663 | 0.6451 |
+| XGBoost-future | 0.5957 | 0.5714 | 0.4903 | 0.4526 | 0.6387 |
 | XGBoost-temporal-future | 0.4043 | 0.4866 | 0.3314 | 0.3298 | 0.5019 |
-| LSTM-future | 0.4149 | 0.2951 | 0.2904 | 0.2666 | 0.4308 |
-| Fusion-future | 0.5851 | 0.5482 | 0.4955 | 0.4595 | 0.6446 |
+| LSTM-future | 0.3617 | 0.2769 | 0.2566 | 0.2257 | 0.3845 |
+| Fusion-future | 0.5532 | 0.5242 | 0.4420 | 0.4289 | 0.6264 |
 
 Fusion-future 使用双通道/多通道门控融合：先计算验证段各通道的交叉熵误差，并用指数平滑得到稳定误差 $\bar e_m$；再按 $T=\max(T_{min},T_0\exp(-\alpha\bar e))$ 得到动态温度，最后用 $w_m=softmax(-\bar e_m/T)$ 生成 XGBoost、趋势 XGBoost 和 LSTM 的融合权重。该实现与 docx 中“带温 Softmax 动态门控”的公式保持一致，且不使用测试标签调权。
 
-静态 `XGBoost-future` 的 Macro-F1 为 0.4663。加入滞后、差分和滚动趋势后的 `XGBoost-temporal-future` 为 0.3298，相比静态模型下降 13.65 个百分点。这可能是因为复合 MGTI 已经提供了较强的状态变化信息，额外的高维时序特征在小样本条件下引入了噪声。LSTM 在当前小样本条件下表现不如 XGBoost（0.2666）。带温 Softmax 门控得到静态 XGBoost 45% + 趋势 XGBoost 45% + LSTM 10%，Fusion-future Macro-F1 为 0.4595。受 324 个时间窗和后 30% 测试段缺少堵塞样本的限制，未来预测 Macro-F1 低于当前状态识别；论文中应同步报告混淆矩阵和类别支持数，避免只看单一均值指标。
+静态 `XGBoost-future` 的 Macro-F1 为 0.4526。加入滞后、差分和滚动趋势后的 `XGBoost-temporal-future` 为 0.3298，相比静态模型下降 12.27 个百分点。这可能是因为复合 MGTI 已经提供了较强的状态变化信息，额外的高维时序特征在小样本条件下引入了噪声。LSTM 在当前小样本条件下表现不如 XGBoost（0.2257）。带温 Softmax 门控得到静态 XGBoost 43% + 趋势 XGBoost 44% + LSTM 13%，Fusion-future Macro-F1 为 0.4289。受 324 个时间窗和后 30% 测试段缺少堵塞样本的限制，未来预测 Macro-F1 低于当前状态识别；论文中应同步报告混淆矩阵和类别支持数，避免只看单一均值指标。
 
 结果说明：当前预测任务只有 324 个 XAM-N-6 时间窗，LSTM 的有效训练样本更少，因此端到端序列模型相较 XGBoost 的优势受样本量限制。该部分用于补充说明本文特征在短时状态预测中的可迁移性，主结论仍以当前状态识别、R/F 消融、HF-GO/SGT 空间表征和 OBB 标注链路为核心。
 
@@ -148,18 +158,24 @@ Fusion-future 使用双通道/多通道门控融合：先计算验证段各通�
 
 ![融合预测混淆矩阵](../outputs/figures/cm_fusion_future.png)
 
+状态均衡补充划分用于检查类别样本齐全时的预测上限，不替代时间顺序主结果：
+
+- 测试窗口数：96，各类支持数：畅通 25，缓行 23，拥挤 24，堵塞 24
+- XGBoost-future Macro-F1：0.9274，Accuracy：0.9271
+
 ## 1.6 消融实验（5 折分层交叉验证）
 
 | 消融集 | Accuracy | Precision | Recall | Macro-F1 | Weighted-F1 |
 |---|---:|---:|---:|---:|---:|
 | M1: V+D | 0.9506 | 0.9521 | 0.9500 | 0.9505 ± 0.0266 | 0.9510 |
 | M2: V+D+R | 0.9537 | 0.9543 | 0.9531 | 0.9534 ± 0.0222 | 0.9538 |
+| M3': V+D+F | 0.9567 | 0.9592 | 0.9563 | 0.9564 ± 0.0268 | 0.9569 |
 | M3: V+D+R+F | 0.9536 | 0.9561 | 0.9533 | 0.9534 ± 0.0260 | 0.9538 |
-| M4: Ours+headway+acc+MGTI | 0.9629 | 0.9640 | 0.9629 | 0.9626 ± 0.0163 | 0.9628 |
+| M4: Ours+headway+acc+MGTI | 0.9568 | 0.9585 | 0.9566 | 0.9565 ± 0.0120 | 0.9568 |
 
-最优消融组合是 `M4: Ours+headway+acc+MGTI`，5 折 CV Macro-F1 为 0.9626±0.0163。相比 `M1: V+D` 的 0.9505，提升 1.21 个百分点。
+最优消融组合是 `M4: Ours+headway+acc+MGTI`，5 折 CV Macro-F1 为 0.9565±0.0120。相比 `M1: V+D` 的 0.9505，提升 0.60 个百分点。
 
-**分析**：消融实验按参考文献的阶梯组织：`M1: V+D` 为速度与密度基线，`M2` 加入变道干扰率 R，`M3` 加入方向波动指数 F，`M4` 进一步加入本文的 HF-GO、SGT、车头时距、加速度干扰和 MGTI。这样可以直接回答 R/F 是否有效，以及本文新增微观行为与高保真空间占有率是否带来额外增益。
+**分析**：消融实验按参考文献的阶梯组织：`M1: V+D` 为速度与密度基线，`M2` 加入变道干扰率 R，`M3': V+D+F` 单独检验方向波动指数 F 的独立作用，`M3` 同时加入 R/F，`M4` 进一步加入本文的 HF-GO、SGT、$\Delta SGT$、车头时距、加速度干扰和 MGTI。这样可以直接回答 R/F 是否有效，以及本文新增微观行为与高保真空间占有率是否带来额外增益。
 
 ![消融实验](../outputs/figures/ablation_macro_f1.png)
 
@@ -167,15 +183,15 @@ Fusion-future 使用双通道/多通道门控融合：先计算验证段各通�
 
 | 参数 | 取值 | Accuracy | Macro-F1 |
 |---|---:|---:|---:|
-| XGBoost max_depth | 2 | 0.9505 | 0.9506 ± 0.0208 |
-| XGBoost max_depth | 3 | 0.9537 | 0.9534 ± 0.0143 |
+| XGBoost max_depth | 2 | 0.9537 | 0.9535 ± 0.0103 |
+| XGBoost max_depth | 3 | 0.9568 | 0.9565 ± 0.0120 |
 | XGBoost max_depth | 4 | 0.9568 | 0.9565 ± 0.0120 |
-| XGBoost max_depth | 5 | 0.9599 | 0.9595 ± 0.0130 |
-| XGBoost max_depth | 6 | 0.9629 | 0.9626 ± 0.0164 |
-| prediction horizon(s) | 1.0 | 0.6146 | 0.5083 |
-| prediction horizon(s) | 3.0 | 0.6170 | 0.4663 |
+| XGBoost max_depth | 5 | 0.9629 | 0.9626 ± 0.0164 |
+| XGBoost max_depth | 6 | 0.9599 | 0.9595 ± 0.0130 |
+| prediction horizon(s) | 1.0 | 0.6146 | 0.5094 |
+| prediction horizon(s) | 3.0 | 0.5957 | 0.4526 |
 | prediction horizon(s) | 5.0 | 0.5978 | 0.4242 |
-| prediction horizon(s) | 8.0 | 0.4607 | 0.3141 |
+| prediction horizon(s) | 8.0 | 0.4831 | 0.3427 |
 
 ![参数敏感性](../outputs/figures/parameter_sensitivity.png)
 
@@ -186,9 +202,9 @@ Fusion-future 使用双通道/多通道门控融合：先计算验证段各通�
 | 任务 | 模型 | Accuracy 均值 | Accuracy 标准差 | Macro-F1 均值 | Macro-F1 标准差 |
 |---|---|---:|---:|---:|---:|
 | 当前状态识别 | XGBoost-HBB | 0.9340 | 0.0154 | 0.9336 | 0.0163 |
-| 当前状态识别 | XGBoost-OBB | 0.9320 | 0.0082 | 0.9317 | 0.0094 |
-| 当前状态识别 | LR-OBB | 0.9485 | 0.0173 | 0.9485 | 0.0174 |
-| 未来状态预测 | XGBoost-future | 0.6489 | 0.0067 | 0.4906 | 0.0043 |
+| 当前状态识别 | XGBoost-OBB | 0.9340 | 0.0051 | 0.9337 | 0.0055 |
+| 当前状态识别 | LR-OBB | 0.9443 | 0.0140 | 0.9442 | 0.0142 |
+| 未来状态预测 | XGBoost-future | 0.6404 | 0.0124 | 0.4885 | 0.0111 |
 
 ![多随机种子稳健性](../outputs/figures/robustness_macro_f1.png)
 
@@ -197,8 +213,8 @@ Fusion-future 使用双通道/多通道门控融合：先计算验证段各通�
 | 数据集 | 窗口数 | HF-GO占有率降幅 | M1 F1 | M3 F1 | R/F变化 | M4 F1 | 本文变化 |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | xamn6 | 324 | 0.0002 | 0.8612 | 0.9118 | +0.0506 | 0.8989 | -0.0129 |
-| xamn5 | 261 | 0.0006 | 0.6923 | 0.8740 | +0.1818 | 0.8746 | +0.0006 |
-| pkdd8 | 1059 | 0.0026 | 0.8877 | 0.8947 | +0.0070 | 0.8952 | +0.0005 |
+| xamn5 | 261 | 0.0006 | 0.6923 | 0.8740 | +0.1818 | 0.8604 | -0.0137 |
+| pkdd8 | 1059 | 0.0026 | 0.8877 | 0.8947 | +0.0070 | 0.8989 | +0.0042 |
 
 ## 1.10 PKDD 泛化结果
 
@@ -210,7 +226,11 @@ PKDD 窗口数：1059
 - 拥挤: 0
 - 堵塞: 0
 
-PKDD 以自由流为主，修正标签方向后 1059 个窗口均预测为"畅通"类，说明跨场景检查未再出现自由流被误判为堵塞的问题。该结果用于自由流迁移合理性检查，不与 XAM-N-6 直接视作同分布混合训练数据。
+畅通类预测概率分位数：P05=0.959，P50=0.979，P95=0.989。
+
+![PKDD畅通概率分布](../outputs/figures/pkdd_free_probability_hist.png)
+
+PKDD 以自由流为主，修正标签方向后 1059 个窗口均预测为"畅通"类；概率分布用于说明模型是在高置信自由流区间内做出保守判断，而不是退化为无差别单类输出。该结果用于自由流迁移合理性检查，不与 XAM-N-6 直接视作同分布混合训练数据。
 
 ---
 
@@ -225,31 +245,37 @@ PKDD 以自由流为主，修正标签方向后 1059 个窗口均预测为"畅�
 ## 2.2 恶化预测结果
 
 - **3s 展望期**: 正样本 40 (12.5%), 负样本 281
+  - M3': V+D+F: AUC=0.5653 (vs M1 0.4918, 提升 7.34 个百分点)
   - M3: V+D+R+F: AUC=0.5314 (vs M1 0.4918, 提升 3.96 个百分点)
-  - M4: Ours+headway+acc+MGTI: AUC=0.5609 (vs M1 0.4918, 提升 6.90 个百分点)
+  - M4: Ours+headway+acc+MGTI: AUC=0.5763 (vs M1 0.4918, 提升 8.45 个百分点)
 - **5s 展望期**: 正样本 41 (12.9%), 负样本 278
+  - M3': V+D+F: AUC=0.6216 (vs M1 0.5489, 提升 7.26 个百分点)
   - M3: V+D+R+F: AUC=0.5832 (vs M1 0.5489, 提升 3.43 个百分点)
-  - M4: Ours+headway+acc+MGTI: AUC=0.6194 (vs M1 0.5489, 提升 7.05 个百分点)
+  - M4: Ours+headway+acc+MGTI: AUC=0.6341 (vs M1 0.5489, 提升 8.51 个百分点)
 - **8s 展望期**: 正样本 37 (11.7%), 负样本 279
+  - M3': V+D+F: AUC=0.5451 (vs M1 0.4646, 提升 8.05 个百分点)
   - M3: V+D+R+F: AUC=0.5589 (vs M1 0.4646, 提升 9.43 个百分点)
-  - M4: Ours+headway+acc+MGTI: AUC=0.5890 (vs M1 0.4646, 提升 12.43 个百分点)
+  - M4: Ours+headway+acc+MGTI: AUC=0.5864 (vs M1 0.4646, 提升 12.18 个百分点)
 
 ### 恶化预测消融实验
 
-| Horizon | 消融集 | ROC-AUC | PR-AUC | F1 | Precision | Recall |
+| Horizon | 消融集 | ROC-AUC | PR-AUC | 默认F1 | CST阈值 | CST-F1 |
 |---|---|---:|---:|---:|---:|---:|
-| 3s | M1: V+D | 0.4918 | 0.1457 | 0.4483 | 0.4866 | 0.4721 |
-| 3s | M2: V+D+R | 0.4693 | 0.1223 | 0.4681 | 0.4985 | 0.4970 |
-| 3s | M3: V+D+R+F | 0.5314 | 0.1516 | 0.4951 | 0.5002 | 0.5004 |
-| 3s | M4: Ours+headway+acc+MGTI | 0.5609 | 0.2601 | 0.5880 | 0.5794 | 0.6092 |
-| 5s | M1: V+D | 0.5489 | 0.1652 | 0.5573 | 0.5582 | 0.6008 |
-| 5s | M2: V+D+R | 0.4925 | 0.1350 | 0.5033 | 0.5177 | 0.5322 |
-| 5s | M3: V+D+R+F | 0.5832 | 0.1562 | 0.5155 | 0.5173 | 0.5248 |
-| 5s | M4: Ours+headway+acc+MGTI | 0.6194 | 0.2451 | 0.6178 | 0.6311 | 0.6086 |
-| 8s | M1: V+D | 0.4646 | 0.1173 | 0.4899 | 0.4993 | 0.4988 |
-| 8s | M2: V+D+R | 0.4489 | 0.1108 | 0.4827 | 0.4951 | 0.4916 |
-| 8s | M3: V+D+R+F | 0.5589 | 0.1398 | 0.4965 | 0.4990 | 0.4986 |
-| 8s | M4: Ours+headway+acc+MGTI | 0.5890 | 0.2128 | 0.5827 | 0.5980 | 0.5741 |
+| 3s | M1: V+D | 0.4918 | 0.1457 | 0.4483 | 0.879 | 0.5475 |
+| 3s | M2: V+D+R | 0.4693 | 0.1223 | 0.4681 | 0.670 | 0.5047 |
+| 3s | M3': V+D+F | 0.5653 | 0.1550 | 0.5004 | 0.790 | 0.5131 |
+| 3s | M3: V+D+R+F | 0.5314 | 0.1516 | 0.4951 | 0.458 | 0.5113 |
+| 3s | M4: Ours+headway+acc+MGTI | 0.5763 | 0.2758 | 0.5812 | 0.655 | 0.6149 |
+| 5s | M1: V+D | 0.5489 | 0.1652 | 0.5573 | 0.603 | 0.5704 |
+| 5s | M2: V+D+R | 0.4925 | 0.1350 | 0.5033 | 0.677 | 0.5441 |
+| 5s | M3': V+D+F | 0.6216 | 0.1832 | 0.5635 | 0.474 | 0.5725 |
+| 5s | M3: V+D+R+F | 0.5832 | 0.1562 | 0.5155 | 0.280 | 0.5482 |
+| 5s | M4: Ours+headway+acc+MGTI | 0.6341 | 0.3007 | 0.6276 | 0.442 | 0.6365 |
+| 8s | M1: V+D | 0.4646 | 0.1173 | 0.4899 | 0.876 | 0.5113 |
+| 8s | M2: V+D+R | 0.4489 | 0.1108 | 0.4827 | 0.890 | 0.5132 |
+| 8s | M3': V+D+F | 0.5451 | 0.1353 | 0.5110 | 0.544 | 0.5272 |
+| 8s | M3: V+D+R+F | 0.5589 | 0.1398 | 0.4965 | 0.310 | 0.5184 |
+| 8s | M4: Ours+headway+acc+MGTI | 0.5864 | 0.2343 | 0.5736 | 0.498 | 0.5736 |
 
 ![恶化消融AUC](../outputs/figures/deterioration_ablation_auc.png)
 
@@ -257,7 +283,7 @@ PKDD 以自由流为主，修正标签方向后 1059 个窗口均预测为"畅�
 
 ![恶化特征重要性](../outputs/figures/deterioration_feature_importance.png)
 
-最佳恶化预测结果：展望期 5s，消融集 M4: Ours+headway+acc+MGTI，ROC-AUC = 0.6194。
+最佳恶化预测结果：展望期 5s，消融集 M4: Ours+headway+acc+MGTI，ROC-AUC = 0.6341。
 从消融结果看，R/F 与车头时距、加速度扰动、MGTI 的组合能够补充解释短时恶化趋势。
 
 ---
@@ -343,8 +369,11 @@ OBB 可视化图由 pixel 表中的帧号抽样生成。XAM-N-6 与 PKDD-8 使�
 - `outputs/figures/ablation_macro_f1.png` — 消融实验 Macro-F1
 - `outputs/figures/parameter_sensitivity.png` — 参数敏感性
 - `outputs/figures/robustness_macro_f1.png` — 多随机种子稳健性
+- `outputs/figures/xamn6_state_spacetime.png` — XAM-N-6 状态时空热力图
 - `outputs/figures/xamn6_hbb_obb_occupancy.png` — HBB/OBB 占有率对比
 - `outputs/figures/hfgo_hbb_vs_obb_heatmap.png` — HBB 与 HF-GO 网格占有率热力图
+- `outputs/figures/hfgo_local_by_state.png` — 四类状态下 HBB/HF-GO 局部对比
+- `outputs/figures/pkdd_free_probability_hist.png` — PKDD 畅通类预测概率分布
 
 **恶化预测图表：**
 - `outputs/figures/deterioration_ablation_auc.png` — 恶化预测消融 AUC
@@ -353,6 +382,7 @@ OBB 可视化图由 pixel 表中的帧号抽样生成。XAM-N-6 与 PKDD-8 使�
 
 **特征分析图表：**
 - `outputs/figures/mgti_risk_by_state.png` — MGTI 复合风险箱线图
+- `outputs/figures/shap_summary_xgboost_obb.png` — XGBoost-OBB TreeSHAP 特征贡献
 
 **OBB 抽帧可视化：**
 - `outputs/figures/xamn5_obb_overlay_f*.jpg` — XAM-N-5 pixel 帧时间映射后的旋转框叠加图

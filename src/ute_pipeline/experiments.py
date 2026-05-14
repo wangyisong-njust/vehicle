@@ -13,11 +13,11 @@ import torch.nn.functional as F
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.cluster import KMeans
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import average_precision_score, roc_auc_score
+from sklearn.metrics import average_precision_score, precision_recall_curve, roc_auc_score
 from sklearn.model_selection import GroupKFold, StratifiedKFold
 from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
-from xgboost import XGBClassifier
+from xgboost import DMatrix, XGBClassifier
 
 
 STATE_NAMES = ["畅通", "缓行", "拥挤", "堵塞"]
@@ -46,6 +46,7 @@ NUMERIC_FEATURES_OBB = [
     "lane_change_rate",
     "direction_fluctuation",
     "sgt_hfgo",
+    "delta_sgt_hfgo",
     "obb_grid_entropy_mean",
     "grid_entropy_reduction",
     "theta_conf_mean",
@@ -89,6 +90,11 @@ FEATURES_VDRF = FEATURES_VDR + [
     "theta_conf_mean",
 ]
 
+FEATURES_VDF = FEATURES_VD + [
+    "direction_fluctuation",
+    "theta_conf_mean",
+]
+
 FEATURES_OURS = FEATURES_VDRF + [
     "hfgo_occupancy",
     "obb_occupancy",
@@ -101,6 +107,7 @@ FEATURES_OURS = FEATURES_VDRF + [
     "mgti",
     "hfgo_occupancy_reduction",
     "sgt_hfgo",
+    "delta_sgt_hfgo",
     "obb_grid_entropy_mean",
     "grid_entropy_reduction",
 ]
@@ -108,6 +115,7 @@ FEATURES_OURS = FEATURES_VDRF + [
 ABLATION_FEATURE_SETS = {
     "M1: V+D": FEATURES_VD,
     "M2: V+D+R": FEATURES_VDR,
+    "M3': V+D+F": FEATURES_VDF,
     "M3: V+D+R+F": FEATURES_VDRF,
     "M4: Ours+headway+acc+MGTI": FEATURES_OURS,
 }
@@ -115,6 +123,7 @@ ABLATION_FEATURE_SETS = {
 DETERIORATION_ABLATION_SETS = {
     "M1: V+D": FEATURES_VD,
     "M2: V+D+R": FEATURES_VDR,
+    "M3': V+D+F": FEATURES_VDF,
     "M3: V+D+R+F": FEATURES_VDRF,
     "M4: Ours+headway+acc+MGTI": [f if f != "mgti" else "mgti_composite" for f in FEATURES_OURS],
 }
@@ -138,11 +147,26 @@ def read_feature_table(path: Path) -> FeatureTable:
         reader = csv.DictReader(f)
         for row in reader:
             rows.append(row)
+    add_derived_features(rows)
     x_obb = np.asarray([[float(row[k]) for k in NUMERIC_FEATURES_OBB] for row in rows], dtype=np.float32)
     x_hbb = np.asarray([[float(row[k]) for k in NUMERIC_FEATURES_HBB] for row in rows], dtype=np.float32)
     dataset = np.asarray([row["dataset"] for row in rows])
     start_s = np.asarray([float(row["start_s"]) for row in rows], dtype=np.float32)
     return FeatureTable(rows=rows, x_obb=x_obb, x_hbb=x_hbb, dataset=dataset, start_s=start_s)
+
+
+def add_derived_features(rows: list[dict[str, str]]) -> None:
+    by_dataset: dict[str, list[int]] = {}
+    for i, row in enumerate(rows):
+        by_dataset.setdefault(row["dataset"], []).append(i)
+    for indices in by_dataset.values():
+        order = sorted(indices, key=lambda i: float(rows[i]["start_s"]))
+        prev = None
+        for i in order:
+            current = float(rows[i].get("sgt_hfgo", 0.0) or 0.0)
+            delta = 0.0 if prev is None else current - prev
+            rows[i]["delta_sgt_hfgo"] = f"{delta:.8f}"
+            prev = current
 
 
 def matrix_from_rows(rows: list[dict[str, str]], features: list[str]) -> np.ndarray:
@@ -332,6 +356,39 @@ def make_deterioration_labels_score(
     return labels
 
 
+def cost_sensitive_operating_point(y_true: np.ndarray, prob_pos: np.ndarray, cost: float = 0.8) -> dict[str, float]:
+    thresholds = np.unique(np.concatenate([
+        np.asarray([0.5], dtype=np.float32),
+        np.quantile(prob_pos, np.linspace(0.05, 0.95, 37)).astype(np.float32),
+    ]))
+    if thresholds.size == 0:
+        pred = (prob_pos >= 0.5).astype(np.int64)
+        m = metrics_dict(y_true, pred, 2)
+        return {"threshold": 0.5, **m}
+    best_payload: dict[str, float] | None = None
+    for threshold in thresholds:
+        pred = (prob_pos >= float(threshold)).astype(np.int64)
+        cm = confusion_matrix_np(y_true, pred, 2).astype(np.float32)
+        tp = float(cm[1, 1])
+        fp = float(cm[0, 1])
+        fn = float(cm[1, 0])
+        precision_pos = tp / max(1e-6, tp + fp)
+        recall_pos = tp / max(1e-6, tp + fn)
+        m = metrics_dict(y_true, pred, 2)
+        score = m["f1_macro"] + 0.05 * recall_pos - 0.05 * float(cost) * (1.0 - precision_pos)
+        payload = {
+            "threshold": float(threshold),
+            "score": float(score),
+            "precision_positive": float(precision_pos),
+            "recall_positive": float(recall_pos),
+            **m,
+        }
+        if best_payload is None or payload["score"] > best_payload["score"]:
+            best_payload = payload
+    assert best_payload is not None
+    return best_payload
+
+
 def compute_sample_weights(y_train: np.ndarray, n_classes: int) -> np.ndarray:
     counts = np.bincount(y_train, minlength=n_classes).astype(np.float32)
     total = float(len(y_train))
@@ -476,6 +533,43 @@ def compute_roc_auc(y_true: np.ndarray, y_prob: np.ndarray, num_classes: int | N
     if num_classes == 2:
         return float(roc_auc_score(y_true, y_prob[:, 1]))
     return float(roc_auc_score(y_true, y_prob, multi_class="ovr", average="macro"))
+
+
+def tree_shap_summary(model: XGBClassifier, x_eval: np.ndarray, feature_names: list[str], class_names: list[str]) -> dict[str, object]:
+    try:
+        contrib = model.get_booster().predict(DMatrix(x_eval), pred_contribs=True)
+    except Exception as exc:
+        return {"status": "unavailable", "reason": str(exc)}
+    arr = np.asarray(contrib, dtype=np.float32)
+    if arr.ndim == 3:
+        # XGBoost returns [n, classes, features+1] for multi-class TreeSHAP.
+        arr = arr[:, :, :-1]
+    elif arr.ndim == 2:
+        arr = arr[:, :-1][:, None, :]
+    else:
+        return {"status": "unavailable", "reason": f"Unexpected contribution shape {arr.shape}"}
+    mean_abs = np.mean(np.abs(arr), axis=0)
+    per_class = []
+    for class_idx in range(mean_abs.shape[0]):
+        order = np.argsort(mean_abs[class_idx])[::-1][:8]
+        per_class.append({
+            "class": class_names[class_idx] if class_idx < len(class_names) else str(class_idx),
+            "top_features": [
+                {"feature": feature_names[int(i)], "mean_abs_shap": float(mean_abs[class_idx, int(i)])}
+                for i in order
+            ],
+        })
+    global_importance = np.mean(mean_abs, axis=0)
+    order = np.argsort(global_importance)[::-1][:12]
+    return {
+        "status": "ok",
+        "method": "xgboost_pred_contribs_treeshap",
+        "global_top_features": [
+            {"feature": feature_names[int(i)], "mean_abs_shap": float(global_importance[int(i)])}
+            for i in order
+        ],
+        "per_class": per_class,
+    }
 
 
 def class_predictions(pred: np.ndarray) -> np.ndarray:
@@ -638,8 +732,6 @@ def run_classification(table: FeatureTable, cfg: dict) -> dict[str, object]:
     }
     fit_eval("XGBoost-HBB", xgb_model(seed, xgb_params, n_states), table.x_hbb, NUMERIC_FEATURES_HBB)
     fit_eval("XGBoost-OBB", xgb_model(seed, xgb_params, n_states), table.x_obb, NUMERIC_FEATURES_OBB)
-    x_mgti = matrix_from_rows(table.rows, ABLATION_FEATURE_SETS["M4: Ours+headway+acc+MGTI"])
-    fit_eval("XGBoost-OBB-MGTI", xgb_model(seed, xgb_params, n_states), x_mgti, ABLATION_FEATURE_SETS["M4: Ours+headway+acc+MGTI"])
 
     # SVM baseline (OBB features)
     x_obb_train, x_obb_test, _, _ = standardize(table.x_obb[train_idx], table.x_obb[test_idx])
@@ -676,6 +768,16 @@ def run_classification(table: FeatureTable, cfg: dict) -> dict[str, object]:
         results["LR-OBB"]["roc_auc"] = compute_roc_auc(y[test_idx], lr_prob, n_states)
     except ValueError:
         pass
+
+    x_obb_train_full, x_obb_test_full, _, _ = standardize(table.x_obb[train_idx], table.x_obb[test_idx])
+    shap_model = xgb_model(seed, xgb_params, n_states)
+    fit_xgb_multiclass(shap_model, x_obb_train_full, y[train_idx], n_states, sample_weight=sw_train)
+    results["XGBoost-OBB"]["shap_summary"] = tree_shap_summary(
+        shap_model,
+        x_obb_test_full,
+        NUMERIC_FEATURES_OBB,
+        STATE_NAMES if n_states <= len(STATE_NAMES) else [str(i) for i in range(n_states)],
+    )
     results["test_support"] = {STATE_NAMES[i] if i < len(STATE_NAMES) else str(i): int(np.sum(y[test_idx] == i)) for i in range(n_states)}
     results["test_indices"] = test_idx.tolist()
     results["train_indices"] = train_idx.tolist()
@@ -1016,6 +1118,29 @@ def sequence_dataset(x: np.ndarray, y: np.ndarray, seq_len: int, horizon: int) -
     return np.asarray(xs, dtype=np.float32), np.asarray(ys, dtype=np.int64), np.asarray(end_positions, dtype=np.int64)
 
 
+def stratified_future_positions(y: np.ndarray, horizon: int, test_ratio: float, seed: int, n_states: int) -> tuple[np.ndarray, np.ndarray]:
+    rng = np.random.default_rng(seed)
+    valid_positions = np.arange(0, y.shape[0] - horizon, dtype=np.int64)
+    target = y[valid_positions + horizon]
+    train_parts = []
+    test_parts = []
+    for state in range(n_states):
+        state_pos = valid_positions[target == state]
+        if state_pos.size == 0:
+            continue
+        shuffled = state_pos.copy()
+        rng.shuffle(shuffled)
+        n_test = max(1, int(round(shuffled.size * test_ratio)))
+        if shuffled.size >= 10:
+            n_test = max(5, n_test)
+        n_test = min(shuffled.size - 1, n_test) if shuffled.size > 1 else 1
+        test_parts.append(shuffled[:n_test])
+        train_parts.append(shuffled[n_test:])
+    train = np.sort(np.concatenate([p for p in train_parts if p.size])) if train_parts else np.asarray([], dtype=np.int64)
+    test = np.sort(np.concatenate([p for p in test_parts if p.size])) if test_parts else np.asarray([], dtype=np.int64)
+    return train, test
+
+
 def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
     seed = int(cfg["experiment"]["random_seed"])
     torch.manual_seed(seed)
@@ -1155,6 +1280,36 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
     fusion_prob = static_weight * xgb_prob_aligned + temporal_weight * temporal_xgb_prob_aligned + lstm_weight * lstm_prob
     fusion_pred = np.argmax(fusion_prob, axis=1)
 
+    balanced_train_pos, balanced_test_pos = stratified_future_positions(
+        y_main,
+        horizon,
+        float(cfg["experiment"]["test_ratio"]),
+        seed,
+        n_states,
+    )
+    balanced_result: dict[str, object] = {"status": "skipped", "reason": "insufficient positions"}
+    if balanced_train_pos.size > 0 and balanced_test_pos.size > 0:
+        balanced_model = xgb_model(seed, xgb_params, n_states)
+        fit_xgb_multiclass(
+            balanced_model,
+            x_scaled[balanced_train_pos],
+            y_main[balanced_train_pos + horizon],
+            n_states,
+            sample_weight=compute_sample_weights(y_main[balanced_train_pos + horizon], n_states),
+        )
+        balanced_pred = class_predictions(balanced_model.predict(x_scaled[balanced_test_pos]))
+        balanced_true = y_main[balanced_test_pos + horizon]
+        balanced_result = {
+            "status": "completed",
+            "model": "XGBoost-future",
+            "metrics": metrics_dict(balanced_true, balanced_pred, n_states),
+            "confusion_matrix": confusion_matrix_np(balanced_true, balanced_pred, n_states).tolist(),
+            "test_support": {STATE_NAMES[i] if i < len(STATE_NAMES) else str(i): int(np.sum(balanced_true == i)) for i in range(n_states)},
+            "train_windows": int(balanced_train_pos.size),
+            "test_windows": int(balanced_test_pos.size),
+            "note": "State-balanced random split for future-state prediction upper-bound; main prediction remains chronological.",
+        }
+
     return {
         "horizon_steps": horizon,
         "horizon_seconds": float(horizon * float(cfg["feature"]["step_s"])),
@@ -1191,6 +1346,7 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
             "temperature": fusion_temperature,
             "validation_channel_errors": fusion_channel_errors,
         },
+        "state_balanced_supplementary": balanced_result,
         "test_positions": seq_test_positions.tolist(),
     }
 
@@ -1202,6 +1358,7 @@ def run_deterioration_prediction(table: FeatureTable, cfg: dict) -> dict[str, ob
     horizons_s = cfg["feature"]["deterioration_horizons_s"]
     det_folds = int(cfg["experiment"].get("deterioration_group_folds", 5))
     det_std_multiplier = float(cfg["experiment"].get("deterioration_std_multiplier", 1.5))
+    cst_cost = float(cfg["experiment"].get("deterioration_cst_cost", 0.8))
     min_positive = int(cfg["experiment"].get("deterioration_min_positive", 10))
     y = table.y
     assert y is not None
@@ -1297,6 +1454,7 @@ def run_deterioration_prediction(table: FeatureTable, cfg: dict) -> dict[str, ob
                 "metrics": abl_metrics,
                 "roc_auc": roc_auc,
                 "pr_auc": pr_auc,
+                "cst_operating_point": cost_sensitive_operating_point(valid_labels, prob_pos_oof, cost=cst_cost),
                 "confusion_matrix": confusion_matrix_np(valid_labels, pred_oof, 2).tolist(),
                 "features": abl_features,
                 "evaluation": "contiguous GroupKFold out-of-fold",
@@ -1336,12 +1494,27 @@ def pkdd_generalization(table: FeatureTable, cfg: dict) -> dict[str, object]:
     x_train, x_pkdd, _, _ = standardize(table.x_obb[train_idx], table.x_obb[pkdd_idx])
     model = xgb_model(seed, xgb_params, n_states)
     fit_xgb_multiclass(model, x_train, y[train_idx], n_states)
-    pred = class_predictions(model.predict(x_pkdd))
+    prob = model.predict_proba(x_pkdd)
+    pred = class_predictions(prob)
     names = STATE_NAMES if n_states <= len(STATE_NAMES) else [str(i) for i in range(n_states)]
     distribution = {names[i]: int(np.sum(pred == i)) for i in range(n_states)}
+    free_prob = prob[:, 0] if prob.shape[1] else np.zeros(pkdd_idx.shape[0], dtype=np.float32)
+    hist_counts, hist_edges = np.histogram(free_prob, bins=np.linspace(0.0, 1.0, 11))
     return {
         "windows": int(pkdd_idx.shape[0]),
         "predicted_distribution": distribution,
+        "mean_probability": {names[i]: float(np.mean(prob[:, i])) for i in range(min(n_states, prob.shape[1]))},
+        "free_probability_quantiles": {
+            "p05": float(np.quantile(free_prob, 0.05)),
+            "p25": float(np.quantile(free_prob, 0.25)),
+            "p50": float(np.quantile(free_prob, 0.50)),
+            "p75": float(np.quantile(free_prob, 0.75)),
+            "p95": float(np.quantile(free_prob, 0.95)),
+        },
+        "free_probability_histogram": {
+            "bin_edges": [float(v) for v in hist_edges.tolist()],
+            "counts": [int(v) for v in hist_counts.tolist()],
+        },
         "note": "PKDD-8 is used as a free-flow transfer check. Metrics against transferred proxy labels are intentionally not reported.",
     }
 

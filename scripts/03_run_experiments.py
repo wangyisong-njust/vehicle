@@ -76,7 +76,7 @@ def main() -> None:
     main_mask = table.dataset == "xamn6"
     main_labels = labels[main_mask]
     payload = {
-        "label_note": "State labels are rule-based proxy labels built from speed ratio, density and OBB occupancy on XAM-N-6. Mean headway, acceleration interference and MGTI are excluded from label construction to reduce leakage in ablation experiments.",
+        "label_note": "State labels are physically constrained four-class labels built from speed ratio, density and HF-GO occupancy on XAM-N-6. R/F participate in candidate clustering, while final ordering is constrained by traffic-flow monotonicity. Mean headway, acceleration interference and MGTI are excluded from label construction to reduce leakage in ablation experiments.",
         "n_states": n_states,
         "state_thresholds": thresholds.tolist(),
         "state_counts": {str(i): int((main_labels == i).sum()) for i in range(n_states)},

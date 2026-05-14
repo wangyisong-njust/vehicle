@@ -216,7 +216,7 @@ python scripts/04_make_report.py
 | `outputs/processed/` | HBB 转 OBB 后的标注表，包含角度、角度置信度和四点坐标 |
 | `outputs/features/` | 滑窗特征表 |
 | `outputs/reports/` | JSON 指标、核验结果和中间摘要 |
-| `outputs/figures/` | 混淆矩阵、预测曲线、消融图、参数敏感性图、稳健性图、OBB 抽帧可视化 |
+| `outputs/figures/` | 混淆矩阵、预测曲线、消融图、参数敏感性图、稳健性图、TreeSHAP 图、PKDD 概率图、状态时空图、HF-GO 局部对比和 OBB 抽帧可视化 |
 | `docs/experiment_report.md` | 最终实验报告 |
 
 ## 9. 复现成功的判断
