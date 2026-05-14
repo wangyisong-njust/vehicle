@@ -2,7 +2,7 @@
   "datasets": {
     "xamn5": {
       "name": "XAM-N-5",
-      "root": "../../data_check/XAM-N/XAM-N-5",
+      "root": "data/UTE/datasets/XAM-N/XAM-N-5",
       "pixel_csv": "pixel.csv",
       "frenet_csv": "frenet.csv",
       "video": "sample video.mp4",
@@ -20,7 +20,7 @@
     },
     "xamn6": {
       "name": "XAM-N-6",
-      "root": "../../data_check/XAM-N/XAM-N-6",
+      "root": "data/UTE/datasets/XAM-N/XAM-N-6",
       "pixel_csv": "pixel.csv",
       "frenet_csv": "frenet.csv",
       "video": "sample video.mp4",
@@ -39,7 +39,7 @@
     },
     "pkdd8": {
       "name": "PKDD-8",
-      "root": "../../data_check/PKDD/PKDD-8",
+      "root": "data/UTE/datasets/PKDD/PKDD-8",
       "pixel_csv": "pixel.csv",
       "frenet_csv": "frenet.csv",
       "video": "sample video.mp4",
@@ -61,4 +61,3 @@
   },
   "output_dir": "outputs"
 }
-
