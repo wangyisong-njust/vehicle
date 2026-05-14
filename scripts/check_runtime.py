@@ -2,6 +2,7 @@
 """环境自检：检查关键依赖是否安装，以及 GPU/CUDA 是否可用。"""
 from __future__ import annotations
 
+import argparse
 import importlib
 import sys
 
@@ -16,6 +17,9 @@ MODULE_VERSION = {
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Check whether core runtime dependencies can be imported.")
+    parser.parse_args()
+
     missing: list[str] = []
     for mod in REQUIRED:
         try:

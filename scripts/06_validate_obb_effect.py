@@ -1,10 +1,17 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
+import argparse
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SRC_DIR = PROJECT_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 from ute_pipeline.config import load_config, project_root
 from ute_pipeline.experiments import (
@@ -73,6 +80,9 @@ def _eval_pair(rows: list[dict[str, str]], labels: np.ndarray, features: list[st
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Validate HBB/OBB feature effects across available datasets.")
+    parser.parse_args()
+
     root = Path(__file__).resolve().parents[1]
     cfg = load_config(root / "configs" / "datasets.json")
     n_states = int(cfg["feature"].get("n_states", 3))
