@@ -216,7 +216,7 @@ python scripts/04_make_report.py
 | `outputs/processed/` | HBB 转 OBB 后的标注表，包含角度、角度置信度和四点坐标 |
 | `outputs/features/` | 滑窗特征表 |
 | `outputs/reports/` | JSON 指标、核验结果和中间摘要 |
-| `outputs/figures/` | 混淆矩阵、预测曲线、消融图、参数敏感性图、稳健性图、TreeSHAP 图、SHAP 反事实曲线、R/F 散点图、PKDD 概率图、状态时空图、HF-GO 局部对比和 OBB 抽帧可视化 |
+| `outputs/figures/` | 混淆矩阵、预测曲线、消融图、参数敏感性图、稳健性图、TreeSHAP 图、SHAP 反事实曲线、conformal 扫线、消融 t 检验矩阵、R/F 散点图、V-D-R-F 特征空间、PKDD 概率图、状态时空图、HF-GO 局部对比和 OBB 抽帧可视化 |
 | `docs/experiment_report.md` | 最终实验报告 |
 
 ## 9. 复现成功的判断
@@ -232,19 +232,21 @@ python scripts/04_make_report.py
 | XAM-N-5 特征窗口 | 261 |
 | PKDD-8 特征窗口 | 1,059 |
 | 状态类别数 | 4（畅通/缓行/拥挤/堵塞） |
-| XGBoost-OBB Macro-F1（分层划分，主结果） | ~0.94 |
+| XGBoost-OBB Macro-F1（分层划分，主结果） | ~0.96 |
 | SVM-OBB Macro-F1（分层划分，基线） | ~0.90 |
 | LR-OBB Macro-F1（分层划分，基线） | ~0.93 |
-| XGBoost-OBB Macro-F1（时间序列划分，补充） | ~0.43 |
-| XGBoost-future Macro-F1（3s 预测） | ~0.64 |
+| XGBoost-OBB Macro-F1（时间序列划分，补充） | ~0.48 |
+| XGBoost-future Macro-F1（3s 预测） | ~0.46 |
+| Fusion-future Macro-F1（3s 预测） | ~0.47 |
 | XGBoost-OBB 多随机种子 Macro-F1 均值 | ~0.94 |
-| XGBoost-future 多随机种子 Macro-F1 均值 | ~0.65 |
-| 文献对齐消融 M1 V+D Macro-F1 | 以重跑结果为准 |
-| 文献对齐消融 M3 V+D+R+F Macro-F1 | 以重跑结果为准 |
+| XGBoost-future 多随机种子 Macro-F1 均值 | ~0.49 |
+| 文献对齐消融 M1 V+D Macro-F1 | ~0.94 |
+| 文献对齐消融 M3 V+D+R+F Macro-F1 | ~0.95 |
+| 本文 M4 消融 Macro-F1 | ~0.96 |
 | MGTI 单调性 | 通过（畅通 < 缓行 < 拥挤 < 堵塞） |
-| 恶化预测最佳 AUC | 以重跑结果为准 |
-| 恶化预测正样本率（3s/5s/8s） | ~65% |
-| 5 折时间序列 CV Macro-F1 均值 | ~0.50 |
+| 恶化预测最佳 PR-AUC / ROC-AUC | ~0.30 / ~0.63 |
+| 恶化预测正样本率（3s/5s/8s） | ~12-13%（mean + 1.0σ 显著事件阈值） |
+| 5 折时间序列 CV Macro-F1 均值 | ~0.47 |
 
 如果结果不一致，优先检查：
 
@@ -270,5 +272,5 @@ python scripts/04_make_report.py
 - 当前版本不做 SUMO 仿真；
 - 当前 OBB 由 `pixel.csv` 和轨迹方向生成，不训练 YOLOv8-OBB 检测器。原因是公开数据没有人工旋转框真值，直接用伪 OBB 标签再训练检测器不会突破伪标签质量上限，还可能破坏 pixel 表与车辆运动学字段的一一对应关系；
 - 当前状态标签是无监督聚类构造的参考标签（4 类，基于速度比、密度、变道干扰率和方向波动指数），不是人工逐窗口真值；
-- 当前空间特征是窗口级和采样网格级实现，不是完整逐像素多边形裁剪；
-- 恶化预测的标签基于连续分数差异（第 65 百分位数阈值），非离散状态跳跃。
+- 当前空间特征是窗口级与网格级实现，HF-GO 已使用多边形裁剪计算 OBB 与网格单元交叠面积；项目不做逐像素语义分割或额外检测器训练；
+- 恶化预测的标签基于连续分数差异（mean + 1.0σ 显著恶化事件阈值），将恶化限定为稀疏预警事件，正样本率约 12%。

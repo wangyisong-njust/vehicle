@@ -6,7 +6,7 @@
 
 - **当前状态识别可用**：`XGBoost-OBB` 在 XAM-N-6 分层测试集上的 Macro-F1 为 0.9590，SVM 与 LR 基线已纳入对比。
 - **未来状态预测**：3s 预测步长下 `Fusion-future` Macro-F1 为 0.4671，用于评估模型对未见时间段状态变化的提前判别能力。
-- **微观特征对恶化预测有增益**：最佳恶化预测 ROC-AUC 达到 0.6341，最优组合为 `M4: Ours+headway+acc+MGTI`。
+- **微观特征对恶化预测有增益**：最佳恶化预测 PR-AUC 达到 0.3007（对应 ROC-AUC 0.6341），最优组合为 `M4: Ours+headway+acc+MGTI`。
 - **数据边界已明确**：XAM-N-5 的公开视频为降采样版本，因此该数据集用于 pixel 表级 OBB 验证，不作为完整逐帧视频主实验。
 
 ---
@@ -143,7 +143,19 @@ SHAP 反事实分析选取低置信或误判样本，对 Top 特征做单变量�
 
 ### 1.4.3 预测可靠性分析
 
-对 `XGBoost-OBB` 增加 split conformal 置信集合。置信水平为 90%，测试集覆盖率为 0.9278，平均集合大小为 1.00，单标签集合比例为 1.0000。该结果用于补充说明模型预测的可靠性校准情况。
+对 `XGBoost-OBB` 在当前状态识别测试集上增加 split conformal 置信集合，校准集 44 个窗口。90% 名义置信水平下，测试集经验覆盖率为 0.9278，平均集合大小为 1.00，单标签集合比例为 1.0000。
+
+需要指出：90% 设置下当前 4 类状态边界较清晰，预测集合均为单标签，因此该实验主要说明模型的边际校准情况，不应表述为已经产生宽范围多状态集合。为评估更严格置信要求下的不确定性触发机制，补充报告不同名义置信水平下的覆盖率与集合大小。
+
+| 名义置信水平 | 经验覆盖率 | 平均集合大小 | 单标签比例 |
+|---:|---:|---:|---:|
+| 70% | 0.9278 | 1.00 | 1.0000 |
+| 80% | 0.9278 | 1.00 | 1.0000 |
+| 90% | 0.9278 | 1.00 | 1.0000 |
+| 95% | 0.9381 | 1.01 | 0.9897 |
+| 99% | 0.9381 | 1.01 | 0.9897 |
+
+![Conformal置信水平扫线](../outputs/figures/conformal_sweep.png)
 
 ## 1.5 未来状态预测
 
@@ -190,6 +202,18 @@ Fusion-future 使用双通道/多通道门控融合：先计算验证段各通�
 
 M4 与 `M3': V+D+F` 的均值增益为 0.61 个百分点；更重要的是，5 折 Macro-F1 标准差由 0.0248 降至 0.0164，降低 33.9%。配对 t 检验 p=0.5469。因此 M4 的优势应表述为稳定性提升和边界样本鲁棒性增强，而不是单纯追求均值大幅提高。
 
+补充对 5 个消融组的 5 折 Macro-F1 做两两配对 t 检验，用于区分均值增益与统计显著性。由于折数较少，p 值用于稳健性参考，不作为唯一结论依据。
+
+| 方法 | M1: V+D | M2: V+D+R | M3': V+D+F | M3: V+D+R+F | M4: Ours+headway+acc+MGTI |
+|---|---:|---:|---:|---:|---:|
+| M1: V+D | 1.0000 | 0.4907 | 0.3741 | 0.4301 | 0.3322 |
+| M2: V+D+R | 0.4907 | 1.0000 | 0.4677 | 0.6093 | 0.3022 |
+| M3': V+D+F | 0.3741 | 0.4677 | 1.0000 | 0.3739 | 0.5469 |
+| M3: V+D+R+F | 0.4301 | 0.6093 | 0.3739 | 1.0000 | 0.4318 |
+| M4: Ours+headway+acc+MGTI | 0.3322 | 0.3022 | 0.5469 | 0.4318 | 1.0000 |
+
+![消融配对t检验矩阵](../outputs/figures/ablation_ttest_matrix.png)
+
 ### 1.6.1 R/F 相关性分析
 
 | 范围 | 样本数 | Pearson r(R,F) |
@@ -205,6 +229,10 @@ M4 与 `M3': V+D+F` 的均值增益为 0.61 个百分点；更重要的是，5 �
 R/F 相关性用于解释 `M2`、`M3'` 和 `M3` 的差异：F 在方向扰动上具有独立贡献，但与 R 同时进入模型时可能存在局部共线或样本量受限，导致 `M3` 的均值未继续超过 `M3'`。
 
 ![R-F相关散点](../outputs/figures/rf_scatter_by_state.png)
+
+进一步将速度 V、密度 D、变道干扰率 R 和方向波动指数 F 放入同一特征空间观察。V-D 投影反映宏观交通状态分离，V-R/V-F 与 D-R-F 投影用于展示微观扰动特征对状态边界样本的补充解释。
+
+![V-D-R-F状态特征空间](../outputs/figures/vd_rf_feature_space.png)
 
 ## 1.7 参数敏感性分析（5 折 CV）
 
@@ -267,22 +295,22 @@ PKDD 以自由流为主，修正标签方向后 1059 个窗口均预测为"畅�
 
 恶化预测是一个二分类任务：给定当前时间窗口的特征，预测在展望期 $k$ 步后交通状态是否出现显著恶化。标签基于连续交通状态分数的变化量构造：当 $S(t+k)-S(t)$ 超过该展望期差分均值加 1.0 倍标准差时标记为恶化（标签=1），否则为 0。该定义将恶化限定为稀疏预警事件，避免把常规波动误作交通恶化。
 
-展望期设置为 3s, 5s, 8s。评价采用连续时间分组 GroupKFold 的 out-of-fold 结果，报告 ROC-AUC、PR-AUC 和 Macro-F1。
+展望期设置为 3s, 5s, 8s。评价采用连续时间分组 GroupKFold 的 out-of-fold 结果。由于正样本约占 12%，PR-AUC 更能反映稀疏预警任务的有效性，ROC-AUC 作为补充指标同步报告。
 
 ## 2.2 恶化预测结果
 
 - **3s 展望期**: 正样本 40 (12.5%), 负样本 281
-  - M3': V+D+F: AUC=0.5653 (vs M1 0.4918, 提升 7.34 个百分点)
-  - M3: V+D+R+F: AUC=0.5314 (vs M1 0.4918, 提升 3.96 个百分点)
-  - M4: Ours+headway+acc+MGTI: AUC=0.5763 (vs M1 0.4918, 提升 8.45 个百分点)
+  - M3': V+D+F: PR-AUC=0.1550, ROC-AUC=0.5653 (ROC vs M1 0.4918, 提升 7.34 个百分点)
+  - M3: V+D+R+F: PR-AUC=0.1516, ROC-AUC=0.5314 (ROC vs M1 0.4918, 提升 3.96 个百分点)
+  - M4: Ours+headway+acc+MGTI: PR-AUC=0.2758, ROC-AUC=0.5763 (ROC vs M1 0.4918, 提升 8.45 个百分点)
 - **5s 展望期**: 正样本 41 (12.9%), 负样本 278
-  - M3': V+D+F: AUC=0.6216 (vs M1 0.5489, 提升 7.26 个百分点)
-  - M3: V+D+R+F: AUC=0.5832 (vs M1 0.5489, 提升 3.43 个百分点)
-  - M4: Ours+headway+acc+MGTI: AUC=0.6341 (vs M1 0.5489, 提升 8.51 个百分点)
+  - M3': V+D+F: PR-AUC=0.1832, ROC-AUC=0.6216 (ROC vs M1 0.5489, 提升 7.26 个百分点)
+  - M3: V+D+R+F: PR-AUC=0.1562, ROC-AUC=0.5832 (ROC vs M1 0.5489, 提升 3.43 个百分点)
+  - M4: Ours+headway+acc+MGTI: PR-AUC=0.3007, ROC-AUC=0.6341 (ROC vs M1 0.5489, 提升 8.51 个百分点)
 - **8s 展望期**: 正样本 37 (11.7%), 负样本 279
-  - M3': V+D+F: AUC=0.5451 (vs M1 0.4646, 提升 8.05 个百分点)
-  - M3: V+D+R+F: AUC=0.5589 (vs M1 0.4646, 提升 9.43 个百分点)
-  - M4: Ours+headway+acc+MGTI: AUC=0.5864 (vs M1 0.4646, 提升 12.18 个百分点)
+  - M3': V+D+F: PR-AUC=0.1353, ROC-AUC=0.5451 (ROC vs M1 0.4646, 提升 8.05 个百分点)
+  - M3: V+D+R+F: PR-AUC=0.1398, ROC-AUC=0.5589 (ROC vs M1 0.4646, 提升 9.43 个百分点)
+  - M4: Ours+headway+acc+MGTI: PR-AUC=0.2343, ROC-AUC=0.5864 (ROC vs M1 0.4646, 提升 12.18 个百分点)
 
 ### 恶化预测消融实验
 
@@ -310,7 +338,7 @@ PKDD 以自由流为主，修正标签方向后 1059 个窗口均预测为"畅�
 
 ![恶化特征重要性](../outputs/figures/deterioration_feature_importance.png)
 
-最佳恶化预测结果：展望期 5s，消融集 M4: Ours+headway+acc+MGTI，ROC-AUC = 0.6341。
+最佳恶化预测结果：展望期 5s，消融集 M4: Ours+headway+acc+MGTI，PR-AUC = 0.3007，ROC-AUC = 0.6341。
 从消融结果看，R/F 与车头时距、加速度扰动、MGTI 的组合能够补充解释短时恶化趋势。
 
 ---
@@ -402,6 +430,7 @@ OBB 可视化图由 pixel 表中的帧号抽样生成。XAM-N-6 与 PKDD-8 使�
 - `outputs/figures/hfgo_local_by_state.png` — 四类状态下 HBB/HF-GO 局部对比
 - `outputs/figures/pkdd_free_probability_hist.png` — PKDD 畅通类预测概率分布
 - `outputs/figures/rf_scatter_by_state.png` — R/F 相关性散点图
+- `outputs/figures/vd_rf_feature_space.png` — V-D-R-F 状态特征空间
 
 **恶化预测图表：**
 - `outputs/figures/deterioration_ablation_auc.png` — 恶化预测消融 AUC
@@ -412,6 +441,8 @@ OBB 可视化图由 pixel 表中的帧号抽样生成。XAM-N-6 与 PKDD-8 使�
 - `outputs/figures/mgti_risk_by_state.png` — MGTI 复合风险箱线图
 - `outputs/figures/shap_summary_xgboost_obb.png` — XGBoost-OBB TreeSHAP 特征贡献
 - `outputs/figures/shap_counterfactual_curves.png` — SHAP 引导反事实曲线
+- `outputs/figures/conformal_sweep.png` — conformal 置信水平扫线
+- `outputs/figures/ablation_ttest_matrix.png` — 消融实验配对 t 检验矩阵
 
 **OBB 抽帧可视化：**
 - `outputs/figures/xamn5_obb_overlay_f*.jpg` — XAM-N-5 pixel 帧时间映射后的旋转框叠加图

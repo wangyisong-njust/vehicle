@@ -623,6 +623,23 @@ def conformal_prediction_summary(
     }
 
 
+def conformal_prediction_sweep(
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    x_test: np.ndarray,
+    y_test: np.ndarray,
+    params: dict[str, float | int],
+    seed: int,
+    n_states: int,
+    alphas: list[float] | None = None,
+) -> list[dict[str, object]]:
+    alpha_values = alphas or [0.30, 0.20, 0.10, 0.05, 0.01]
+    return [
+        conformal_prediction_summary(x_train, y_train, x_test, y_test, params, seed, n_states, alpha=float(alpha))
+        for alpha in alpha_values
+    ]
+
+
 def shap_counterfactual_analysis(
     model: XGBClassifier,
     x_train: np.ndarray,
@@ -900,6 +917,15 @@ def run_classification(table: FeatureTable, cfg: dict) -> dict[str, object]:
         n_states,
         alpha=0.10,
     )
+    results["XGBoost-OBB"]["conformal_sweep"] = conformal_prediction_sweep(
+        x_obb_train_full,
+        y[train_idx],
+        x_obb_test_full,
+        y[test_idx],
+        xgb_params,
+        seed,
+        n_states,
+    )
     results["test_support"] = {STATE_NAMES[i] if i < len(STATE_NAMES) else str(i): int(np.sum(y[test_idx] == i)) for i in range(n_states)}
     results["test_indices"] = test_idx.tolist()
     results["train_indices"] = train_idx.tolist()
@@ -1011,6 +1037,30 @@ def run_ablation(table: FeatureTable, cfg: dict) -> dict[str, object]:
             "std_reduction_rate": float((m3f_std - m4_std) / max(1e-9, m3f_std)),
             "paired_t_statistic": float(test.statistic) if np.isfinite(test.statistic) else None,
             "paired_t_pvalue": float(test.pvalue) if np.isfinite(test.pvalue) else None,
+        }
+        method_names = list(results.keys())
+        pvalues: dict[str, dict[str, float | None]] = {}
+        mean_deltas: dict[str, dict[str, float]] = {}
+        fold_arrays = {
+            name: np.asarray([m["f1_macro"] for m in item["fold_details"]], dtype=np.float32)
+            for name, item in results.items()
+        }
+        for left in method_names:
+            pvalues[left] = {}
+            mean_deltas[left] = {}
+            for right in method_names:
+                if left == right:
+                    pvalues[left][right] = 1.0
+                    mean_deltas[left][right] = 0.0
+                    continue
+                test_pair = ttest_rel(fold_arrays[left], fold_arrays[right])
+                pvalues[left][right] = float(test_pair.pvalue) if np.isfinite(test_pair.pvalue) else None
+                mean_deltas[left][right] = float(np.mean(fold_arrays[left] - fold_arrays[right]))
+        results["M4: Ours+headway+acc+MGTI"]["paired_t_test_matrix"] = {
+            "methods": method_names,
+            "pvalues": pvalues,
+            "mean_deltas": mean_deltas,
+            "metric": "fold_macro_f1",
         }
     return results
 

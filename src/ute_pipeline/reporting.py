@@ -359,6 +359,104 @@ def plot_rf_scatter(rows: list[dict[str, str]], labels: np.ndarray, out_path: Pa
     plt.close(fig)
 
 
+def plot_rf_feature_space(rows: list[dict[str, str]], labels: np.ndarray, out_path: Path) -> None:
+    xamn_rows = [r for r in rows if r["dataset"] == "xamn6"]
+    if not xamn_rows:
+        return
+    state_names = configure_plot_font()
+    speed = np.asarray([float(r["mean_speed_kmh"]) for r in xamn_rows])
+    density = np.asarray([float(r["density_veh_per_m"]) for r in xamn_rows])
+    r_vals = np.asarray([float(r["lane_change_rate"]) for r in xamn_rows])
+    f_vals = np.asarray([float(r["direction_fluctuation"]) for r in xamn_rows])
+    colors = np.asarray(labels[: len(xamn_rows)], dtype=np.int64)
+
+    fig = plt.figure(figsize=(10.5, 8.5))
+    ax1 = fig.add_subplot(2, 2, 1)
+    ax2 = fig.add_subplot(2, 2, 2)
+    ax3 = fig.add_subplot(2, 2, 3)
+    ax4 = fig.add_subplot(2, 2, 4, projection="3d")
+    axes = [ax1, ax2, ax3]
+    pairs = [
+        (speed, density, "mean_speed_kmh V", "density D"),
+        (speed, r_vals, "mean_speed_kmh V", "lane_change_rate R"),
+        (speed, f_vals, "mean_speed_kmh V", "direction_fluctuation F"),
+    ]
+    for ax, (x_vals, y_vals, xlabel, ylabel) in zip(axes, pairs):
+        sc = ax.scatter(x_vals, y_vals, c=colors, cmap="viridis", s=18, alpha=0.75)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.grid(alpha=0.25)
+    ax4.scatter(density, r_vals, f_vals, c=colors, cmap="viridis", s=16, alpha=0.75)
+    ax4.set_xlabel("density D")
+    ax4.set_ylabel("R")
+    ax4.set_zlabel("F")
+    ax4.set_title("D-R-F projection")
+    cbar = fig.colorbar(sc, ax=[ax1, ax2, ax3, ax4], fraction=0.025, pad=0.02)
+    cbar.ax.set_yticks(range(min(4, len(state_names))))
+    cbar.ax.set_yticklabels(state_names[:4])
+    fig.suptitle("V-D-R-F State Feature Space", fontsize=12)
+    fig.subplots_adjust(left=0.07, right=0.90, bottom=0.08, top=0.92, wspace=0.30, hspace=0.35)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=200)
+    plt.close(fig)
+
+
+def plot_conformal_sweep(sweep: list[dict], out_path: Path) -> None:
+    items = [item for item in sweep if item.get("status") == "completed"]
+    if not items:
+        return
+    confidence = [float(item["confidence"]) for item in items]
+    coverage = [float(item["coverage"]) for item in items]
+    avg_size = [float(item["average_set_size"]) for item in items]
+    singleton = [float(item["singleton_rate"]) for item in items]
+    fig, ax1 = plt.subplots(figsize=(7.2, 4.2))
+    ax1.plot(confidence, coverage, marker="o", label="empirical coverage")
+    ax1.plot(confidence, confidence, linestyle="--", color="#777777", label="nominal confidence")
+    ax1.set_xlabel("nominal confidence")
+    ax1.set_ylabel("coverage")
+    ax1.set_ylim(0, 1.05)
+    ax1.grid(alpha=0.25)
+    ax2 = ax1.twinx()
+    ax2.plot(confidence, avg_size, marker="s", color="#f58518", label="avg set size")
+    ax2.plot(confidence, singleton, marker="^", color="#54a24b", label="singleton rate")
+    ax2.set_ylabel("set size / singleton rate")
+    ax2.set_ylim(0, max(4.0, max(avg_size) * 1.15))
+    lines = ax1.get_lines() + ax2.get_lines()
+    labels = [line.get_label() for line in lines]
+    ax1.legend(lines, labels, loc="best")
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=200)
+    plt.close(fig)
+
+
+def plot_ttest_heatmap(matrix: dict, out_path: Path) -> None:
+    methods = matrix.get("methods", [])
+    pvalues = matrix.get("pvalues", {})
+    if not methods:
+        return
+    values = np.ones((len(methods), len(methods)), dtype=np.float32)
+    for i, left in enumerate(methods):
+        for j, right in enumerate(methods):
+            val = pvalues.get(left, {}).get(right)
+            values[i, j] = 1.0 if val is None else float(val)
+    fig, ax = plt.subplots(figsize=(7.5, 6.2))
+    im = ax.imshow(values, cmap="viridis_r", vmin=0, vmax=1)
+    ax.set_xticks(np.arange(len(methods)))
+    ax.set_yticks(np.arange(len(methods)))
+    ax.set_xticklabels(methods, rotation=30, ha="right")
+    ax.set_yticklabels(methods)
+    for i in range(len(methods)):
+        for j in range(len(methods)):
+            ax.text(j, i, f"{values[i, j]:.3f}", ha="center", va="center", fontsize=8, color="white" if values[i, j] < 0.35 else "black")
+    ax.set_title("Paired t-test p-values on fold Macro-F1")
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=200)
+    plt.close(fig)
+
+
 def rf_correlation_table(rows: list[dict[str, str]], labels: np.ndarray) -> list[dict[str, object]]:
     result: list[dict[str, object]] = []
     xamn_positions = [i for i, r in enumerate(rows) if r["dataset"] == "xamn6"]
@@ -683,9 +781,15 @@ def write_report(root: Path) -> None:
     plot_confusion(best_cm, f"{best_name} Current State", fig_dir / "cm_xgboost_obb.png", state_names)
     plot_shap_summary(exp["classification"]["XGBoost-OBB"].get("shap_summary", {}), fig_dir / "shap_summary_xgboost_obb.png")
     plot_counterfactual(exp["classification"]["XGBoost-OBB"].get("counterfactual_analysis", {}), fig_dir / "shap_counterfactual_curves.png")
+    plot_conformal_sweep(exp["classification"]["XGBoost-OBB"].get("conformal_sweep", []), fig_dir / "conformal_sweep.png")
     plot_state_spacetime(root, cfg, labels, fig_dir / "xamn6_state_spacetime.png")
     plot_hfgo_local_by_state(root, cfg, labels, fig_dir / "hfgo_local_by_state.png")
     plot_rf_scatter(rows, labels, fig_dir / "rf_scatter_by_state.png")
+    plot_rf_feature_space(rows, labels, fig_dir / "vd_rf_feature_space.png")
+    plot_ttest_heatmap(
+        exp["ablation"].get("M4: Ours+headway+acc+MGTI", {}).get("paired_t_test_matrix", {}),
+        fig_dir / "ablation_ttest_matrix.png",
+    )
     fusion = exp["prediction"]["Fusion-future"]
     plot_confusion(fusion["confusion_matrix"], "Fusion Future State", fig_dir / "cm_fusion_future.png", state_names)
     plot_prediction_curve(fusion, fig_dir / "future_prediction_curve.png", state_names)
@@ -771,6 +875,7 @@ def write_report(root: Path) -> None:
     # Deterioration summary
     det_summary_lines = []
     best_det_auc = 0.0
+    best_det_pr_auc = 0.0
     best_det_horizon = ""
     best_det_ablation = ""
     for h_key in sorted(deterioration.keys()):
@@ -786,25 +891,30 @@ def write_report(root: Path) -> None:
         det_summary_lines.append(f"- **{hs}s 展望期**: 正样本 {pos} ({rate:.1%}), 负样本 {neg}")
         for abl_name, abl_data in abl.items():
             auc = abl_data.get("roc_auc")
-            if auc is not None and auc > best_det_auc:
-                best_det_auc = auc
+            pr_auc = abl_data.get("pr_auc")
+            if pr_auc is not None and pr_auc > best_det_pr_auc:
+                best_det_pr_auc = pr_auc
+                best_det_auc = auc or 0.0
                 best_det_horizon = f"{hs}s"
                 best_det_ablation = abl_name
             if abl_name in ("M3': V+D+F", "M3: V+D+R+F", "M4: Ours+headway+acc+MGTI"):
                 baseline_auc = abl.get("M1: V+D", {}).get("roc_auc") or 0.0
                 this_auc = auc or 0.0
                 delta_auc = this_auc - baseline_auc
-                det_summary_lines.append(f"  - {abl_name}: AUC={this_auc:.4f} (vs M1 {baseline_auc:.4f}, {_effect_phrase(delta_auc)})")
+                this_pr = pr_auc or 0.0
+                det_summary_lines.append(
+                    f"  - {abl_name}: PR-AUC={this_pr:.4f}, ROC-AUC={this_auc:.4f} (ROC vs M1 {baseline_auc:.4f}, {_effect_phrase(delta_auc)})"
+                )
 
-    if best_det_auc <= 0:
+    if best_det_pr_auc <= 0:
         det_core_text = "- **恶化预测作为补充任务呈现**：当前正样本不足或指标不稳定，不作为主贡献指标。"
     elif best_det_ablation == "M1: V+D":
         det_core_text = (
-            f"- **恶化预测作为补充任务呈现**：最佳 ROC-AUC 为 {best_det_auc:.4f}，当前样本下 R/F 与微观特征未稳定超过 V+D 基线，报告中已按负结果解释。"
+            f"- **恶化预测作为补充任务呈现**：最佳 PR-AUC 为 {best_det_pr_auc:.4f}（对应 ROC-AUC {best_det_auc:.4f}），当前样本下 R/F 与微观特征未稳定超过 V+D 基线，报告中已按负结果解释。"
         )
     else:
         det_core_text = (
-            f"- **微观特征对恶化预测有增益**：最佳恶化预测 ROC-AUC 达到 {best_det_auc:.4f}，最优组合为 `{best_det_ablation}`。"
+            f"- **微观特征对恶化预测有增益**：最佳恶化预测 PR-AUC 达到 {best_det_pr_auc:.4f}（对应 ROC-AUC {best_det_auc:.4f}），最优组合为 `{best_det_ablation}`。"
         )
 
     # MGTI composite check from verification
@@ -950,8 +1060,26 @@ def write_report(root: Path) -> None:
             "",
             "### 1.4.3 预测可靠性分析",
             "",
-            f"对 `XGBoost-OBB` 增加 split conformal 置信集合。置信水平为 {conformal['confidence']:.0%}，测试集覆盖率为 {conformal['coverage']:.4f}，平均集合大小为 {conformal['average_set_size']:.2f}，单标签集合比例为 {conformal['singleton_rate']:.4f}。该结果用于补充说明模型预测的可靠性校准情况。",
+            f"对 `XGBoost-OBB` 在当前状态识别测试集上增加 split conformal 置信集合，校准集 {conformal['calibration_size']} 个窗口。90% 名义置信水平下，测试集经验覆盖率为 {conformal['coverage']:.4f}，平均集合大小为 {conformal['average_set_size']:.2f}，单标签集合比例为 {conformal['singleton_rate']:.4f}。",
+            "",
+            "需要指出：90% 设置下当前 4 类状态边界较清晰，预测集合均为单标签，因此该实验主要说明模型的边际校准情况，不应表述为已经产生宽范围多状态集合。为评估更严格置信要求下的不确定性触发机制，补充报告不同名义置信水平下的覆盖率与集合大小。",
+            "",
         ])
+        sweep = exp["classification"]["XGBoost-OBB"].get("conformal_sweep", [])
+        completed_sweep = [item for item in sweep if item.get("status") == "completed"]
+        if completed_sweep:
+            lines.extend([
+                "| 名义置信水平 | 经验覆盖率 | 平均集合大小 | 单标签比例 |",
+                "|---:|---:|---:|---:|",
+            ])
+            for item in completed_sweep:
+                lines.append(
+                    f"| {item['confidence']:.0%} | {item['coverage']:.4f} | {item['average_set_size']:.2f} | {item['singleton_rate']:.4f} |"
+                )
+            lines.extend([
+                "",
+                "![Conformal置信水平扫线](../outputs/figures/conformal_sweep.png)",
+            ])
 
     lines.extend(
         [
@@ -1018,6 +1146,27 @@ def write_report(root: Path) -> None:
             f"M4 与 `M3': V+D+F` 的均值增益为 {m4_stability['mean_delta'] * 100:.2f} 个百分点；更重要的是，5 折 Macro-F1 标准差由 {m4_stability['m3f_std']:.4f} 降至 {m4_stability['m4_std']:.4f}，降低 {m4_stability['std_reduction_rate'] * 100:.1f}%。配对 t 检验 p={p_text}。因此 M4 的优势应表述为稳定性提升和边界样本鲁棒性增强，而不是单纯追求均值大幅提高。",
             "",
         ])
+    ttest_matrix = exp["ablation"].get("M4: Ours+headway+acc+MGTI", {}).get("paired_t_test_matrix", {})
+    if ttest_matrix:
+        methods = ttest_matrix.get("methods", [])
+        pvalues = ttest_matrix.get("pvalues", {})
+        lines.extend([
+            "补充对 5 个消融组的 5 折 Macro-F1 做两两配对 t 检验，用于区分均值增益与统计显著性。由于折数较少，p 值用于稳健性参考，不作为唯一结论依据。",
+            "",
+            "| 方法 | " + " | ".join(methods) + " |",
+            "|---|" + "|".join(["---:"] * len(methods)) + "|",
+        ])
+        for left in methods:
+            row = [left]
+            for right in methods:
+                val = pvalues.get(left, {}).get(right)
+                row.append("N/A" if val is None else f"{val:.4f}")
+            lines.append("| " + " | ".join(row) + " |")
+        lines.extend([
+            "",
+            "![消融配对t检验矩阵](../outputs/figures/ablation_ttest_matrix.png)",
+            "",
+        ])
     lines.extend([
         "### 1.6.1 R/F 相关性分析",
         "",
@@ -1031,6 +1180,10 @@ def write_report(root: Path) -> None:
         "R/F 相关性用于解释 `M2`、`M3'` 和 `M3` 的差异：F 在方向扰动上具有独立贡献，但与 R 同时进入模型时可能存在局部共线或样本量受限，导致 `M3` 的均值未继续超过 `M3'`。",
         "",
         "![R-F相关散点](../outputs/figures/rf_scatter_by_state.png)",
+        "",
+        "进一步将速度 V、密度 D、变道干扰率 R 和方向波动指数 F 放入同一特征空间观察。V-D 投影反映宏观交通状态分离，V-R/V-F 与 D-R-F 投影用于展示微观扰动特征对状态边界样本的补充解释。",
+        "",
+        "![V-D-R-F状态特征空间](../outputs/figures/vd_rf_feature_space.png)",
         "",
     ])
     lines.extend(
@@ -1109,7 +1262,7 @@ def write_report(root: Path) -> None:
             "",
             f"恶化预测是一个二分类任务：给定当前时间窗口的特征，预测在展望期 $k$ 步后交通状态是否出现显著恶化。标签基于连续交通状态分数的变化量构造：当 $S(t+k)-S(t)$ 超过该展望期差分均值加 {det_std_multiplier:.1f} 倍标准差时标记为恶化（标签=1），否则为 0。该定义将恶化限定为稀疏预警事件，避免把常规波动误作交通恶化。",
             "",
-            f"展望期设置为 {', '.join(str(h) + 's' for h in cfg['feature'].get('deterioration_horizons_s', [3, 5, 8]))}。评价采用连续时间分组 GroupKFold 的 out-of-fold 结果，报告 ROC-AUC、PR-AUC 和 Macro-F1。",
+            f"展望期设置为 {', '.join(str(h) + 's' for h in cfg['feature'].get('deterioration_horizons_s', [3, 5, 8]))}。评价采用连续时间分组 GroupKFold 的 out-of-fold 结果。由于正样本约占 12%，PR-AUC 更能反映稀疏预警任务的有效性，ROC-AUC 作为补充指标同步报告。",
             "",
             "## 2.2 恶化预测结果",
             "",
@@ -1131,8 +1284,8 @@ def write_report(root: Path) -> None:
             "",
         ]
     )
-    if best_det_auc > 0:
-        lines.append(f"最佳恶化预测结果：展望期 {best_det_horizon}，消融集 {best_det_ablation}，ROC-AUC = {best_det_auc:.4f}。")
+    if best_det_pr_auc > 0:
+        lines.append(f"最佳恶化预测结果：展望期 {best_det_horizon}，消融集 {best_det_ablation}，PR-AUC = {best_det_pr_auc:.4f}，ROC-AUC = {best_det_auc:.4f}。")
         if best_det_ablation == "M1: V+D":
             lines.append("从消融结果看，恶化事件样本较少，速度与密度仍是最稳定的短时预警信号；R/F 与微观特征用于补充解释局部扰动来源。")
         else:
@@ -1263,6 +1416,7 @@ def write_report(root: Path) -> None:
             "- `outputs/figures/hfgo_local_by_state.png` — 四类状态下 HBB/HF-GO 局部对比",
             "- `outputs/figures/pkdd_free_probability_hist.png` — PKDD 畅通类预测概率分布",
             "- `outputs/figures/rf_scatter_by_state.png` — R/F 相关性散点图",
+            "- `outputs/figures/vd_rf_feature_space.png` — V-D-R-F 状态特征空间",
             "",
             "**恶化预测图表：**",
             "- `outputs/figures/deterioration_ablation_auc.png` — 恶化预测消融 AUC",
@@ -1273,6 +1427,8 @@ def write_report(root: Path) -> None:
             "- `outputs/figures/mgti_risk_by_state.png` — MGTI 复合风险箱线图",
             "- `outputs/figures/shap_summary_xgboost_obb.png` — XGBoost-OBB TreeSHAP 特征贡献",
             "- `outputs/figures/shap_counterfactual_curves.png` — SHAP 引导反事实曲线",
+            "- `outputs/figures/conformal_sweep.png` — conformal 置信水平扫线",
+            "- `outputs/figures/ablation_ttest_matrix.png` — 消融实验配对 t 检验矩阵",
             "",
             "**OBB 抽帧可视化：**",
             "- `outputs/figures/xamn5_obb_overlay_f*.jpg` — XAM-N-5 pixel 帧时间映射后的旋转框叠加图",

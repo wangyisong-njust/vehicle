@@ -1565,7 +1565,89 @@
           "3": 0,
           "4": 0
         }
-      }
+      },
+      "conformal_sweep": [
+        {
+          "status": "completed",
+          "alpha": 0.3,
+          "confidence": 0.7,
+          "calibration_size": 44,
+          "threshold": 0.05465036630630493,
+          "coverage": 0.9278350515463918,
+          "average_set_size": 1.0,
+          "singleton_rate": 1.0,
+          "set_size_histogram": {
+            "1": 97,
+            "2": 0,
+            "3": 0,
+            "4": 0
+          }
+        },
+        {
+          "status": "completed",
+          "alpha": 0.2,
+          "confidence": 0.8,
+          "calibration_size": 44,
+          "threshold": 0.13399416208267212,
+          "coverage": 0.9278350515463918,
+          "average_set_size": 1.0,
+          "singleton_rate": 1.0,
+          "set_size_histogram": {
+            "1": 97,
+            "2": 0,
+            "3": 0,
+            "4": 0
+          }
+        },
+        {
+          "status": "completed",
+          "alpha": 0.1,
+          "confidence": 0.9,
+          "calibration_size": 44,
+          "threshold": 0.4550660252571106,
+          "coverage": 0.9278350515463918,
+          "average_set_size": 1.0,
+          "singleton_rate": 1.0,
+          "set_size_histogram": {
+            "1": 97,
+            "2": 0,
+            "3": 0,
+            "4": 0
+          }
+        },
+        {
+          "status": "completed",
+          "alpha": 0.05,
+          "confidence": 0.95,
+          "calibration_size": 44,
+          "threshold": 0.6535047292709351,
+          "coverage": 0.9381443298969072,
+          "average_set_size": 1.0103092783505154,
+          "singleton_rate": 0.9896907216494846,
+          "set_size_histogram": {
+            "1": 96,
+            "2": 1,
+            "3": 0,
+            "4": 0
+          }
+        },
+        {
+          "status": "completed",
+          "alpha": 0.01,
+          "confidence": 0.99,
+          "calibration_size": 44,
+          "threshold": 0.6535047292709351,
+          "coverage": 0.9381443298969072,
+          "average_set_size": 1.0103092783505154,
+          "singleton_rate": 0.9896907216494846,
+          "set_size_histogram": {
+            "1": 96,
+            "2": 1,
+            "3": 0,
+            "4": 0
+          }
+        }
+      ]
     },
     "SVM-OBB": {
       "metrics": {
@@ -2931,6 +3013,90 @@
         "std_reduction_rate": 0.3390798721881287,
         "paired_t_statistic": 0.6573411809184733,
         "paired_t_pvalue": 0.5468630190470627
+      },
+      "paired_t_test_matrix": {
+        "methods": [
+          "M1: V+D",
+          "M2: V+D+R",
+          "M3': V+D+F",
+          "M3: V+D+R+F",
+          "M4: Ours+headway+acc+MGTI"
+        ],
+        "pvalues": {
+          "M1: V+D": {
+            "M1: V+D": 1.0,
+            "M2: V+D+R": 0.4907323874091079,
+            "M3': V+D+F": 0.37408906566899547,
+            "M3: V+D+R+F": 0.4301184710794943,
+            "M4: Ours+headway+acc+MGTI": 0.3321761009976214
+          },
+          "M2: V+D+R": {
+            "M1: V+D": 0.4907323874091079,
+            "M2: V+D+R": 1.0,
+            "M3': V+D+F": 0.4677485296756743,
+            "M3: V+D+R+F": 0.6093054568477385,
+            "M4: Ours+headway+acc+MGTI": 0.30215880718451843
+          },
+          "M3': V+D+F": {
+            "M1: V+D": 0.37408906566899547,
+            "M2: V+D+R": 0.4677485296756743,
+            "M3': V+D+F": 1.0,
+            "M3: V+D+R+F": 0.3739009663000589,
+            "M4: Ours+headway+acc+MGTI": 0.5468630190470627
+          },
+          "M3: V+D+R+F": {
+            "M1: V+D": 0.4301184710794943,
+            "M2: V+D+R": 0.6093054568477385,
+            "M3': V+D+F": 0.3739009663000589,
+            "M3: V+D+R+F": 1.0,
+            "M4: Ours+headway+acc+MGTI": 0.43181075135628916
+          },
+          "M4: Ours+headway+acc+MGTI": {
+            "M1: V+D": 0.3321761009976214,
+            "M2: V+D+R": 0.30215880718451843,
+            "M3': V+D+F": 0.5468630190470627,
+            "M3: V+D+R+F": 0.43181075135628916,
+            "M4: Ours+headway+acc+MGTI": 1.0
+          }
+        },
+        "mean_deltas": {
+          "M1: V+D": {
+            "M1: V+D": 0.0,
+            "M2: V+D+R": -0.006002926733344793,
+            "M3': V+D+F": -0.01226947270333767,
+            "M3: V+D+R+F": -0.009157681837677956,
+            "M4: Ours+headway+acc+MGTI": -0.018383096903562546
+          },
+          "M2: V+D+R": {
+            "M1: V+D": 0.006002926733344793,
+            "M2: V+D+R": 0.0,
+            "M3': V+D+F": -0.006266546435654163,
+            "M3: V+D+R+F": -0.003154754638671875,
+            "M4: Ours+headway+acc+MGTI": -0.01238017063587904
+          },
+          "M3': V+D+F": {
+            "M1: V+D": 0.01226947270333767,
+            "M2: V+D+R": 0.006266546435654163,
+            "M3': V+D+F": 0.0,
+            "M3: V+D+R+F": 0.0031117915641516447,
+            "M4: Ours+headway+acc+MGTI": -0.006113624665886164
+          },
+          "M3: V+D+R+F": {
+            "M1: V+D": 0.009157681837677956,
+            "M2: V+D+R": 0.003154754638671875,
+            "M3': V+D+F": -0.0031117915641516447,
+            "M3: V+D+R+F": 0.0,
+            "M4: Ours+headway+acc+MGTI": -0.009225415997207165
+          },
+          "M4: Ours+headway+acc+MGTI": {
+            "M1: V+D": 0.018383096903562546,
+            "M2: V+D+R": 0.01238017063587904,
+            "M3': V+D+F": 0.006113624665886164,
+            "M3: V+D+R+F": 0.009225415997207165,
+            "M4: Ours+headway+acc+MGTI": 0.0
+          }
+        },
+        "metric": "fold_macro_f1"
       }
     }
   },
