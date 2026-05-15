@@ -169,7 +169,7 @@ def run_target(
     }
     mape_threshold = float(target_meta["mape_threshold"])
 
-    for horizon_minutes in [3, 5, 15, 30]:
+    for horizon_minutes in [5, 15, 30]:
         horizon_steps = max(1, int(round(horizon_minutes / interval_minutes)))
         positions, x, y = make_supervised(data, horizon_steps, lags)
         train_mask = positions < train_end

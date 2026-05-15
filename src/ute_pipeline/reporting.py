@@ -951,7 +951,7 @@ def write_report(root: Path) -> None:
         "",
         "**第四，PKDD 自由流场景给出了零样本跨场景核验。** PKDD-8 上 1059 个窗口全部判为畅通，畅通类预测概率 P05=0.971、P50=0.982、P95=0.990。这个结果说明模型在自由流场景下做出高置信的保守判断，而不是在跨场景数据上产生随机拥堵或多数类陷阱。",
         "",
-        "**第五，长时预测扩展与参考文献的交通量/速度口径对齐。** 额外在 PeMS08 上按 3/5/15/30 分钟预测 traffic flow 与 traffic speed，并统一比较 Persistence、Seasonal Persistence、Historical Average、Ridge-Lag 和 Ours-TSFusion。PeMS08 为 5 分钟采样，3 分钟按最近的 1-step（5 分钟）实现；该扩展验证的是时序融合模块的长时适用性，不替代 UTE 上 OBB、HF-GO 和车辆微观扰动特征的主创新验证。",
+        "**第五，长时预测扩展与参考文献的交通量/速度口径对齐。** 额外在 PeMS08 上按 5/15/30 分钟预测 traffic flow 与 traffic speed，并统一比较 Persistence、Seasonal Persistence、Historical Average、Ridge-Lag 和 Ours-TSFusion。PeMS08 为 5 分钟采样，无法形成真正 3 分钟标签，因此报告中不再重复列 3 分钟行；该扩展验证的是时序融合模块的长时适用性，不替代 UTE 上 OBB、HF-GO 和车辆微观扰动特征的主创新验证。",
         "",
         "---",
         "",
@@ -975,8 +975,12 @@ def write_report(root: Path) -> None:
         "| 状态标签 | V-D 网格与人工校正 | 静态阈值 | K-Means 候选簇 + 速度/密度/占有率物理顺序校验，可复现 |",
         "| 状态特征 | V+D+R+F | V+D+HF-GO+MGTI | V、D、R、F、HF-GO、SGT、$\\Delta SGT$、THW、加速度、MGTI |",
         "| 预测任务 | 主要做状态识别 | 计划做未来预测 | 当前识别、未来预测、恶化预警三条实验线均已实现 |",
-        "| 可解释与可靠性 | 未系统展开 | 未系统展开 | TreeSHAP、反事实曲线、split conformal、配对 t 检验矩阵 |",
+        "| 可解释与可靠性 | 未系统展开 | 未系统展开 | TreeSHAP、反事实曲线、配对 t 检验矩阵 |",
         "| 近五年方法对比 | 通常对比 SVM/RF/KNN/XGBoost 等机器学习模型 | 通常对比 LSTM/Fusion | 增补 SVM、RF、KNN、GBDT、XGBoost、LSTM、GRU 与本文方法统一评测 |",
+        "",
+        "### 1.1.1 与“对比1”参考文献的研究边界",
+        "",
+        "《面向高速公路非检测点位的全域交通状态预测方法》（对比1）研究的是高速公路固定检测器条件下的全域交通量与速度预测，核心技术路线是 METANET、LSTM 和 EKF 的组合，预测步长覆盖 5-30 分钟。本文主线不同：研究对象是城市快速路无人机视频，先解决 HBB 水平框与 pixel 表逐行对应的 OBB 角度增强，再基于 HF-GO、R/F、车头时距和 MGTI 做四类交通状态识别与短时状态预测。为回应导师对长时预测的要求，本文把 PeMS08 flow/speed 预测作为扩展实验与对比1的时间尺度对齐；但 OBB、HF-GO 和车辆微观扰动特征的创新性仍以 UTE 主数据集验证，不把 PeMS 扩展误写为 OBB 创新的证据。",
         "",
         "## 1.2 数据使用与分工",
         "",
@@ -1071,7 +1075,7 @@ def write_report(root: Path) -> None:
         "| CNN/LSTM 类时序预测 | Reza 等 2022 年交通状态预测研究采用 1D-CNN 与 LSTM，并讨论 LSTM/GRU 在交通状态预测中的作用 | 在未来状态预测中加入 LSTM-future，并保留 XGBoost 静态/趋势通道 |",
         "| 深度学习交通拥堵预测 | 2023 年交通拥堵预测研究总结了神经网络、SVM 与深度学习方法在拥堵预测中的应用 | 把 XGBoost、SVM、LSTM/GRU 作为未来状态预测和识别任务的对照组 |",
         "| LSTM / GRU 记忆型循环网络 | 2023 年交通量预测研究直接比较 LSTM 与 GRU 两类记忆型循环网络 | 在未来状态预测中新增 GRU-future，与 LSTM-future 同口径比较 |",
-        "| 长时交通流/速度预测 | 近年交通流/速度预测论文常报告 5/15/30 分钟，部分 PeMS/METR-LA 工作报告 15/30/60 分钟 | UTE 主场景补充 30/60/120/180/300 秒可行性；PeMS08 扩展实验补充 3/5/15/30 分钟 flow/speed |",
+        "| 长时交通流/速度预测 | 近年交通流/速度预测论文常报告 5/15/30 分钟，部分 PeMS/METR-LA 工作报告 15/30/60 分钟 | UTE 主场景仅作短时状态预测；PeMS08 扩展实验补充 5/15/30 分钟 flow/speed |",
         "",
         "参考文献链接：",
         "",
@@ -1087,9 +1091,9 @@ def write_report(root: Path) -> None:
         "",
         "| 文献数据集/任务 | 常见预测步长 | 数据特点 | 与本项目的处理方式 |",
         "|---|---:|---|---|",
-        "| PeMS / PeMSD4 / PeMSD8 交通流或速度预测 | 3/5/15/30 分钟；部分工作扩展到 60/120 分钟 | 固定检测器长时间序列，通常 5 分钟聚合，持续数周到数月 | 作为长时预测相关工作引用，不直接替代 UTE OBB 实验 |",
+        "| PeMS / PeMSD4 / PeMSD8 交通流或速度预测 | 5/15/30 分钟；部分工作扩展到 60/120 分钟 | 固定检测器长时间序列，通常 5 分钟聚合，持续数周到数月 | 作为长时预测相关工作引用，不直接替代 UTE OBB 实验 |",
         "| METR-LA / PEMS-BAY 交通速度预测 | 15/30/60 分钟 | 路网传感器序列，关注速度/流量连续值 | 可作为后续扩展数据集；当前没有 pixel/车辆框，无法验证 HBB→OBB 与 HF-GO |",
-        "| UTE XAM-N-6 四类状态预测 | 主实验 3 秒；补充 30/60/120/180/300 秒 | 无人机 pixel 轨迹与车辆框，主场景约 5.5 分钟 | 保留 OBB/HF-GO 创新链路，最长可靠展望期受视频长度限制 |",
+        "| UTE XAM-N-6 四类状态预测 | 主实验 3 秒；补充 1/3/5/8 秒敏感性 | 无人机 pixel 轨迹与车辆框，主场景约 5.5 分钟 | 保留 OBB/HF-GO 创新链路，30 秒以上仅作失败模式记录 |",
         "",
         metric_table(exp["classification"]),
         "",
@@ -1135,32 +1139,9 @@ def write_report(root: Path) -> None:
             "",
             "![SHAP反事实曲线](../outputs/figures/shap_counterfactual_curves.png)",
         ])
-    conformal = exp["classification"]["XGBoost-OBB"].get("conformal_prediction", {})
-    if conformal.get("status") == "completed":
-        lines.extend([
-            "",
-            "### 1.4.3 预测可靠性分析",
-            "",
-            f"对 `XGBoost-OBB` 在当前状态识别测试集上增加 split conformal 置信集合，校准集 {conformal['calibration_size']} 个窗口。90% 名义置信水平下，测试集经验覆盖率为 {conformal['coverage']:.4f}，平均集合大小为 {conformal['average_set_size']:.2f}，单标签集合比例为 {conformal['singleton_rate']:.4f}。",
-            "",
-            "需要指出：90% 设置下当前 4 类状态边界较清晰，预测集合均为单标签。这组实验说明的是模型边际校准情况，不应理解为已经形成宽范围多状态集合。为评估更严格置信要求下的不确定性触发机制，补充报告不同名义置信水平下的覆盖率与集合大小。",
-            "",
-        ])
-        sweep = exp["classification"]["XGBoost-OBB"].get("conformal_sweep", [])
-        completed_sweep = [item for item in sweep if item.get("status") == "completed"]
-        if completed_sweep:
-            lines.extend([
-                "| 名义置信水平 | 经验覆盖率 | 平均集合大小 | 单标签比例 |",
-                "|---:|---:|---:|---:|",
-            ])
-            for item in completed_sweep:
-                lines.append(
-                    f"| {item['confidence']:.0%} | {item['coverage']:.4f} | {item['average_set_size']:.2f} | {item['singleton_rate']:.4f} |"
-                )
-            lines.extend([
-                "",
-                "![Conformal置信水平扫线](../outputs/figures/conformal_sweep.png)",
-            ])
+    # Conformal calibration is kept in JSON only. With the current 44-window
+    # calibration split it degenerates to singleton prediction sets, so the
+    # generated paper-facing report omits it to avoid overstating uncertainty.
 
     lines.extend(
         [
@@ -1169,7 +1150,7 @@ def write_report(root: Path) -> None:
             "",
             f"预测步长：{exp['prediction']['horizon_seconds']:.1f} 秒",
             "",
-            "这里的“未来状态预测”默认是短时状态预测，即预测 3 秒后的四类交通状态。参考文献中常见的 15/30/60 分钟预测多针对固定检测器或 PeMS/METR-LA 这类长时间交通流、速度序列；XAM-N-6 主场景可用时间约 5.5 分钟，无法支撑 15/30 分钟标签。为回应长时预测需求，本文在参数敏感性中补充 30、60、120、180 和 300 秒展望期，其中 180 秒可作为 3 分钟长时补充，300 秒仅剩极少样本，只作为边界检查。",
+            "这里的“未来状态预测”默认是短时状态预测，即预测 3 秒后的四类交通状态。参考文献中常见的 15/30/60 分钟预测多针对固定检测器或 PeMS/METR-LA 这类长时间交通流、速度序列；XAM-N-6 主场景可用时间约 5.5 分钟，无法支撑 15/30 分钟标签。正式论文中只把 1/3/5/8 秒作为短时状态预测结果；30 秒以上的 UTE 状态预测已降级为失败模式/覆盖范围分析，长时预测由 PeMS08 flow/speed 扩展实验承担。",
             "",
             metric_table({k: v for k, v in exp["prediction"].items() if isinstance(v, dict) and "metrics" in v}),
             "",
@@ -1284,6 +1265,9 @@ def write_report(root: Path) -> None:
         std_str = f" ± {m.get('f1_macro_std', 0):.4f}" if m.get("f1_macro_std", 0) > 0 else ""
         lines.append(f"| XGBoost max_depth | {item['max_depth']} | {m['accuracy']:.4f} | {m['f1_macro']:.4f}{std_str} |")
     for item in exp["parameter_sensitivity"]["prediction_horizon"]:
+        horizon_seconds = float(item["horizon_seconds"])
+        if horizon_seconds > 8:
+            continue
         if item.get("status", "completed") != "completed" or "metrics" not in item:
             lines.append(f"| prediction horizon(s) | {item['horizon_seconds']:.1f} | - | skipped: {item.get('reason', 'insufficient data')} |")
             continue
@@ -1295,9 +1279,9 @@ def write_report(root: Path) -> None:
             "",
             "![参数敏感性](../outputs/figures/parameter_sensitivity.png)",
             "",
-            "预测步长敏感性采用同一条 XAM-N-6 时间序列重新构造目标标签。短时部分（1/3/5/8s）用于说明主预测任务的稳定性；30/60/120/180s 用于回应长时状态预测需求；300s 接近数据长度上限，若有效测试样本不足，不作为论文主结论。与常见 15/30/60 分钟交通流预测不同，这里预测的是无人机片段内的四类状态，能够报告的最长可靠展望期受原始视频时长限制。",
+            "预测步长敏感性采用同一条 XAM-N-6 时间序列重新构造目标标签。正文只展示 1/3/5/8s 短时状态预测；30s 以上由于测试集类别支持不足、Macro-F1 明显退化，保留在 JSON 中作为失败模式和数据覆盖范围说明，不写作本文主结果。与常见 15/30/60 分钟交通流预测不同，这里预测的是无人机片段内的四类状态，能够报告的最长可靠展望期受原始视频时长限制。",
             "",
-            "如果导师要求与长时交通预测论文完全同口径对比，建议把它作为扩展实验单独设计：数据集选 PeMSD4/PeMSD8、METR-LA 或 PEMS-BAY，预测对象改为速度/流量连续值，展望期设为 3/5/15/30 分钟或 15/30/60 分钟，并加入 HA、ARIMA、SVR、LSTM、GRU、DCRNN、STGCN、GraphWaveNet、TYRE 等文献基线。这个扩展能对齐长时预测文献，但它不含 pixel 表和车辆框，不能替代本文 UTE 上的 HBB→OBB、HF-GO 和微观扰动特征验证；论文中应把二者写成“主数据创新验证 + 长时预测扩展对齐”。",
+            "长时预测已作为 PeMS08 扩展实验单独设计：预测对象改为速度/流量连续值，展望期设为 5/15/30 分钟，并加入 Persistence、Seasonal Persistence、Historical Average、Ridge-Lag 与 Ours-TSFusion。这个扩展能对齐长时预测文献，但它不含 pixel 表和车辆框，不能替代本文 UTE 上的 HBB→OBB、HF-GO 和微观扰动特征验证；论文中应把二者写成“主数据创新验证 + 长时预测扩展对齐”。",
             "",
         ]
     )
@@ -1307,7 +1291,7 @@ def write_report(root: Path) -> None:
             [
                 "### 1.7.1 PeMS 长时交通流/速度预测扩展",
                 "",
-                f"为和对比文献中的交通量/速度长时预测形成同口径补充，额外在 `{long_forecast.get('dataset', 'PEMS')}` 上做 3/5/15/30 分钟预测。该数据包含 {shape.get('time_steps', '?')} 个 5 分钟时间步、{shape.get('sensors', '?')} 个检测器，预测对象包括 traffic flow 与 traffic speed。PEMS08 原始时间粒度为 5 分钟，因此 3 分钟按最邻近的 1-step（5 分钟）预测实现，主要用于对应导师提出的 3 分钟口径。这个实验不使用 pixel 表或车辆框，只用于证明本文报告覆盖短时状态预测和长时交通流/速度预测两类任务。",
+                f"为和对比文献中的交通量/速度长时预测形成同口径补充，额外在 `{long_forecast.get('dataset', 'PEMS')}` 上做 5/15/30 分钟预测。该数据包含 {shape.get('time_steps', '?')} 个 5 分钟时间步、{shape.get('sensors', '?')} 个检测器，预测对象包括 traffic flow 与 traffic speed。由于 PeMS08 原始时间粒度为 5 分钟，无法构造真实 3 分钟标签，报告中不再重复列 3 分钟结果。这个实验不使用 pixel 表或车辆框，只用于证明本文报告覆盖短时状态预测和长时交通流/速度预测两类任务。",
                 "",
             ]
         )
@@ -1331,7 +1315,7 @@ def write_report(root: Path) -> None:
             [
                 "![PeMS长时交通流预测](../outputs/figures/long_horizon_forecasting.png)",
                 "",
-                "结果显示 Ours-TSFusion 在 traffic flow 与 traffic speed 的 3/5/15/30 分钟展望期上均取得最低 MAE/RMSE。这个模型只使用训练集拟合 Ridge-Lag，并在验证集上学习 Persistence、Seasonal Persistence、Historical Average 与 Ridge-Lag 的非负融合权重，不使用测试集调参。论文写作时应明确：这部分验证的是长时间序列预测能力和融合策略的可迁移性；UTE 主实验验证的是 OBB 标注、HF-GO 空间占有率和四类状态识别能力，二者不能混写成同一个创新证据。",
+                "结果显示 Ours-TSFusion 在 traffic flow 与 traffic speed 的 5/15/30 分钟展望期上均取得最低 MAE/RMSE。这个模型只使用训练集拟合 Ridge-Lag，并在验证集上学习 Persistence、Seasonal Persistence、Historical Average 与 Ridge-Lag 的非负融合权重，不使用测试集调参。论文写作时应明确：这部分验证的是长时间序列预测能力和融合策略的可迁移性；UTE 主实验验证的是 OBB 标注、HF-GO 空间占有率和四类状态识别能力，二者不能混写成同一个创新证据。",
                 "",
             ]
         )
@@ -1566,7 +1550,6 @@ def write_report(root: Path) -> None:
             "- `outputs/figures/mgti_risk_by_state.png` — MGTI 复合风险箱线图",
             "- `outputs/figures/shap_summary_xgboost_obb.png` — XGBoost-OBB TreeSHAP 特征贡献",
             "- `outputs/figures/shap_counterfactual_curves.png` — SHAP 引导反事实曲线",
-            "- `outputs/figures/conformal_sweep.png` — conformal 置信水平扫线",
             "- `outputs/figures/ablation_ttest_matrix.png` — 消融实验配对 t 检验矩阵",
             "",
             "**OBB 抽帧可视化：**",

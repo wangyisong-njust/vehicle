@@ -29,47 +29,6 @@
       "unit": "veh/5min",
       "mape_threshold": 10.0,
       "horizons": {
-        "3min": {
-          "horizon_minutes": 3,
-          "horizon_steps": 1,
-          "effective_minutes": 5,
-          "train_samples": 10701,
-          "validation_samples": 3571,
-          "test_samples": 3571,
-          "fusion_weights": {
-            "Persistence": 0.550000011920929,
-            "SeasonalPersistence": 0.05000000074505806,
-            "HistoricalAverage": 0.0,
-            "RidgeLag": 0.4000000059604645
-          },
-          "models": {
-            "Persistence": {
-              "mae": 15.880363464355469,
-              "rmse": 24.56263294135461,
-              "mape": 8.823223412036896
-            },
-            "SeasonalPersistence": {
-              "mae": 36.4236946105957,
-              "rmse": 60.68001691763937,
-              "mape": 20.99090814590454
-            },
-            "HistoricalAverage": {
-              "mae": 36.361202239990234,
-              "rmse": 54.15897731880422,
-              "mape": 22.066673636436462
-            },
-            "RidgeLag": {
-              "mae": 17.130300521850586,
-              "rmse": 25.760019667718616,
-              "mape": 9.35979038476944
-            },
-            "Ours-TSFusion": {
-              "mae": 14.2622709274292,
-              "rmse": 21.659355612457055,
-              "mape": 7.931297272443771
-            }
-          }
-        },
         "5min": {
           "horizon_minutes": 5,
           "horizon_steps": 1,
@@ -201,47 +160,6 @@
       "unit": "mph",
       "mape_threshold": 1.0,
       "horizons": {
-        "3min": {
-          "horizon_minutes": 3,
-          "horizon_steps": 1,
-          "effective_minutes": 5,
-          "train_samples": 10701,
-          "validation_samples": 3571,
-          "test_samples": 3571,
-          "fusion_weights": {
-            "Persistence": 0.8999999761581421,
-            "SeasonalPersistence": 0.0,
-            "HistoricalAverage": 0.0,
-            "RidgeLag": 0.10000000149011612
-          },
-          "models": {
-            "Persistence": {
-              "mae": 0.7930589914321899,
-              "rmse": 1.5279090401103967,
-              "mape": 1.4064312912523746
-            },
-            "SeasonalPersistence": {
-              "mae": 2.7878780364990234,
-              "rmse": 6.415750743676103,
-              "mape": 5.968265235424042
-            },
-            "HistoricalAverage": {
-              "mae": 2.539405107498169,
-              "rmse": 5.31554226998746,
-              "mape": 5.798926576972008
-            },
-            "RidgeLag": {
-              "mae": 1.330505132675171,
-              "rmse": 2.448742103739183,
-              "mape": 2.5956299155950546
-            },
-            "Ours-TSFusion": {
-              "mae": 0.7894105315208435,
-              "rmse": 1.5206685259979222,
-              "mape": 1.4175948686897755
-            }
-          }
-        },
         "5min": {
           "horizon_minutes": 5,
           "horizon_steps": 1,
@@ -370,47 +288,6 @@
   },
   "target": "traffic_flow_channel_0",
   "horizons": {
-    "3min": {
-      "horizon_minutes": 3,
-      "horizon_steps": 1,
-      "effective_minutes": 5,
-      "train_samples": 10701,
-      "validation_samples": 3571,
-      "test_samples": 3571,
-      "fusion_weights": {
-        "Persistence": 0.550000011920929,
-        "SeasonalPersistence": 0.05000000074505806,
-        "HistoricalAverage": 0.0,
-        "RidgeLag": 0.4000000059604645
-      },
-      "models": {
-        "Persistence": {
-          "mae": 15.880363464355469,
-          "rmse": 24.56263294135461,
-          "mape": 8.823223412036896
-        },
-        "SeasonalPersistence": {
-          "mae": 36.4236946105957,
-          "rmse": 60.68001691763937,
-          "mape": 20.99090814590454
-        },
-        "HistoricalAverage": {
-          "mae": 36.361202239990234,
-          "rmse": 54.15897731880422,
-          "mape": 22.066673636436462
-        },
-        "RidgeLag": {
-          "mae": 17.130300521850586,
-          "rmse": 25.760019667718616,
-          "mape": 9.35979038476944
-        },
-        "Ours-TSFusion": {
-          "mae": 14.2622709274292,
-          "rmse": 21.659355612457055,
-          "mape": 7.931297272443771
-        }
-      }
-    },
     "5min": {
       "horizon_minutes": 5,
       "horizon_steps": 1,

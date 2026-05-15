@@ -156,7 +156,7 @@ data_check/PKDD/PKDD-8/sample video.mp4
 | 当前状态识别 | XAM-N-6 | 70% 训练、30% 测试，按四类状态分层随机划分 |
 | 近五年文献方法对比 | XAM-N-6 | 与当前状态识别共用同一分层划分，补充 SVM/RF/KNN/GBDT/XGBoost 等基线 |
 | 消融实验 | XAM-N-6 | 5 折分层交叉验证 |
-| 参数敏感性 | XAM-N-6 | 5 折交叉验证；预测步长补充 1/3/5/8/30/60/120/180/300 秒 |
+| 参数敏感性 | XAM-N-6 | 5 折交叉验证；正文展示 1/3/5/8 秒，30 秒以上仅保留为 JSON 失败模式记录 |
 | 未来状态预测 | XAM-N-6 | 按时间顺序前 70% 训练、后 30% 测试，默认预测 3 秒后状态 |
 | LSTM/Fusion | XAM-N-6 | 训练段后 20% 作为验证段，用于融合权重选择 |
 | 恶化预测 | XAM-N-6 | 连续时间分组 GroupKFold out-of-fold 评估 |
@@ -166,10 +166,10 @@ data_check/PKDD/PKDD-8/sample video.mp4
 
 - 当前状态识别用分层随机划分，目的是检验四类状态在特征空间中的可分性；时间序列划分另作为补充，专门观察未见时段泛化。
 - 近五年文献方法对比使用 SVM、RF、KNN、GBDT、XGBoost、LSTM、GRU 等常见基线；状态识别基线共用同一分层划分，时序模型在未来预测任务中比较。
-- 未来状态预测必须按时间顺序训练和测试，避免把未来窗口信息泄露到训练段。主实验预测 3 秒后状态；长时预测在参数敏感性中补充，30/60/120/180 秒用于观察长时退化趋势，300 秒接近 XAM-N-6 视频长度上限，只作为边界检查。
+- 未来状态预测必须按时间顺序训练和测试，避免把未来窗口信息泄露到训练段。主实验预测 3 秒后状态；正文只展示 1/3/5/8 秒短时状态预测。30 秒以上状态预测因类别支持不足，保留为失败模式/覆盖范围分析，不作为论文主结果。
 - 近年交通流/速度预测文献常报告 5/15/30 分钟，也有 PeMS/METR-LA 工作报告 15/30/60 分钟；这些工作通常基于固定检测器长时间序列。本项目主数据 XAM-N-6 约 5.5 分钟，不能把 15/30 分钟写成 UTE 主实验结论。
-- 如需和长时预测论文完全同口径对比，建议另建 PeMS/METR-LA 扩展实验：预测对象改为流量或速度，步长设为 3/5/15/30 分钟或 15/30/60 分钟；但这类数据通常没有 pixel 表和车辆框，不能验证本项目的 HBB→OBB、HF-GO 和车辆微观扰动特征。
-- 扩展实验可使用 PeMSD4/PeMSD8、METR-LA 或 PEMS-BAY，当前脚本在 PeMS08 上同时预测 flow 与 speed，并实现 Persistence、Seasonal Persistence、Historical Average、Ridge-Lag 和验证集调权的 Ours-TSFusion；如果后续要冲更强长时预测论文口径，可继续加入 ARIMA、SVR、LSTM、GRU、DCRNN、STGCN、GraphWaveNet、TYRE 等。这属于“长时交通流/速度预测”补充，不应替代 UTE 主实验。
+- 为和长时预测论文同口径补充，当前另建 PeMS08 扩展实验：预测对象改为 flow 与 speed，步长设为 5/15/30 分钟；PeMS08 原始粒度为 5 分钟，不能构造真实 3 分钟标签，因此不重复列 3 分钟结果。这类数据没有 pixel 表和车辆框，不能验证本项目的 HBB→OBB、HF-GO 和车辆微观扰动特征。
+- 扩展实验当前脚本实现 Persistence、Seasonal Persistence、Historical Average、Ridge-Lag 和验证集调权的 Ours-TSFusion；如果后续要冲更强长时预测论文口径，可继续加入 ARIMA、SVR、LSTM、GRU、DCRNN、STGCN、GraphWaveNet、TYRE 等。这属于“长时交通流/速度预测”补充，不应替代 UTE 主实验。
 - 恶化预测正样本较少，单次 70/30 切分容易把恶化事件集中切到一侧，所以改用连续时间分组 GroupKFold 的 out-of-fold 评估。
 - LSTM 使用低维 V+D+F 时序通道，减少 324 个窗口小样本下的过拟合；XGBoost 使用完整 OBB/HF-GO/MGTI 特征，承担高维非线性判别。
 
@@ -190,7 +190,7 @@ bash scripts/run_all.sh
 5. `scripts/06_validate_obb_effect.py`：输出 OBB 效果补充验证 JSON；
 6. `scripts/04_make_report.py`：汇总生成 `docs/experiment_report.md`。
 
-长时交通流/速度预测扩展实验不放进 `run_all.sh`，因为它会额外下载 PeMS08 数据。需要复现 3/5/15/30 分钟结果时单独运行：
+长时交通流/速度预测扩展实验不放进 `run_all.sh`，因为它会额外下载 PeMS08 数据。需要复现 5/15/30 分钟结果时单独运行：
 
 ```bash
 python scripts/07_run_long_horizon_forecasting.py --dataset PEMS08 --auto-download
@@ -237,7 +237,7 @@ python scripts/04_make_report.py
 | `outputs/processed/` | HBB 转 OBB 后的标注表，包含角度、角度置信度和四点坐标 |
 | `outputs/features/` | 滑窗特征表 |
 | `outputs/reports/` | JSON 指标、核验结果和中间摘要，含 PeMS08 长时预测扩展结果 |
-| `outputs/figures/` | 混淆矩阵、预测曲线、消融图、参数敏感性图、PeMS08 长时预测图、稳健性图、TreeSHAP 图、SHAP 反事实曲线、conformal 扫线、消融 t 检验矩阵、R/F 散点图、V-D-R-F 特征空间、PKDD 概率图、状态时空图、HF-GO 局部对比和 OBB 抽帧可视化 |
+| `outputs/figures/` | 混淆矩阵、预测曲线、消融图、参数敏感性图、PeMS08 长时预测图、稳健性图、TreeSHAP 图、SHAP 反事实曲线、消融 t 检验矩阵、R/F 散点图、V-D-R-F 特征空间、PKDD 概率图、状态时空图、HF-GO 局部对比和 OBB 抽帧可视化 |
 | `docs/experiment_report.md` | 最终实验报告 |
 
 ## 9. 复现成功的判断
