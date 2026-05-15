@@ -4,7 +4,7 @@
 
 ## 核心结论
 
-本文在 UTE 真实无人机数据上完成“水平框零训练补角度、HF-GO 网格空间表达、四类状态识别、短时未来预测、稀疏恶化预警”的完整实验链路。核心发现有四点。
+本文在 UTE 真实无人机数据上完成“水平框零训练补角度、HF-GO 网格空间表达、四类状态识别、短时未来预测、稀疏恶化预警”的完整实验链路，并补充 PeMS08 长时交通流/速度预测扩展。核心发现有五点。
 
 **第一，HBB 转 OBB 的零训练方法在公开数据上可行。** XAM-N-6 直接估角率为 96.66%，PKDD-8 为 98.62%，XAM-N-5 为 99.92%；XAM-N-6 抽样几何核验中，旋转框面积有效率为 100.00%。这说明轨迹方向反推角度可以稳定生成与 pixel 表逐行对应的 OBB 标注，不需要重新训练检测器，也不破坏车辆编号、速度、加速度、车道等运动学字段。
 
@@ -13,6 +13,8 @@
 **第三，PR-AUC 更能说明恶化预警中的微观特征价值。** 5s 展望期下，M4 的 PR-AUC 为 0.3007，而 V+D 基线为 0.1652，相当于提升到基线的 1.82 倍；ROC-AUC 同步从 0.5489 上升到 0.6341。由于正样本只占 12.9%，PR-AUC 比 ROC-AUC 更贴近稀疏预警任务。
 
 **第四，PKDD 自由流场景给出了零样本跨场景核验。** PKDD-8 上 1059 个窗口全部判为畅通，畅通类预测概率 P05=0.971、P50=0.982、P95=0.990。这个结果说明模型在自由流场景下做出高置信的保守判断，而不是在跨场景数据上产生随机拥堵或多数类陷阱。
+
+**第五，长时预测扩展与参考文献的交通量/速度口径对齐。** 额外在 PeMS08 上按 3/5/15/30 分钟预测 traffic flow 与 traffic speed，并统一比较 Persistence、Seasonal Persistence、Historical Average、Ridge-Lag 和 Ours-TSFusion。PeMS08 为 5 分钟采样，3 分钟按最近的 1-step（5 分钟）实现；该扩展验证的是时序融合模块的长时适用性，不替代 UTE 上 OBB、HF-GO 和车辆微观扰动特征的主创新验证。
 
 ---
 
@@ -130,7 +132,7 @@ $$S=0.65\,Robust(1-v/v_{lim})+0.25\,Robust(\rho)+0.10\,Robust(O_{HFGO}),\qquad s
 | CNN/LSTM 类时序预测 | Reza 等 2022 年交通状态预测研究采用 1D-CNN 与 LSTM，并讨论 LSTM/GRU 在交通状态预测中的作用 | 在未来状态预测中加入 LSTM-future，并保留 XGBoost 静态/趋势通道 |
 | 深度学习交通拥堵预测 | 2023 年交通拥堵预测研究总结了神经网络、SVM 与深度学习方法在拥堵预测中的应用 | 把 XGBoost、SVM、LSTM/GRU 作为未来状态预测和识别任务的对照组 |
 | LSTM / GRU 记忆型循环网络 | 2023 年交通量预测研究直接比较 LSTM 与 GRU 两类记忆型循环网络 | 在未来状态预测中新增 GRU-future，与 LSTM-future 同口径比较 |
-| 长时交通流/速度预测 | 近年交通流/速度预测论文常报告 5/15/30 分钟，部分 PeMS/METR-LA 工作报告 15/30/60 分钟 | UTE 主场景补充 30/60/120/180/300 秒可行性；PeMS08 扩展实验补充 3/5/15/30 分钟 |
+| 长时交通流/速度预测 | 近年交通流/速度预测论文常报告 5/15/30 分钟，部分 PeMS/METR-LA 工作报告 15/30/60 分钟 | UTE 主场景补充 30/60/120/180/300 秒可行性；PeMS08 扩展实验补充 3/5/15/30 分钟 flow/speed |
 
 参考文献链接：
 
@@ -334,32 +336,63 @@ R/F 相关性用于解释 `M2`、`M3'` 和 `M3` 的差异：F 在方向扰动上
 
 如果导师要求与长时交通预测论文完全同口径对比，建议把它作为扩展实验单独设计：数据集选 PeMSD4/PeMSD8、METR-LA 或 PEMS-BAY，预测对象改为速度/流量连续值，展望期设为 3/5/15/30 分钟或 15/30/60 分钟，并加入 HA、ARIMA、SVR、LSTM、GRU、DCRNN、STGCN、GraphWaveNet、TYRE 等文献基线。这个扩展能对齐长时预测文献，但它不含 pixel 表和车辆框，不能替代本文 UTE 上的 HBB→OBB、HF-GO 和微观扰动特征验证；论文中应把二者写成“主数据创新验证 + 长时预测扩展对齐”。
 
-### 1.7.1 PeMS 长时交通流预测扩展
+### 1.7.1 PeMS 长时交通流/速度预测扩展
 
-为和对比文献中的交通量/速度长时预测形成同口径补充，额外在 `PEMS08` 上做 3/5/15/30 分钟交通流预测。该数据包含 17856 个 5 分钟时间步、170 个检测器，预测对象为 traffic flow。PEMS08 原始时间粒度为 5 分钟，因此 3 分钟按最邻近的 1-step（5 分钟）预测实现，主要用于对应导师提出的 3 分钟口径。这个实验不使用 pixel 表或车辆框，只用于证明本文报告覆盖短时状态预测和长时交通流预测两类任务。
+为和对比文献中的交通量/速度长时预测形成同口径补充，额外在 `PEMS08` 上做 3/5/15/30 分钟预测。该数据包含 17856 个 5 分钟时间步、170 个检测器，预测对象包括 traffic flow 与 traffic speed。PEMS08 原始时间粒度为 5 分钟，因此 3 分钟按最邻近的 1-step（5 分钟）预测实现，主要用于对应导师提出的 3 分钟口径。这个实验不使用 pixel 表或车辆框，只用于证明本文报告覆盖短时状态预测和长时交通流/速度预测两类任务。
 
-| Horizon | Model | MAE | RMSE | MAPE | Train/Test samples |
-|---:|---|---:|---:|---:|---|
-| 3min | Persistence | 15.880 | 24.563 | 8.82% | 10701/3571 |
-| 3min | HistoricalAverage | 36.361 | 54.159 | 22.07% | 10701/3571 |
-| 3min | RidgeLag | 17.130 | 25.760 | 9.36% | 10701/3571 |
-| 3min | Ours-TSFusion | 14.306 | 21.744 | 7.92% | 10701/3571 |
-| 5min | Persistence | 15.880 | 24.563 | 8.82% | 10701/3571 |
-| 5min | HistoricalAverage | 36.361 | 54.159 | 22.07% | 10701/3571 |
-| 5min | RidgeLag | 17.130 | 25.760 | 9.36% | 10701/3571 |
-| 5min | Ours-TSFusion | 14.306 | 21.744 | 7.92% | 10701/3571 |
-| 15min | Persistence | 19.512 | 29.838 | 10.73% | 10701/3569 |
-| 15min | HistoricalAverage | 36.361 | 54.157 | 22.07% | 10701/3569 |
-| 15min | RidgeLag | 19.365 | 29.152 | 10.60% | 10701/3569 |
-| 15min | Ours-TSFusion | 16.752 | 25.427 | 9.22% | 10701/3569 |
-| 30min | Persistence | 24.191 | 36.679 | 13.48% | 10701/3566 |
-| 30min | HistoricalAverage | 36.361 | 54.153 | 22.08% | 10701/3566 |
-| 30min | RidgeLag | 21.455 | 32.519 | 12.07% | 10701/3566 |
-| 30min | Ours-TSFusion | 19.198 | 29.073 | 10.79% | 10701/3566 |
+**Traffic flow（veh/5min）**
+
+| Horizon | Effective horizon | Model | MAE | RMSE | MAPE | Train/Test samples |
+|---:|---:|---|---:|---:|---:|---|
+| 3min | 5min | Persistence | 15.880 | 24.563 | 8.82% | 10701/3571 |
+| 3min | 5min | SeasonalPersistence | 36.424 | 60.680 | 20.99% | 10701/3571 |
+| 3min | 5min | HistoricalAverage | 36.361 | 54.159 | 22.07% | 10701/3571 |
+| 3min | 5min | RidgeLag | 17.130 | 25.760 | 9.36% | 10701/3571 |
+| 3min | 5min | Ours-TSFusion | 14.262 | 21.659 | 7.93% | 10701/3571 |
+| 5min | 5min | Persistence | 15.880 | 24.563 | 8.82% | 10701/3571 |
+| 5min | 5min | SeasonalPersistence | 36.424 | 60.680 | 20.99% | 10701/3571 |
+| 5min | 5min | HistoricalAverage | 36.361 | 54.159 | 22.07% | 10701/3571 |
+| 5min | 5min | RidgeLag | 17.130 | 25.760 | 9.36% | 10701/3571 |
+| 5min | 5min | Ours-TSFusion | 14.262 | 21.659 | 7.93% | 10701/3571 |
+| 15min | 15min | Persistence | 19.512 | 29.838 | 10.73% | 10701/3569 |
+| 15min | 15min | SeasonalPersistence | 36.429 | 60.688 | 21.00% | 10701/3569 |
+| 15min | 15min | HistoricalAverage | 36.361 | 54.157 | 22.07% | 10701/3569 |
+| 15min | 15min | RidgeLag | 19.365 | 29.152 | 10.60% | 10701/3569 |
+| 15min | 15min | Ours-TSFusion | 16.611 | 25.240 | 9.16% | 10701/3569 |
+| 30min | 30min | Persistence | 24.191 | 36.679 | 13.48% | 10701/3566 |
+| 30min | 30min | SeasonalPersistence | 36.432 | 60.696 | 21.01% | 10701/3566 |
+| 30min | 30min | HistoricalAverage | 36.361 | 54.153 | 22.08% | 10701/3566 |
+| 30min | 30min | RidgeLag | 21.455 | 32.519 | 12.07% | 10701/3566 |
+| 30min | 30min | Ours-TSFusion | 18.827 | 28.602 | 10.63% | 10701/3566 |
+
+**Traffic speed（mph）**
+
+| Horizon | Effective horizon | Model | MAE | RMSE | MAPE | Train/Test samples |
+|---:|---:|---|---:|---:|---:|---|
+| 3min | 5min | Persistence | 0.793 | 1.528 | 1.41% | 10701/3571 |
+| 3min | 5min | SeasonalPersistence | 2.788 | 6.416 | 5.97% | 10701/3571 |
+| 3min | 5min | HistoricalAverage | 2.539 | 5.316 | 5.80% | 10701/3571 |
+| 3min | 5min | RidgeLag | 1.331 | 2.449 | 2.60% | 10701/3571 |
+| 3min | 5min | Ours-TSFusion | 0.789 | 1.521 | 1.42% | 10701/3571 |
+| 5min | 5min | Persistence | 0.793 | 1.528 | 1.41% | 10701/3571 |
+| 5min | 5min | SeasonalPersistence | 2.788 | 6.416 | 5.97% | 10701/3571 |
+| 5min | 5min | HistoricalAverage | 2.539 | 5.316 | 5.80% | 10701/3571 |
+| 5min | 5min | RidgeLag | 1.331 | 2.449 | 2.60% | 10701/3571 |
+| 5min | 5min | Ours-TSFusion | 0.789 | 1.521 | 1.42% | 10701/3571 |
+| 15min | 15min | Persistence | 1.258 | 2.693 | 2.31% | 10701/3569 |
+| 15min | 15min | SeasonalPersistence | 2.787 | 6.415 | 5.96% | 10701/3569 |
+| 15min | 15min | HistoricalAverage | 2.538 | 5.314 | 5.79% | 10701/3569 |
+| 15min | 15min | RidgeLag | 1.883 | 3.534 | 3.82% | 10701/3569 |
+| 15min | 15min | Ours-TSFusion | 1.237 | 2.572 | 2.40% | 10701/3569 |
+| 30min | 30min | Persistence | 1.635 | 3.718 | 3.12% | 10701/3566 |
+| 30min | 30min | SeasonalPersistence | 2.785 | 6.412 | 5.96% | 10701/3566 |
+| 30min | 30min | HistoricalAverage | 2.537 | 5.311 | 5.79% | 10701/3566 |
+| 30min | 30min | RidgeLag | 2.390 | 4.536 | 4.96% | 10701/3566 |
+| 30min | 30min | Ours-TSFusion | 1.566 | 3.413 | 3.17% | 10701/3566 |
 
 ![PeMS长时交通流预测](../outputs/figures/long_horizon_forecasting.png)
 
-结果显示 Ours-TSFusion 在 3/5/15/30 分钟展望期上均取得最低 MAE/RMSE。这个模型只使用训练集拟合 Ridge-Lag，并在验证集上学习 Persistence、Historical Average 与 Ridge-Lag 的非负融合权重，不使用测试集调参。论文写作时应明确：这部分验证的是长时间序列交通流预测能力；UTE 主实验验证的是 OBB 标注、HF-GO 空间占有率和四类状态识别能力。
+结果显示 Ours-TSFusion 在 traffic flow 与 traffic speed 的 3/5/15/30 分钟展望期上均取得最低 MAE/RMSE。这个模型只使用训练集拟合 Ridge-Lag，并在验证集上学习 Persistence、Seasonal Persistence、Historical Average 与 Ridge-Lag 的非负融合权重，不使用测试集调参。论文写作时应明确：这部分验证的是长时间序列预测能力和融合策略的可迁移性；UTE 主实验验证的是 OBB 标注、HF-GO 空间占有率和四类状态识别能力，二者不能混写成同一个创新证据。
 
 ## 1.8 多随机种子稳健性检验
 

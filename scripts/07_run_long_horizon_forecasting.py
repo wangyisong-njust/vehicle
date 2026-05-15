@@ -22,12 +22,27 @@ DATASETS = {
     "PEMS08": {
         "url": "https://raw.githubusercontent.com/guoshnBJTU/ASTGNN/master/data/PEMS08/PEMS08.npz",
         "interval_minutes": 5,
-        "description": "PeMSD8 traffic flow data, 170 sensors, 5-minute interval.",
+        "description": "PeMSD8 traffic flow/occupancy/speed data, 170 sensors, 5-minute interval.",
     },
     "PEMS04": {
         "url": "https://raw.githubusercontent.com/guoshnBJTU/ASTGNN/master/data/PEMS04/PEMS04.npz",
         "interval_minutes": 5,
-        "description": "PeMSD4 traffic flow data, 307 sensors, 5-minute interval.",
+        "description": "PeMSD4 traffic flow/occupancy/speed data, 307 sensors, 5-minute interval.",
+    },
+}
+
+TARGETS = {
+    "flow": {
+        "channel": 0,
+        "label": "Traffic flow",
+        "mape_threshold": 10.0,
+        "unit": "veh/5min",
+    },
+    "speed": {
+        "channel": 2,
+        "label": "Traffic speed",
+        "mape_threshold": 1.0,
+        "unit": "mph",
     },
 }
 
@@ -62,12 +77,12 @@ def masked_mape(true: np.ndarray, pred: np.ndarray, threshold: float = 10.0) -> 
     return float(np.mean(np.abs((true[mask] - pred[mask]) / true[mask])) * 100.0)
 
 
-def metrics(true: np.ndarray, pred: np.ndarray) -> dict[str, float]:
+def metrics(true: np.ndarray, pred: np.ndarray, mape_threshold: float = 10.0) -> dict[str, float]:
     diff = pred - true
     return {
         "mae": float(np.mean(np.abs(diff))),
         "rmse": float(math.sqrt(np.mean(diff * diff))),
-        "mape": masked_mape(true, pred),
+        "mape": masked_mape(true, pred, threshold=mape_threshold),
     }
 
 
@@ -92,23 +107,39 @@ def historical_average(data: np.ndarray, train_end: int, target_positions: np.nd
     return np.asarray(preds, dtype=np.float32)
 
 
+def seasonal_persistence(data: np.ndarray, fallback_end: int, target_positions: np.ndarray, slots_per_day: int) -> np.ndarray:
+    fallback = data[:fallback_end].mean(axis=0)
+    preds = []
+    for t in target_positions:
+        source_t = int(t) - slots_per_day
+        if source_t >= 0:
+            preds.append(data[source_t])
+        else:
+            preds.append(fallback)
+    return np.asarray(preds, dtype=np.float32)
+
+
+def simplex_partitions(n_parts: int, total_units: int, prefix: tuple[int, ...] = ()) -> list[tuple[int, ...]]:
+    if n_parts == 1:
+        return [prefix + (total_units,)]
+    out: list[tuple[int, ...]] = []
+    for value in range(total_units + 1):
+        out.extend(simplex_partitions(n_parts - 1, total_units - value, prefix + (value,)))
+    return out
+
+
 def optimize_fusion_weights(true: np.ndarray, preds: dict[str, np.ndarray]) -> dict[str, float]:
     names = list(preds)
-    if len(names) != 3:
-        raise ValueError("This lightweight fusion expects exactly three prediction channels.")
     best_score = float("inf")
     best_weights = {name: 1.0 / len(names) for name in names}
-    grid = np.linspace(0.0, 1.0, 41)
-    for w0 in grid:
-        for w1 in grid:
-            if w0 + w1 > 1.0:
-                continue
-            weights = np.array([w0, w1, 1.0 - w0 - w1], dtype=np.float32)
-            pred = sum(weights[i] * preds[name] for i, name in enumerate(names))
-            score = metrics(true, pred)["mae"]
-            if score < best_score:
-                best_score = score
-                best_weights = {name: float(weights[i]) for i, name in enumerate(names)}
+    # A 0.05 simplex grid keeps the fusion validation-only and deterministic.
+    for partition in simplex_partitions(len(names), total_units=20):
+        weights = np.asarray(partition, dtype=np.float32) / 20.0
+        pred = sum(weights[i] * preds[name] for i, name in enumerate(names))
+        score = metrics(true, pred)["mae"]
+        if score < best_score:
+            best_score = score
+            best_weights = {name: float(weights[i]) for i, name in enumerate(names)}
     return best_weights
 
 
@@ -120,13 +151,91 @@ def weighted_sum(preds: dict[str, np.ndarray], weights: dict[str, float]) -> np.
     return out
 
 
+def run_target(
+    data: np.ndarray,
+    target_meta: dict[str, object],
+    interval_minutes: int,
+    train_end: int,
+    test_start: int,
+    slots_per_day: int,
+    lags: list[int],
+) -> dict[str, object]:
+    out: dict[str, object] = {
+        "channel": int(target_meta["channel"]),
+        "label": str(target_meta["label"]),
+        "unit": str(target_meta["unit"]),
+        "mape_threshold": float(target_meta["mape_threshold"]),
+        "horizons": {},
+    }
+    mape_threshold = float(target_meta["mape_threshold"])
+
+    for horizon_minutes in [3, 5, 15, 30]:
+        horizon_steps = max(1, int(round(horizon_minutes / interval_minutes)))
+        positions, x, y = make_supervised(data, horizon_steps, lags)
+        train_mask = positions < train_end
+        val_mask = (positions >= train_end) & (positions < test_start)
+        test_mask = positions >= test_start
+        x_train, y_train = x[train_mask], y[train_mask]
+        x_val, y_val = x[val_mask], y[val_mask]
+        x_test, y_test = x[test_mask], y[test_mask]
+        val_target_positions = positions[val_mask] + horizon_steps
+        target_positions = positions[test_mask] + horizon_steps
+
+        persistence_val = data[positions[val_mask]]
+        persistence_pred = data[positions[test_mask]]
+        seasonal_val = seasonal_persistence(data, train_end, val_target_positions, slots_per_day)
+        seasonal_pred = seasonal_persistence(data, train_end, target_positions, slots_per_day)
+        ha_val = historical_average(data, train_end, val_target_positions, slots_per_day)
+        ha_pred = historical_average(data, train_end, target_positions, slots_per_day)
+
+        scaler = StandardScaler()
+        x_train_scaled = scaler.fit_transform(x_train)
+        x_val_scaled = scaler.transform(x_val)
+        x_test_scaled = scaler.transform(x_test)
+        ridge = Ridge(alpha=10.0)
+        ridge.fit(x_train_scaled, y_train)
+        ridge_val = ridge.predict(x_val_scaled)
+        ridge_pred = ridge.predict(x_test_scaled)
+        val_preds = {
+            "Persistence": persistence_val,
+            "SeasonalPersistence": seasonal_val,
+            "HistoricalAverage": ha_val,
+            "RidgeLag": ridge_val,
+        }
+        test_preds = {
+            "Persistence": persistence_pred,
+            "SeasonalPersistence": seasonal_pred,
+            "HistoricalAverage": ha_pred,
+            "RidgeLag": ridge_pred,
+        }
+        fusion_weights = optimize_fusion_weights(y_val, val_preds)
+        fusion_pred = weighted_sum(test_preds, fusion_weights)
+
+        out["horizons"][f"{horizon_minutes}min"] = {
+            "horizon_minutes": horizon_minutes,
+            "horizon_steps": int(horizon_steps),
+            "effective_minutes": int(horizon_steps * interval_minutes),
+            "train_samples": int(x_train.shape[0]),
+            "validation_samples": int(x_val.shape[0]),
+            "test_samples": int(x_test.shape[0]),
+            "fusion_weights": fusion_weights,
+            "models": {
+                "Persistence": metrics(y_test, persistence_pred, mape_threshold),
+                "SeasonalPersistence": metrics(y_test, seasonal_pred, mape_threshold),
+                "HistoricalAverage": metrics(y_test, ha_pred, mape_threshold),
+                "RidgeLag": metrics(y_test, ridge_pred, mape_threshold),
+                "Ours-TSFusion": metrics(y_test, fusion_pred, mape_threshold),
+            },
+        }
+    return out
+
+
 def run_dataset(dataset: str, auto_download: bool) -> dict[str, object]:
     meta = DATASETS[dataset]
     interval_minutes = int(meta["interval_minutes"])
     data_path = download_if_needed(dataset, PROJECT_ROOT / "data" / "long_horizon", auto_download)
     raw = np.load(data_path)["data"].astype(np.float32)
-    flow = raw[:, :, 0]
-    total_steps, sensors = flow.shape
+    total_steps, sensors = raw[:, :, 0].shape
     train_end = int(total_steps * 0.6)
     test_start = int(total_steps * 0.8)
     slots_per_day = int(round(24 * 60 / interval_minutes))
@@ -149,88 +258,60 @@ def run_dataset(dataset: str, auto_download: bool) -> dict[str, object]:
             "train_end_step": train_end,
             "test_start_step": test_start,
         },
-        "target": "traffic_flow_channel_0",
         "lags_steps": lags,
-        "horizons": {},
+        "targets": {},
     }
 
-    for horizon_minutes in [3, 5, 15, 30]:
-        horizon_steps = max(1, int(round(horizon_minutes / interval_minutes)))
-        positions, x, y = make_supervised(flow, horizon_steps, lags)
-        train_mask = positions < train_end
-        val_mask = (positions >= train_end) & (positions < test_start)
-        test_mask = positions >= test_start
-        x_train, y_train = x[train_mask], y[train_mask]
-        x_val, y_val = x[val_mask], y[val_mask]
-        x_test, y_test = x[test_mask], y[test_mask]
-        val_target_positions = positions[val_mask] + horizon_steps
-        target_positions = positions[test_mask] + horizon_steps
-
-        persistence_val = flow[positions[val_mask]]
-        persistence_pred = flow[positions[test_mask]]
-        ha_val = historical_average(flow, train_end, val_target_positions, slots_per_day)
-        ha_pred = historical_average(flow, train_end, target_positions, slots_per_day)
-
-        scaler = StandardScaler()
-        x_train_scaled = scaler.fit_transform(x_train)
-        x_val_scaled = scaler.transform(x_val)
-        x_test_scaled = scaler.transform(x_test)
-        ridge = Ridge(alpha=10.0)
-        ridge.fit(x_train_scaled, y_train)
-        ridge_val = ridge.predict(x_val_scaled)
-        ridge_pred = ridge.predict(x_test_scaled)
-        val_preds = {
-            "Persistence": persistence_val,
-            "HistoricalAverage": ha_val,
-            "RidgeLag": ridge_val,
-        }
-        test_preds = {
-            "Persistence": persistence_pred,
-            "HistoricalAverage": ha_pred,
-            "RidgeLag": ridge_pred,
-        }
-        fusion_weights = optimize_fusion_weights(y_val, val_preds)
-        fusion_pred = weighted_sum(test_preds, fusion_weights)
-
-        results["horizons"][f"{horizon_minutes}min"] = {
-            "horizon_minutes": horizon_minutes,
-            "horizon_steps": int(horizon_steps),
-            "train_samples": int(x_train.shape[0]),
-            "validation_samples": int(x_val.shape[0]),
-            "test_samples": int(x_test.shape[0]),
-            "fusion_weights": fusion_weights,
-            "models": {
-                "Persistence": metrics(y_test, persistence_pred),
-                "HistoricalAverage": metrics(y_test, ha_pred),
-                "RidgeLag": metrics(y_test, ridge_pred),
-                "Ours-TSFusion": metrics(y_test, fusion_pred),
-            },
-        }
+    for target_name, target_meta in TARGETS.items():
+        channel = int(target_meta["channel"])
+        if raw.ndim == 3 and channel < raw.shape[2]:
+            results["targets"][target_name] = run_target(
+                raw[:, :, channel],
+                target_meta,
+                interval_minutes,
+                train_end,
+                test_start,
+                slots_per_day,
+                lags,
+            )
+    # Backward-compatible alias for existing report consumers.
+    if "flow" in results["targets"]:
+        results["target"] = "traffic_flow_channel_0"
+        results["horizons"] = results["targets"]["flow"]["horizons"]
     return results
 
 
 def plot_results(report: dict[str, object], out_path: Path) -> None:
-    horizons = list(report["horizons"].keys())
-    models = ["Persistence", "HistoricalAverage", "RidgeLag", "Ours-TSFusion"]
-    x = np.arange(len(horizons))
-    width = 0.19
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-    colors = ["#9aa0a6", "#4c78a8", "#f58518", "#54a24b"]
-    for i, model in enumerate(models):
-        mae = [report["horizons"][h]["models"][model]["mae"] for h in horizons]
-        rmse = [report["horizons"][h]["models"][model]["rmse"] for h in horizons]
-        offset = (i - (len(models) - 1) / 2) * width
-        axes[0].bar(x + offset, mae, width=width, label=model, color=colors[i])
-        axes[1].bar(x + offset, rmse, width=width, label=model, color=colors[i])
-    for ax, ylabel in [(axes[0], "MAE"), (axes[1], "RMSE")]:
-        ax.set_xticks(x)
-        ax.set_xticklabels(horizons)
-        ax.set_ylabel(ylabel)
-        ax.set_xlabel("Prediction horizon")
-        ax.grid(axis="y", alpha=0.25)
-    axes[0].set_title(f"{report['dataset']} long-horizon flow forecasting")
-    axes[1].set_title("Lower is better")
-    axes[1].legend()
+    targets = report.get("targets") or {"flow": {"label": "Traffic flow", "horizons": report["horizons"]}}
+    model_order = ["Persistence", "SeasonalPersistence", "HistoricalAverage", "RidgeLag", "Ours-TSFusion"]
+    fig, axes = plt.subplots(len(targets), 2, figsize=(12, 4 * len(targets)), squeeze=False)
+    colors = {
+        "Persistence": "#9aa0a6",
+        "SeasonalPersistence": "#b279a2",
+        "HistoricalAverage": "#4c78a8",
+        "RidgeLag": "#f58518",
+        "Ours-TSFusion": "#54a24b",
+    }
+    for row, (_target_name, target_data) in enumerate(targets.items()):
+        horizons = list(target_data["horizons"].keys())
+        models = [m for m in model_order if all(m in target_data["horizons"][h]["models"] for h in horizons)]
+        x = np.arange(len(horizons))
+        width = min(0.16, 0.78 / max(len(models), 1))
+        for i, model in enumerate(models):
+            mae = [target_data["horizons"][h]["models"][model]["mae"] for h in horizons]
+            rmse = [target_data["horizons"][h]["models"][model]["rmse"] for h in horizons]
+            offset = (i - (len(models) - 1) / 2) * width
+            axes[row][0].bar(x + offset, mae, width=width, label=model, color=colors.get(model))
+            axes[row][1].bar(x + offset, rmse, width=width, label=model, color=colors.get(model))
+        for ax, ylabel in [(axes[row][0], "MAE"), (axes[row][1], "RMSE")]:
+            ax.set_xticks(x)
+            ax.set_xticklabels(horizons)
+            ax.set_ylabel(ylabel)
+            ax.set_xlabel("Prediction horizon")
+            ax.grid(axis="y", alpha=0.25)
+        axes[row][0].set_title(f"{report['dataset']} {target_data.get('label', 'target')} forecasting")
+        axes[row][1].set_title("Lower is better")
+    axes[0][1].legend(loc="upper left", bbox_to_anchor=(1.02, 1.0))
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=200)

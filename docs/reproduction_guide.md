@@ -169,7 +169,7 @@ data_check/PKDD/PKDD-8/sample video.mp4
 - 未来状态预测必须按时间顺序训练和测试，避免把未来窗口信息泄露到训练段。主实验预测 3 秒后状态；长时预测在参数敏感性中补充，30/60/120/180 秒用于观察长时退化趋势，300 秒接近 XAM-N-6 视频长度上限，只作为边界检查。
 - 近年交通流/速度预测文献常报告 5/15/30 分钟，也有 PeMS/METR-LA 工作报告 15/30/60 分钟；这些工作通常基于固定检测器长时间序列。本项目主数据 XAM-N-6 约 5.5 分钟，不能把 15/30 分钟写成 UTE 主实验结论。
 - 如需和长时预测论文完全同口径对比，建议另建 PeMS/METR-LA 扩展实验：预测对象改为流量或速度，步长设为 3/5/15/30 分钟或 15/30/60 分钟；但这类数据通常没有 pixel 表和车辆框，不能验证本项目的 HBB→OBB、HF-GO 和车辆微观扰动特征。
-- 扩展实验可使用 PeMSD4/PeMSD8、METR-LA 或 PEMS-BAY，当前脚本实现 Persistence、Historical Average、Ridge-Lag 和验证集调权的 Ours-TSFusion；如果后续要冲更强长时预测论文口径，可继续加入 ARIMA、SVR、LSTM、GRU、DCRNN、STGCN、GraphWaveNet、TYRE 等。这属于“长时交通流/速度预测”补充，不应替代 UTE 主实验。
+- 扩展实验可使用 PeMSD4/PeMSD8、METR-LA 或 PEMS-BAY，当前脚本在 PeMS08 上同时预测 flow 与 speed，并实现 Persistence、Seasonal Persistence、Historical Average、Ridge-Lag 和验证集调权的 Ours-TSFusion；如果后续要冲更强长时预测论文口径，可继续加入 ARIMA、SVR、LSTM、GRU、DCRNN、STGCN、GraphWaveNet、TYRE 等。这属于“长时交通流/速度预测”补充，不应替代 UTE 主实验。
 - 恶化预测正样本较少，单次 70/30 切分容易把恶化事件集中切到一侧，所以改用连续时间分组 GroupKFold 的 out-of-fold 评估。
 - LSTM 使用低维 V+D+F 时序通道，减少 324 个窗口小样本下的过拟合；XGBoost 使用完整 OBB/HF-GO/MGTI 特征，承担高维非线性判别。
 
@@ -190,7 +190,7 @@ bash scripts/run_all.sh
 5. `scripts/06_validate_obb_effect.py`：输出 OBB 效果补充验证 JSON；
 6. `scripts/04_make_report.py`：汇总生成 `docs/experiment_report.md`。
 
-长时交通流预测扩展实验不放进 `run_all.sh`，因为它会额外下载 PeMS08 数据。需要复现 15/30/60 分钟结果时单独运行：
+长时交通流/速度预测扩展实验不放进 `run_all.sh`，因为它会额外下载 PeMS08 数据。需要复现 3/5/15/30 分钟结果时单独运行：
 
 ```bash
 python scripts/07_run_long_horizon_forecasting.py --dataset PEMS08 --auto-download
