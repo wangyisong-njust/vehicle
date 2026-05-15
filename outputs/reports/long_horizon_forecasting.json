@@ -24,6 +24,74 @@
     12
   ],
   "horizons": {
+    "3min": {
+      "horizon_minutes": 3,
+      "horizon_steps": 1,
+      "train_samples": 10701,
+      "validation_samples": 3571,
+      "test_samples": 3571,
+      "fusion_weights": {
+        "Persistence": 0.574999988079071,
+        "HistoricalAverage": 0.0,
+        "RidgeLag": 0.42500001192092896
+      },
+      "models": {
+        "Persistence": {
+          "mae": 15.880363464355469,
+          "rmse": 24.56263294135461,
+          "mape": 8.823223412036896
+        },
+        "HistoricalAverage": {
+          "mae": 36.361202239990234,
+          "rmse": 54.15897731880422,
+          "mape": 22.066673636436462
+        },
+        "RidgeLag": {
+          "mae": 17.130300521850586,
+          "rmse": 25.760019667718616,
+          "mape": 9.35979038476944
+        },
+        "Ours-TSFusion": {
+          "mae": 14.305788040161133,
+          "rmse": 21.743908961000937,
+          "mape": 7.921408861875534
+        }
+      }
+    },
+    "5min": {
+      "horizon_minutes": 5,
+      "horizon_steps": 1,
+      "train_samples": 10701,
+      "validation_samples": 3571,
+      "test_samples": 3571,
+      "fusion_weights": {
+        "Persistence": 0.574999988079071,
+        "HistoricalAverage": 0.0,
+        "RidgeLag": 0.42500001192092896
+      },
+      "models": {
+        "Persistence": {
+          "mae": 15.880363464355469,
+          "rmse": 24.56263294135461,
+          "mape": 8.823223412036896
+        },
+        "HistoricalAverage": {
+          "mae": 36.361202239990234,
+          "rmse": 54.15897731880422,
+          "mape": 22.066673636436462
+        },
+        "RidgeLag": {
+          "mae": 17.130300521850586,
+          "rmse": 25.760019667718616,
+          "mape": 9.35979038476944
+        },
+        "Ours-TSFusion": {
+          "mae": 14.305788040161133,
+          "rmse": 21.743908961000937,
+          "mape": 7.921408861875534
+        }
+      }
+    },
     "15min": {
       "horizon_minutes": 15,
       "horizon_steps": 3,
@@ -89,40 +157,6 @@
           "mae": 19.197940826416016,
           "rmse": 29.073034465081427,
           "mape": 10.794507712125778
-        }
-      }
-    },
-    "60min": {
-      "horizon_minutes": 60,
-      "horizon_steps": 12,
-      "train_samples": 10701,
-      "validation_samples": 3571,
-      "test_samples": 3560,
-      "fusion_weights": {
-        "Persistence": 0.22499999403953552,
-        "HistoricalAverage": 0.15000000596046448,
-        "RidgeLag": 0.625
-      },
-      "models": {
-        "Persistence": {
-          "mae": 34.611019134521484,
-          "rmse": 50.46731325354313,
-          "mape": 19.854432344436646
-        },
-        "HistoricalAverage": {
-          "mae": 36.35969161987305,
-          "rmse": 54.14555803644584,
-          "mape": 22.09930121898651
-        },
-        "RidgeLag": {
-          "mae": 26.030864715576172,
-          "rmse": 38.54772369353507,
-          "mape": 15.098859369754791
-        },
-        "Ours-TSFusion": {
-          "mae": 23.70465660095215,
-          "rmse": 34.916115646445235,
-          "mape": 13.909976184368134
         }
       }
     }

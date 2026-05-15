@@ -48,7 +48,7 @@ def download_if_needed(dataset: str, data_dir: Path, auto_download: bool) -> Pat
 
 
 def make_supervised(data: np.ndarray, horizon_steps: int, lags: list[int]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    max_lag = max(lags)
+    max_lag = max(max(lags), horizon_steps)
     positions = np.arange(max_lag, data.shape[0] - horizon_steps, dtype=np.int64)
     x = np.concatenate([data[positions - lag] for lag in lags], axis=1)
     y = data[positions + horizon_steps]
@@ -154,7 +154,7 @@ def run_dataset(dataset: str, auto_download: bool) -> dict[str, object]:
         "horizons": {},
     }
 
-    for horizon_minutes in [15, 30, 60]:
+    for horizon_minutes in [3, 5, 15, 30]:
         horizon_steps = max(1, int(round(horizon_minutes / interval_minutes)))
         positions, x, y = make_supervised(flow, horizon_steps, lags)
         train_mask = positions < train_end
