@@ -15,8 +15,6 @@
 
 ## 2. 文件夹结构
 
-拿到交付包后，建议保持下面结构：
-
 ```text
 hbb_to_obb_minimal/
 ├── prepare_hbb_to_obb.py
@@ -74,6 +72,10 @@ data/UTE/datasets/PKDD/PKDD-8/sample video.mp4
 ```bash
 ls "data/UTE/datasets/XAM-N/XAM-N-5/pixel.csv"
 ls "data/UTE/datasets/XAM-N/XAM-N-5/sample video.mp4"
+ls "data/UTE/datasets/XAM-N/XAM-N-6/pixel.csv"
+ls "data/UTE/datasets/XAM-N/XAM-N-6/sample video.mp4"
+ls "data/UTE/datasets/PKDD/PKDD-8/pixel.csv"
+ls "data/UTE/datasets/PKDD/PKDD-8/sample video.mp4"
 ```
 
 ### 方式 B：网页手动下载
@@ -111,9 +113,23 @@ pip install -r requirements.txt
 
 ## 5. 运行命令
 
-### 5.1 先小样本试跑
+### 5.1 一键完整处理三套数据
 
-建议先用 XAM-N-5 跑 5000 行，确认环境、数据路径和视频读取都正常：
+默认会处理配置里的全部数据集：`XAM-N-5`、`XAM-N-6`、`PKDD-8`。
+
+```bash
+python prepare_hbb_to_obb.py --config config_ute_sample.json
+```
+
+等价于：
+
+```bash
+python prepare_hbb_to_obb.py --config config_ute_sample.json --datasets xamn5 xamn6 pkdd8
+```
+
+### 5.2 先小样本试跑
+
+如果只是想先确认环境、数据路径和视频读取都正常，可以只用 XAM-N-5 跑 5000 行：
 
 ```bash
 python prepare_hbb_to_obb.py --config config_ute_sample.json --datasets xamn5 --max-rows 5000
@@ -129,16 +145,24 @@ python prepare_hbb_to_obb.py --config config_ute_sample.json --datasets xamn5 --
 [OBB] summary saved to outputs/reports/obb_summary.json
 ```
 
-### 5.2 完整处理 XAM-N-5
+### 5.3 只处理指定数据集
+
+只处理 XAM-N-5：
 
 ```bash
 python prepare_hbb_to_obb.py --config config_ute_sample.json --datasets xamn5
 ```
 
-### 5.3 完整处理 XAM-N-5、XAM-N-6、PKDD-8
+只处理 XAM-N-6：
 
 ```bash
-python prepare_hbb_to_obb.py --config config_ute_sample.json --datasets xamn5 xamn6 pkdd8
+python prepare_hbb_to_obb.py --config config_ute_sample.json --datasets xamn6
+```
+
+只处理 PKDD-8：
+
+```bash
+python prepare_hbb_to_obb.py --config config_ute_sample.json --datasets pkdd8
 ```
 
 ## 6. 输出结果
@@ -186,4 +210,3 @@ frame,time_s,vehicle_id,x,y,w,h,class,cx,cy,obb_w,obb_h,obb_area,obb_aspect_rati
 ## 9. 汇报时可以这样说
 
 数据集原始标注是水平框 HBB。我先完成了 HBB 到 OBB 的数据处理模块：不是重新训练检测器，而是利用 `pixel.csv` 中同一车辆跨帧中心点轨迹估计车辆方向角，再把每一行水平框转换成带 `theta` 和四角点坐标的旋转框 OBB。这样生成的 OBB 仍然和原始 pixel 表逐行对应，车辆 ID、时间、车道、速度、加速度等信息可以继续对齐，后续可以直接用于交通状态识别和预测实验。
-

@@ -469,7 +469,12 @@ def process_dataset(config_path: Path, config: dict, key: str, max_rows: int | N
 def main() -> None:
     parser = argparse.ArgumentParser(description="Convert UTE HBB pixel.csv annotations to OBB annotations.")
     parser.add_argument("--config", default="config_ute_sample.json", help="Path to config JSON.")
-    parser.add_argument("--datasets", nargs="+", default=["xamn5"], help="Dataset keys in config JSON.")
+    parser.add_argument(
+        "--datasets",
+        nargs="+",
+        default=["xamn5", "xamn6", "pkdd8"],
+        help="Dataset keys in config JSON. Defaults to all configured datasets.",
+    )
     parser.add_argument("--max-rows", type=int, default=None, help="Optional small trial mode; omit for full conversion.")
     args = parser.parse_args()
 
@@ -492,4 +497,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
