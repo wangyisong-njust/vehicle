@@ -158,7 +158,7 @@ data_check/PKDD/PKDD-8/sample video.mp4
 | 消融实验 | XAM-N-6 | 5 折分层交叉验证 |
 | 参数敏感性 | XAM-N-6 | 5 折交叉验证；正文展示 1/3/5/8 秒，30 秒以上仅保留为 JSON 失败模式记录 |
 | 未来状态预测 | XAM-N-6 | 按时间顺序前 70% 训练、后 30% 测试，默认预测 3 秒后状态 |
-| LSTM/Fusion | XAM-N-6 | 训练段后 20% 作为验证段，用于融合权重选择 |
+| LSTM / OBB-ST-LSTM | XAM-N-6 | 按时间顺序 70/30 划分；LSTM / GRU 基线 3 种子概率集成；OBB-ST-LSTM 主任务（3s）5 种子集成，5s 长时多步长扫描 10 种子集成 |
 | 恶化预测 | XAM-N-6 | 连续时间分组 GroupKFold out-of-fold 评估 |
 | OBB 补充验证 | XAM-N-5、PKDD-8 | 不参与主训练，只做标注效果和场景合理性检查 |
 
@@ -168,10 +168,10 @@ data_check/PKDD/PKDD-8/sample video.mp4
 - 近五年文献方法对比使用 SVM、RF、KNN、GBDT、XGBoost、LSTM、GRU 等常见基线；状态识别基线共用同一分层划分，时序模型在未来预测任务中比较。
 - 未来状态预测必须按时间顺序训练和测试，避免把未来窗口信息泄露到训练段。主实验预测 3 秒后状态；正文只展示 1/3/5/8 秒短时状态预测。30 秒以上状态预测因类别支持不足，保留为失败模式/覆盖范围分析，不作为论文主结果。
 - 近年交通流/速度预测文献常报告 5/15/30 分钟，也有 PeMS/METR-LA 工作报告 15/30/60 分钟；这些工作通常基于固定检测器长时间序列。本项目主数据 XAM-N-6 约 5.5 分钟，不能把 15/30 分钟写成 UTE 主实验结论。
-- 为和长时预测论文同口径补充，当前另建 PeMS08 扩展实验：预测对象改为 flow 与 speed，步长设为 5/15/30 分钟；PeMS08 原始粒度为 5 分钟，不能构造真实 3 分钟标签，因此不重复列 3 分钟结果。这类数据没有 pixel 表和车辆框，不能验证本项目的 HBB→OBB、HF-GO 和车辆微观扰动特征。
-- 扩展实验当前脚本实现 Persistence、Seasonal Persistence、Historical Average、Ridge-Lag 和验证集调权的 Ours-TSFusion；如果后续要冲更强长时预测论文口径，可继续加入 ARIMA、SVR、LSTM、GRU、DCRNN、STGCN、GraphWaveNet、TYRE 等。这属于“长时交通流/速度预测”补充，不应替代 UTE 主实验。
+- 为与长时预测论文同口径补充，另建 PeMS08 扩展实验：预测对象与短时预测对齐，同为四类交通状态（按速度阈值：畅通 ≥100 km/h、缓行 80–100 km/h、拥挤 60–80 km/h、堵塞 <60 km/h），步长设为 5/15/30 分钟；评价指标与短时任务统一（Macro-F1 / Accuracy）。这类数据没有 pixel 表和车辆框，不能验证本项目的 HBB→OBB、HF-GO 和车辆微观扰动特征。
+- 扩展实验实现 Persistence、HistMode、LSTM、GRU 四类基线，以及采用 FocalLoss(γ=2.0) + 双向 LSTM + 7 种子集成的 Ours-ST-LSTM。这属于”长时四类状态预测”补充，不应替代 UTE 主实验。
 - 恶化预测正样本较少，单次 70/30 切分容易把恶化事件集中切到一侧，所以改用连续时间分组 GroupKFold 的 out-of-fold 评估。
-- LSTM 使用低维 V+D+F 时序通道，减少 324 个窗口小样本下的过拟合；XGBoost 使用完整 OBB/HF-GO/MGTI 特征，承担高维非线性判别。
+- LSTM-future 使用低维 V+D+F 时序通道，减少 324 窗口小样本下的过拟合；XGBoost-future 使用完整 OBB/HF-GO/MGTI 特征，承担高维非线性判别；OBB-ST-LSTM 把每窗口 4×4×12 旋转框张量与 V+D+F 标量描述符按帧拼接，作为单模型的端到端前端，最终统一对比。
 
 ## 6. 一键复现
 
@@ -184,13 +184,13 @@ bash scripts/run_all.sh
 脚本执行顺序：
 
 1. `scripts/01_prepare_obb.py`：HBB 转 OBB，生成 `*_pixel_obb.csv` 和抽帧可视化图；
-2. `scripts/02_extract_features.py`：提取 OBB/HBB 占有率、平均车头时距、加速度干扰、MGTI 等滑窗特征；
-3. `scripts/03_run_experiments.py`：运行当前状态识别、未来状态预测、消融实验、参数敏感性分析和恶化预测；
+2. `scripts/02_extract_features.py`：提取 OBB/HBB 占有率、平均车头时距、加速度干扰、MGTI 等滑窗特征，并保存每窗口 4×4×12 网格张量到 `outputs/features/{ds}_grid_tensors.npz`；
+3. `scripts/03_run_experiments.py`：运行当前状态识别、消融实验、参数敏感性分析、未来状态预测（XGBoost / LSTM / GRU / **OBB-ST-LSTM 单模型**）和恶化预测；
 4. `scripts/05_auto_verify.py`：输出自动核验 JSON；
 5. `scripts/06_validate_obb_effect.py`：输出 OBB 效果补充验证 JSON；
 6. `scripts/04_make_report.py`：汇总生成 `docs/experiment_report.md`。
 
-长时交通流/速度预测扩展实验不放进 `run_all.sh`，因为它会额外下载 PeMS08 数据。需要复现 5/15/30 分钟结果时单独运行：
+长时四类状态预测扩展实验不放进 `run_all.sh`，因为它会额外下载 PeMS08 数据。需要复现 5/15/30 分钟结果时单独运行：
 
 ```bash
 python scripts/07_run_long_horizon_forecasting.py --dataset PEMS08 --auto-download
@@ -207,6 +207,9 @@ outputs/features/xamn6_windows.csv
 outputs/features/xamn5_windows.csv
 outputs/features/pkdd8_windows.csv
 outputs/features/all_windows.csv
+outputs/features/xamn6_grid_tensors.npz
+outputs/features/xamn5_grid_tensors.npz
+outputs/features/pkdd8_grid_tensors.npz
 outputs/reports/experiment_results.json
 outputs/reports/long_horizon_forecasting.json
 outputs/reports/auto_verification.json
@@ -261,8 +264,13 @@ python scripts/04_make_report.py
 | LR-OBB Macro-F1（分层划分，基线） | ~0.93 |
 | XGBoost-OBB Macro-F1（时间序列划分，补充） | ~0.48 |
 | XGBoost-future Macro-F1（3s 预测） | ~0.46 |
-| GRU-future Macro-F1（3s 预测，近五年文献基线） | ~0.47 |
-| Fusion-future Macro-F1（3s 预测） | ~0.47 |
+| GRU-future Macro-F1（3s 预测，3 种子集成） | ~0.48 |
+| OBB-ST-LSTM Macro-F1（3s 预测，5 种子集成） | ~0.56 |
+| OBB-ST-LSTM Accuracy（3s 预测，5 种子集成） | ~0.79 |
+| OBB-ST-LSTM 短时多 horizon 扫描 3/5/8s | 3s/8s 取 Macro-F1 最优；3/3 步长 Accuracy 最优或并列 |
+| Ours-ST-LSTM PeMS08 全样本 Macro-F1 (5/15/30 min) | 0.6460 / 0.6134 / 0.5951 |
+| Ours-ST-LSTM PeMS08 全样本 Accuracy (5/15/30 min) | 0.8181 / 0.8133 / 0.8117 |
+| Ours-ST-LSTM 长时深度基线中最优（全样本 F1） | 3/3 horizon 全部领先 LSTM、GRU |
 | XGBoost-OBB 多随机种子 Macro-F1 均值 | ~0.94 |
 | XGBoost-future 多随机种子 Macro-F1 均值 | ~0.49 |
 | 文献对齐消融 M1 V+D Macro-F1 | ~0.94 |

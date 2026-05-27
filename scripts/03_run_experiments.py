@@ -21,6 +21,7 @@ from ute_pipeline.experiments import (
     run_ablation,
     run_classification,
     run_deterioration_prediction,
+    run_horizon_sweep_obb_st_lstm,
     run_parameter_sensitivity,
     run_prediction,
     run_robustness,
@@ -79,6 +80,7 @@ def main() -> None:
     cross_validation = run_time_series_cv(table, cfg)
     deterioration = run_deterioration_prediction(table, cfg)
     robustness = run_robustness(table, cfg)
+    horizon_sweep = run_horizon_sweep_obb_st_lstm(table, cfg)
 
     main_mask = table.dataset == "xamn6"
     main_labels = labels[main_mask]
@@ -95,6 +97,7 @@ def main() -> None:
         "robustness": robustness,
         "pkdd_generalization": generalization,
         "deterioration": deterioration,
+        "horizon_sweep_obb_st_lstm": horizon_sweep,
     }
     out_path = root / "outputs" / "reports" / "experiment_results.json"
     save_results(out_path, payload)

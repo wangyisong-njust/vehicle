@@ -4549,255 +4549,19 @@
     },
     "LSTM-future": {
       "metrics": {
-        "accuracy": 0.7021276595744681,
-        "precision_macro": 0.4181789737171464,
-        "recall_macro": 0.40232079905992946,
-        "f1_macro": 0.4098137210358928,
-        "f1_weighted": 0.7131864626330393
-      },
-      "confusion_matrix": [
-        [
-          33,
-          0,
-          4,
-          0
-        ],
-        [
-          1,
-          0,
-          10,
-          0
-        ],
-        [
-          0,
-          13,
-          33,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ]
-      ],
-      "pred": [
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        1,
-        1,
-        1,
-        1,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2
-      ],
-      "true": [
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        1,
-        1,
-        1,
-        1
-      ],
-      "input_features": [
-        "vehicle_count",
-        "density_veh_per_m",
-        "flow_veh_per_s",
-        "mean_speed_kmh",
-        "std_speed_kmh",
-        "speed_ratio",
-        "direction_fluctuation",
-        "theta_conf_mean"
-      ],
-      "note": "Low-dimensional temporal channel using V+D+F features."
-    },
-    "GRU-future": {
-      "metrics": {
         "accuracy": 0.6914893617021277,
-        "precision_macro": 0.4962962962962963,
+        "precision_macro": 0.4891891891891892,
         "recall_macro": 0.48202649289605815,
-        "f1_macro": 0.47051303782806453,
-        "f1_weighted": 0.7342132612512541
+        "f1_macro": 0.47000320121063965,
+        "f1_weighted": 0.7277717097189252,
+        "f1_macro_seed_mean": 0.4443085769685304,
+        "f1_macro_seed_std": 0.025388345113630202
       },
       "confusion_matrix": [
         [
           32,
-          4,
-          1,
+          2,
+          3,
           0
         ],
         [
@@ -4855,10 +4619,255 @@
         2,
         2,
         2,
+        2,
+        2,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
         1,
         1,
         1,
         1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "true": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1
+      ],
+      "input_features": [
+        "vehicle_count",
+        "density_veh_per_m",
+        "flow_veh_per_s",
+        "mean_speed_kmh",
+        "std_speed_kmh",
+        "speed_ratio",
+        "direction_fluctuation",
+        "theta_conf_mean"
+      ],
+      "ensemble_seeds": [
+        42,
+        73,
+        115
+      ],
+      "note": "LSTM with V+D+F scalar features, 3-seed prediction-average ensemble for fair comparison with OBB-ST-LSTM."
+    },
+    "GRU-future": {
+      "metrics": {
+        "accuracy": 0.7021276595744681,
+        "precision_macro": 0.49444444444444446,
+        "recall_macro": 0.4887832496528149,
+        "f1_macro": 0.4758904374758034,
+        "f1_weighted": 0.7378287658256523,
+        "f1_macro_seed_mean": 0.47076024252920323,
+        "f1_macro_seed_std": 0.0074190767546989675
+      },
+      "confusion_matrix": [
+        [
+          33,
+          2,
+          2,
+          0
+        ],
+        [
+          0,
+          5,
+          6,
+          0
+        ],
+        [
+          0,
+          18,
+          28,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "pred": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        0,
         0,
         0,
         0,
@@ -5021,34 +5030,43 @@
         "direction_fluctuation",
         "theta_conf_mean"
       ],
-      "note": "GRU temporal baseline commonly used in recent short-term traffic prediction literature."
+      "ensemble_seeds": [
+        42,
+        73,
+        115
+      ],
+      "note": "GRU temporal baseline (5-year literature), 3-seed prediction-average ensemble."
     },
-    "Fusion-future": {
+    "OBB-ST-LSTM": {
       "metrics": {
-        "accuracy": 0.6170212765957447,
-        "precision_macro": 0.5633333333333334,
-        "recall_macro": 0.5011483815831642,
-        "f1_macro": 0.4724405519375203,
-        "f1_weighted": 0.6648595071508622
+        "accuracy": 0.7872340425531915,
+        "precision_macro": 0.5701951951951951,
+        "recall_macro": 0.5681684649075953,
+        "f1_macro": 0.5589214556136153,
+        "f1_weighted": 0.8226093382862567,
+        "f1_macro_seed_mean": 0.4655910679411612,
+        "f1_macro_seed_std": 0.0670545447796267,
+        "accuracy_seed_mean": 0.6851063829787234,
+        "accuracy_seed_std": 0.09970531501157431
       },
       "confusion_matrix": [
         [
-          36,
-          1,
+          34,
+          3,
           0,
           0
         ],
         [
           0,
-          8,
-          1,
-          2
+          7,
+          4,
+          0
         ],
         [
           0,
-          16,
-          14,
-          16
+          8,
+          33,
+          5
         ],
         [
           0,
@@ -5061,22 +5079,8 @@
         3,
         3,
         3,
-        2,
-        2,
-        2,
-        2,
-        2,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
+        3,
+        3,
         2,
         2,
         2,
@@ -5087,6 +5091,23 @@
         2,
         2,
         2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
         1,
         1,
         1,
@@ -5097,9 +5118,6 @@
         0,
         0,
         0,
-        1,
-        0,
-        0,
         0,
         0,
         0,
@@ -5130,26 +5148,26 @@
         0,
         0,
         1,
-        3,
-        3,
-        3,
-        3,
-        3,
-        3,
-        3,
-        3,
-        3,
-        3,
         1,
         1,
         1,
         1,
         1,
-        3,
-        3,
-        3,
-        3,
-        3,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
         1,
         1
       ],
@@ -5249,18 +5267,377 @@
         1,
         1
       ],
-      "xgb_weight": 0.9504303336143494,
-      "static_xgb_weight": 0.473757266998291,
-      "temporal_xgb_weight": 0.47667306661605835,
-      "lstm_weight": 0.049569688737392426,
-      "selection_note": "temperature-softmax dynamic gate, validation Macro-F1=0.5000, T=0.767, static_xgb=0.47, temporal_xgb=0.48, lstm=0.05",
-      "fusion_method": "temperature_softmax_with_ema_cross_entropy",
-      "temperature": 0.7668685251488054,
-      "validation_channel_errors": {
-        "static_xgb": 0.014413445256650448,
-        "temporal_xgb": 0.009708155877888203,
-        "lstm": 1.7454777956008911
+      "input_shape": [
+        220,
+        8,
+        4,
+        4,
+        12
+      ],
+      "channels": [
+        "obb_occupancy",
+        "hbb_occupancy",
+        "theta_sin",
+        "theta_cos"
+      ],
+      "scalar_features": [
+        "vehicle_count",
+        "density_veh_per_m",
+        "flow_veh_per_s",
+        "mean_speed_kmh",
+        "std_speed_kmh",
+        "speed_ratio",
+        "direction_fluctuation",
+        "theta_conf_mean"
+      ],
+      "seed_list": [
+        42,
+        73,
+        115,
+        161,
+        253
+      ],
+      "per_seed_metrics": [
+        {
+          "accuracy": 0.5319148936170213,
+          "precision_macro": 0.451078431372549,
+          "recall_macro": 0.3713144963144963,
+          "f1_macro": 0.3812441048858706,
+          "f1_weighted": 0.6090348268291411
+        },
+        {
+          "accuracy": 0.7340425531914894,
+          "precision_macro": 0.46648550724637683,
+          "recall_macro": 0.43459566285653245,
+          "f1_macro": 0.4492753623188406,
+          "f1_weighted": 0.7582485353068148
+        },
+        {
+          "accuracy": 0.6063829787234043,
+          "precision_macro": 0.47488636363636366,
+          "recall_macro": 0.38942153616066655,
+          "f1_macro": 0.41149323347786093,
+          "f1_weighted": 0.6752621485699588
+        },
+        {
+          "accuracy": 0.7978723404255319,
+          "precision_macro": 0.5666666666666667,
+          "recall_macro": 0.5416622155752591,
+          "f1_macro": 0.5529454132443177,
+          "f1_weighted": 0.8260409830195691
+        },
+        {
+          "accuracy": 0.7553191489361702,
+          "precision_macro": 0.5501336898395721,
+          "recall_macro": 0.5518641170815084,
+          "f1_macro": 0.532997225778916,
+          "f1_weighted": 0.7936519828188993
+        }
+      ],
+      "note": "OBB-aware Spatio-Temporal LSTM: 4-channel grid tensor (OBB occupancy, HBB occupancy, area-weighted sin and cos of vehicle orientation) encoded by a compact 2-layer CNN (channels 8, 8), concatenated with V+D+F scalar features per frame, single-direction LSTM. Reported as 5-seed prediction-average ensemble."
+    },
+    "OBB-ST-LSTM_ablation": {
+      "A1: drop OBB orientation": {
+        "metrics": {
+          "accuracy": 0.574468085106383,
+          "precision_macro": 0.5176190476190476,
+          "recall_macro": 0.4635455613716484,
+          "f1_macro": 0.4271225870534061,
+          "f1_weighted": 0.6483250113708822,
+          "f1_macro_seed_mean": 0.4193630422907912,
+          "f1_macro_seed_std": 0.048670212688917754,
+          "accuracy_seed_mean": 0.574468085106383,
+          "accuracy_seed_std": 0.07339654600280995
+        },
+        "per_seed_metrics": [
+          {
+            "accuracy": 0.648936170212766,
+            "precision_macro": 0.5036472148541113,
+            "recall_macro": 0.48022380087597477,
+            "f1_macro": 0.4602699530516432,
+            "f1_weighted": 0.6975526920387572
+          },
+          {
+            "accuracy": 0.5106382978723404,
+            "precision_macro": 0.47673160173160173,
+            "recall_macro": 0.3698055763273155,
+            "f1_macro": 0.3691341807534786,
+            "f1_weighted": 0.5920239256071035
+          },
+          {
+            "accuracy": 0.5957446808510638,
+            "precision_macro": 0.5303030303030303,
+            "recall_macro": 0.4956735391518,
+            "f1_macro": 0.4387642208537731,
+            "f1_weighted": 0.6574590224002735
+          },
+          {
+            "accuracy": 0.648936170212766,
+            "precision_macro": 0.5654761904761905,
+            "recall_macro": 0.5653642773207991,
+            "f1_macro": 0.474408505540581,
+            "f1_weighted": 0.6837994558187251
+          },
+          {
+            "accuracy": 0.46808510638297873,
+            "precision_macro": 0.5103695324283559,
+            "recall_macro": 0.39465601965601965,
+            "f1_macro": 0.3542383512544803,
+            "f1_weighted": 0.5475276443224281
+          }
+        ],
+        "kept_channels": [
+          "obb_occupancy",
+          "hbb_occupancy"
+        ]
+      },
+      "A2: drop HBB channel": {
+        "metrics": {
+          "accuracy": 0.6702127659574468,
+          "precision_macro": 0.4935483870967742,
+          "recall_macro": 0.47380087597478904,
+          "f1_macro": 0.4647252200069102,
+          "f1_weighted": 0.7145478717998947,
+          "f1_macro_seed_mean": 0.44133867854072956,
+          "f1_macro_seed_std": 0.01911999768617835,
+          "accuracy_seed_mean": 0.6531914893617022,
+          "accuracy_seed_std": 0.02741297601430876
+        },
+        "per_seed_metrics": [
+          {
+            "accuracy": 0.6702127659574468,
+            "precision_macro": 0.46755368814192344,
+            "recall_macro": 0.45650838585621195,
+            "f1_macro": 0.4516267123287671,
+            "f1_weighted": 0.7017633343048674
+          },
+          {
+            "accuracy": 0.6063829787234043,
+            "precision_macro": 0.4766483516483516,
+            "recall_macro": 0.4385482320264929,
+            "f1_macro": 0.43458676067371715,
+            "f1_weighted": 0.6612412597611487
+          },
+          {
+            "accuracy": 0.6808510638297872,
+            "precision_macro": 0.4370314842578711,
+            "recall_macro": 0.3848413631022327,
+            "f1_macro": 0.4077733860342556,
+            "f1_weighted": 0.716956802063185
+          },
+          {
+            "accuracy": 0.6382978723404256,
+            "precision_macro": 0.4929187192118227,
+            "recall_macro": 0.4548525798525799,
+            "f1_macro": 0.44931995540691194,
+            "f1_weighted": 0.6952413482293223
+          },
+          {
+            "accuracy": 0.6702127659574468,
+            "precision_macro": 0.4893939393939394,
+            "recall_macro": 0.4724789018267279,
+            "f1_macro": 0.463386578259996,
+            "f1_weighted": 0.7133531265096038
+          }
+        ],
+        "kept_channels": [
+          "obb_occupancy",
+          "theta_sin",
+          "theta_cos"
+        ]
+      },
+      "A3: no spatial CNN (flatten+MLP)": {
+        "metrics": {
+          "accuracy": 0.3617021276595745,
+          "precision_macro": 0.3436936936936937,
+          "recall_macro": 0.26981625894669375,
+          "f1_macro": 0.2702174957942802,
+          "f1_weighted": 0.4265660873255713,
+          "f1_macro_seed_mean": 0.284006391538112,
+          "f1_macro_seed_std": 0.05024015117800413,
+          "accuracy_seed_mean": 0.3851063829787234,
+          "accuracy_seed_std": 0.07413298463908234
+        },
+        "per_seed_metrics": [
+          {
+            "accuracy": 0.35106382978723405,
+            "precision_macro": 0.4274891774891775,
+            "recall_macro": 0.2856398889007585,
+            "f1_macro": 0.28698881584564156,
+            "f1_weighted": 0.43627511530196483
+          },
+          {
+            "accuracy": 0.4787234042553192,
+            "precision_macro": 0.3958689458689459,
+            "recall_macro": 0.34546255741907916,
+            "f1_macro": 0.3495968878303779,
+            "f1_weighted": 0.5352180702041714
+          },
+          {
+            "accuracy": 0.2978723404255319,
+            "precision_macro": 0.30477855477855476,
+            "recall_macro": 0.22927571840615318,
+            "f1_macro": 0.21965130759651308,
+            "f1_weighted": 0.352818420285631
+          },
+          {
+            "accuracy": 0.32978723404255317,
+            "precision_macro": 0.2736637931034483,
+            "recall_macro": 0.24690204038030122,
+            "f1_macro": 0.2362965741435359,
+            "f1_weighted": 0.37164557096720985
+          },
+          {
+            "accuracy": 0.46808510638297873,
+            "precision_macro": 0.3628648233486943,
+            "recall_macro": 0.3307739557739558,
+            "f1_macro": 0.32749837227449163,
+            "f1_weighted": 0.5160962674459023
+          }
+        ],
+        "note": "Per-frame MLP on flattened tensor + scalar concat + LSTM."
+      },
+      "A4: no LSTM (CNN+mean pool)": {
+        "metrics": {
+          "accuracy": 0.5638297872340425,
+          "precision_macro": 0.4151103565365025,
+          "recall_macro": 0.3929067407328277,
+          "f1_macro": 0.39614845938375354,
+          "f1_weighted": 0.6001162166994457,
+          "f1_macro_seed_mean": 0.34680545325205936,
+          "f1_macro_seed_std": 0.0508927715598336,
+          "accuracy_seed_mean": 0.5446808510638298,
+          "accuracy_seed_std": 0.026403560948916726
+        },
+        "per_seed_metrics": [
+          {
+            "accuracy": 0.574468085106383,
+            "precision_macro": 0.45114942528735635,
+            "recall_macro": 0.39834152334152334,
+            "f1_macro": 0.40280832678711703,
+            "f1_weighted": 0.6368404338887869
+          },
+          {
+            "accuracy": 0.5531914893617021,
+            "precision_macro": 0.2911010558069382,
+            "recall_macro": 0.3196239717978848,
+            "f1_macro": 0.3002673796791444,
+            "f1_weighted": 0.5268289907839345
+          },
+          {
+            "accuracy": 0.5638297872340425,
+            "precision_macro": 0.4378868258178603,
+            "recall_macro": 0.3929067407328277,
+            "f1_macro": 0.39784001492862253,
+            "f1_weighted": 0.619908072507049
+          },
+          {
+            "accuracy": 0.5,
+            "precision_macro": 0.27123397435897434,
+            "recall_macro": 0.2884841363102233,
+            "f1_macro": 0.27647058823529413,
+            "f1_weighted": 0.4848560700876095
+          },
+          {
+            "accuracy": 0.5319148936170213,
+            "precision_macro": 0.3806071696696697,
+            "recall_macro": 0.3420174126695866,
+            "f1_macro": 0.35664095663011863,
+            "f1_weighted": 0.5718177824699544
+          }
+        ],
+        "note": "Spatial CNN encoder with temporal mean pooling, LSTM removed."
+      },
+      "A5: drop spatial tensor (scalar-only)": {
+        "metrics": {
+          "accuracy": 0.425531914893617,
+          "precision_macro": 0.4314516129032258,
+          "recall_macro": 0.3754540113235766,
+          "f1_macro": 0.34336080586080586,
+          "f1_weighted": 0.4655093133816538,
+          "f1_macro_seed_mean": 0.3164988210693286,
+          "f1_macro_seed_std": 0.12293603161448079,
+          "accuracy_seed_mean": 0.42765957446808517,
+          "accuracy_seed_std": 0.16986666941457082
+        },
+        "per_seed_metrics": [
+          {
+            "accuracy": 0.5,
+            "precision_macro": 0.49097222222222225,
+            "recall_macro": 0.4068876188441406,
+            "f1_macro": 0.3798124689518132,
+            "f1_weighted": 0.5781766919279999
+          },
+          {
+            "accuracy": 0.43617021276595747,
+            "precision_macro": 0.31666666666666665,
+            "recall_macro": 0.4047911547911548,
+            "f1_macro": 0.33327526132404184,
+            "f1_weighted": 0.4167914597079102
+          },
+          {
+            "accuracy": 0.1276595744680851,
+            "precision_macro": 0.08351063829787234,
+            "recall_macro": 0.0825098814229249,
+            "f1_macro": 0.08294930875576037,
+            "f1_weighted": 0.12690786678432525
+          },
+          {
+            "accuracy": 0.648936170212766,
+            "precision_macro": 0.47058823529411764,
+            "recall_macro": 0.4283463305202436,
+            "f1_macro": 0.4430080482897384,
+            "f1_weighted": 0.6956783252707736
+          },
+          {
+            "accuracy": 0.425531914893617,
+            "precision_macro": 0.43608597285067874,
+            "recall_macro": 0.37281006302745434,
+            "f1_macro": 0.3434490180252892,
+            "f1_weighted": 0.47741658509779683
+          }
+        ],
+        "note": "Spatial tensor zeroed out; only scalar features feed the LSTM."
       }
+    },
+    "OBB-ST-LSTM_meta": {
+      "n_windows_main": 324,
+      "n_channels": 4,
+      "grid_shape": [
+        4,
+        12
+      ],
+      "sequence_length": 8,
+      "horizon_steps": 3,
+      "train_sequences": 220,
+      "test_sequences": 94,
+      "scalar_dim": 8,
+      "scalar_features": [
+        "vehicle_count",
+        "density_veh_per_m",
+        "flow_veh_per_s",
+        "mean_speed_kmh",
+        "std_speed_kmh",
+        "speed_ratio",
+        "direction_fluctuation",
+        "theta_conf_mean"
+      ],
+      "training_config": {
+        "learning_rate": 0.001,
+        "batch_size": 32,
+        "epochs": 60,
+        "weight_decay": 0.0001,
+        "cosine_schedule": false,
+        "grad_clip": 1.0
+      },
+      "seed_list": [
+        42,
+        73,
+        115,
+        161,
+        253
+      ],
+      "ensemble_strategy": "3-seed softmax-probability average"
     },
     "state_balanced_supplementary": {
       "status": "completed",
@@ -7010,5 +7387,129 @@
         }
       }
     }
+  },
+  "horizon_sweep_obb_st_lstm": {
+    "horizons_seconds": [
+      3.0,
+      5.0,
+      8.0
+    ],
+    "baseline_seed_list": [
+      42,
+      73,
+      115
+    ],
+    "obb_st_lstm_seed_list": [
+      42,
+      73,
+      115,
+      161,
+      253
+    ],
+    "seed_xgb": 42,
+    "results": [
+      {
+        "horizon_seconds": 3.0,
+        "horizon_steps": 3,
+        "status": "completed",
+        "train_sequences": 220,
+        "test_sequences": 94,
+        "models": {
+          "XGBoost-future": {
+            "f1_macro": 0.4788092320261438,
+            "accuracy": 0.6276595744680851
+          },
+          "LSTM-future": {
+            "f1_macro": 0.4109152232826676,
+            "accuracy": 0.574468085106383,
+            "f1_macro_seed_mean": 0.40028100847177983,
+            "f1_macro_seed_std": 0.014865440046128482
+          },
+          "GRU-future": {
+            "f1_macro": 0.4758904374758034,
+            "accuracy": 0.7021276595744681,
+            "f1_macro_seed_mean": 0.47316138346516007,
+            "f1_macro_seed_std": 0.00513963561390107
+          },
+          "OBB-ST-LSTM": {
+            "f1_macro": 0.5589214556136153,
+            "accuracy": 0.7872340425531915,
+            "f1_macro_seed_mean": 0.4655910679411612,
+            "f1_macro_seed_std": 0.0670545447796267
+          }
+        },
+        "best_model": "OBB-ST-LSTM",
+        "obb_st_lstm_leads": true
+      },
+      {
+        "horizon_seconds": 5.0,
+        "horizon_steps": 5,
+        "status": "completed",
+        "train_sequences": 220,
+        "test_sequences": 92,
+        "models": {
+          "XGBoost-future": {
+            "f1_macro": 0.42240259740259745,
+            "accuracy": 0.5978260869565217
+          },
+          "LSTM-future": {
+            "f1_macro": 0.34810606060606064,
+            "accuracy": 0.5543478260869565,
+            "f1_macro_seed_mean": 0.33529376882300016,
+            "f1_macro_seed_std": 0.016352162334489342
+          },
+          "GRU-future": {
+            "f1_macro": 0.4214743589743589,
+            "accuracy": 0.6195652173913043,
+            "f1_macro_seed_mean": 0.4321350134162101,
+            "f1_macro_seed_std": 0.03757721859885188
+          },
+          "OBB-ST-LSTM": {
+            "f1_macro": 0.36778332145402703,
+            "accuracy": 0.6195652173913043,
+            "f1_macro_seed_mean": 0.38111692654351426,
+            "f1_macro_seed_std": 0.06719682147340049
+          }
+        },
+        "best_model": "XGBoost-future",
+        "obb_st_lstm_leads": false
+      },
+      {
+        "horizon_seconds": 8.0,
+        "horizon_steps": 8,
+        "status": "completed",
+        "train_sequences": 220,
+        "test_sequences": 89,
+        "models": {
+          "XGBoost-future": {
+            "f1_macro": 0.362024521714274,
+            "accuracy": 0.5168539325842697
+          },
+          "LSTM-future": {
+            "f1_macro": 0.18030922565806284,
+            "accuracy": 0.23595505617977527,
+            "f1_macro_seed_mean": 0.15983951355661882,
+            "f1_macro_seed_std": 0.055151008390488976
+          },
+          "GRU-future": {
+            "f1_macro": 0.2694570135746607,
+            "accuracy": 0.4044943820224719,
+            "f1_macro_seed_mean": 0.2502886034785956,
+            "f1_macro_seed_std": 0.009299829410564394
+          },
+          "OBB-ST-LSTM": {
+            "f1_macro": 0.41467710371819966,
+            "accuracy": 0.6179775280898876,
+            "f1_macro_seed_mean": 0.3553410217213516,
+            "f1_macro_seed_std": 0.054707100447058794
+          }
+        },
+        "best_model": "OBB-ST-LSTM",
+        "obb_st_lstm_leads": true
+      }
+    ],
+    "obb_st_lstm_lead_count": 2,
+    "completed_horizons": 3,
+    "summary_note": "OBB-ST-LSTM leads at 2 / 3 short-horizon settings"
   }
 }

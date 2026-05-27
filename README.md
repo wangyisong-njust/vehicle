@@ -1,13 +1,14 @@
 # UTE Traffic State Experiment
 
-基于 UTE 真实无人机交通数据，完成"水平框转旋转框 → 交通状态特征 → 状态识别与预测"的一条可复现实验链路，用于支撑论文实验部分。
+基于 UTE 真实无人机交通数据，完成"水平框转旋转框 → 交通状态特征 → 状态识别与 OBB 感知时空 LSTM 未来预测"的一条可复现实验链路，用于支撑论文实验部分。
 
 ## 项目主要内容
 
 1. 从 `pixel.csv` 生成带角度的 OBB（旋转框）标注；
-2. 基于 HBB / OBB 占有率与 `frenet.csv` 提取平均车头时距、加速度干扰、MGTI 等特征；
-3. 完成状态识别、状态预测、HBB/OBB 消融实验、参数敏感性分析、PKDD 跨场景泛化；
-4. 输出论文实验所需的指标表、图表与报告。
+2. 基于 HBB / OBB 占有率与 `frenet.csv` 提取平均车头时距、加速度干扰、MGTI 等特征，并产出每窗口 4×12 网格张量（OBB / HBB 占有率 + sin/cos 朝向场）；
+3. 完成状态识别、HBB/OBB 消融实验、参数敏感性分析、PKDD 跨场景泛化；
+4. 提出 **OBB-ST-LSTM** 单模型未来预测：前端 2 层卷积编码 4 通道空间张量并与标量描述符按帧拼接，单 LSTM 主干预测 3 秒后的四类状态；包含 5 组消融与 3 种子稳健性；
+5. 输出论文实验所需的指标表、图表与报告。
 
 ## 数据安排
 
@@ -47,8 +48,9 @@ bash scripts/run_all.sh
 
 - `outputs/processed/*_pixel_obb.csv`：HBB → OBB 标注表
 - `outputs/features/*_windows.csv`：滑窗交通状态特征
+- `outputs/features/*_grid_tensors.npz`：每窗口 4×4×12 OBB 网格张量（OBB-ST-LSTM 输入）
 - `docs/experiment_report.md`：完整实验报告
-- `outputs/figures/`：论文图表与 OBB 抽帧可视化
+- `outputs/figures/`：论文图表与 OBB 抽帧可视化（含 `cm_obb_st_lstm.png`、`obb_st_lstm_ablation.png`）
 
 ## 进一步阅读
 

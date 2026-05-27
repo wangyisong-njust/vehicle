@@ -7,6 +7,8 @@ import json
 import sys
 from pathlib import Path
 
+import numpy as np
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
@@ -34,7 +36,7 @@ def main() -> None:
         print(f"[FEATURE] loading {ds['name']}")
         frenet = load_frenet(ds_root / ds["frenet_csv"], float(ds["fps"]), int(ds["frame_offset"]))
         obb = load_obb(root / "outputs" / "processed" / f"{key}_pixel_obb.csv")
-        fields, rows = extract_window_features(
+        fields, rows, grid_tensors = extract_window_features(
             dataset_key=key,
             dataset_name=ds["name"],
             frenet=frenet,
@@ -57,8 +59,24 @@ def main() -> None:
             writer.writeheader()
             writer.writerows(rows)
         print(f"[FEATURE] wrote {len(rows)} windows to {out_path}")
+        tensor_path = root / "outputs" / "features" / f"{key}_grid_tensors.npz"
+        start_s = np.asarray([float(r["start_s"]) for r in rows], dtype=np.float32)
+        window_id = np.asarray([int(r["window_id"]) for r in rows], dtype=np.int32)
+        np.savez_compressed(
+            tensor_path,
+            tensors=grid_tensors,
+            start_s=start_s,
+            window_id=window_id,
+            channel_names=np.asarray(["obb_occupancy", "hbb_occupancy", "theta_sin", "theta_cos"]),
+        )
+        print(f"[FEATURE] wrote grid tensors {grid_tensors.shape} to {tensor_path}")
         all_rows.extend(rows)
-        summary[key] = {"windows": len(rows), "feature_csv": str(out_path.relative_to(root))}
+        summary[key] = {
+            "windows": len(rows),
+            "feature_csv": str(out_path.relative_to(root)),
+            "grid_tensor_npz": str(tensor_path.relative_to(root)),
+            "grid_tensor_shape": list(grid_tensors.shape),
+        }
 
     merged_path = root / "outputs" / "features" / "all_windows.csv"
     with merged_path.open("w", encoding="utf-8", newline="") as f:

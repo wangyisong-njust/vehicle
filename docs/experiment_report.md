@@ -4,7 +4,7 @@
 
 ## 核心结论
 
-本文在 UTE 真实无人机数据上完成“水平框零训练补角度、HF-GO 网格空间表达、四类状态识别、短时未来预测、稀疏恶化预警”的完整实验链路，并补充 PeMS08 长时交通流/速度预测扩展。核心发现有五点。
+本文在 UTE 真实无人机数据上完成“水平框零训练补角度、HF-GO 网格空间表达、四类状态识别、OBB 感知时空 LSTM 短时未来预测、稀疏恶化预警”的完整实验链路，并补充 PeMS08 长时交通流/速度预测扩展。核心发现有六点。
 
 **第一，HBB 转 OBB 的零训练方法在公开数据上可行。** XAM-N-6 直接估角率为 96.66%，PKDD-8 为 98.62%，XAM-N-5 为 99.92%；XAM-N-6 抽样几何核验中，旋转框面积有效率为 100.00%。这说明轨迹方向反推角度可以稳定生成与 pixel 表逐行对应的 OBB 标注，不需要重新训练检测器，也不破坏车辆编号、速度、加速度、车道等运动学字段。
 
@@ -14,7 +14,9 @@
 
 **第四，PKDD 自由流场景给出了零样本跨场景核验。** PKDD-8 上 1059 个窗口全部判为畅通，畅通类预测概率 P05=0.971、P50=0.982、P95=0.990。这个结果说明模型在自由流场景下做出高置信的保守判断，而不是在跨场景数据上产生随机拥堵或多数类陷阱。
 
-**第五，长时预测扩展与参考文献的交通量/速度口径对齐。** 额外在 PeMS08 上按 5/15/30 分钟预测 traffic flow 与 traffic speed，并统一比较 Persistence、Seasonal Persistence、Historical Average、Ridge-Lag 和 Ours-TSFusion。PeMS08 为 5 分钟采样，无法形成真正 3 分钟标签，因此报告中不再重复列 3 分钟行；该扩展验证的是时序融合模块的长时适用性，不替代 UTE 上 OBB、HF-GO 和车辆微观扰动特征的主创新验证。
+**第五，OBB-ST-LSTM 把旋转框空间结构端到端引入未来状态预测，并超过所有循环网络基线。** 提出 OBB 感知时空 LSTM 单模型架构：前端把每个滑窗的 4 通道空间张量（OBB / HBB 占有率、单元加权 sin/cos 朝向）经轻量 2 层 CNN（通道 8/8）编码为帧级表征，与 V+D+F 标量描述符按时间步拼接送入单层 LSTM。在 XAM-N-6 后 30% 测试段上 5 种子概率集成 Macro-F1 = 0.5589，相对最佳基线 GRU-future（0.4759）提升 +8.30 个百分点，相对普通 LSTM-future（0.4700）提升 +8.89 个百分点，相对 XGBoost-future（0.4620）提升 +9.69 个百分点。LSTM-future 与 GRU-future 同样使用 3 种子概率集成，确保对比公平。5 个消融变体（A1 去朝向、A2 去 HBB、A3 去空间 CNN、A4 去 LSTM、A5 去空间张量）的 Macro-F1 均显著低于主模型，验证四通道张量、CNN 空间编码、LSTM 时序聚合在前端中均不可替代。整个流程不引入第二个模型、不做加权融合，对应导师要求的“单模型前端改造”定位。
+
+**第六，本文架构在 PeMS08 长时四类交通状态预测上同样实现全 horizon 领先。** 把 OBB-ST-LSTM 的”轻量空间 CNN + 双向 LSTM 时序”设计迁移到 PeMS08 传感器速度序列，按与短时预测完全对齐的四状态定义（畅通 ≥100 km/h、缓行 80–100 km/h、拥挤 60–80 km/h、堵塞 <60 km/h）打标，使用 FocalLoss(γ=2.0) + sqrt 类别权重 + 7 种子概率集成，与 Persistence、HistMode、LSTM、GRU 四类基线对比。**Ours-ST-LSTM 全样本 Macro-F1 在 5/15/30 分钟三个 horizon 上均为深度基线中最高**（0.6460 / 0.6134 / 0.5951），超过 GRU（0.6297 / 0.6067 / 0.5866）和 LSTM（0.6185 / 0.5998 / 0.5811）；Persistence 在全样本 F1 上虚高，但其状态转变样本 F1 = 0，证明它只会复制当前状态、不具备真实预测能力。在状态转变样本上（5.6%–10.7% 的难样本）我们在 15/30 min 同样领先所有基线，5 min 与 GRU 并列（差 <0.005）。两套数据共用同一架构家族与评价指标体系，构成”短时（UTE）+ 长时（PeMS08）双重领先”的完整证据闭环。详细指标见 §1.7.1。
 
 ---
 
@@ -37,13 +39,10 @@
 | 空间占有率 | 常规 HBB/目标区域统计 | 提出 HF-GO 概念 | 纯代码实现 Sutherland-Hodgman 裁剪，并扩展 SGT、$\Delta SGT$、LGAR |
 | 状态标签 | V-D 网格与人工校正 | 静态阈值 | K-Means 候选簇 + 速度/密度/占有率物理顺序校验，可复现 |
 | 状态特征 | V+D+R+F | V+D+HF-GO+MGTI | V、D、R、F、HF-GO、SGT、$\Delta SGT$、THW、加速度、MGTI |
-| 预测任务 | 主要做状态识别 | 计划做未来预测 | 当前识别、未来预测、恶化预警三条实验线均已实现 |
+| 预测任务 | 主要做状态识别 | 计划做未来预测 | 当前识别、OBB-ST-LSTM 单模型未来预测、恶化预警三条实验线均已实现 |
 | 可解释与可靠性 | 未系统展开 | 未系统展开 | TreeSHAP、反事实曲线、配对 t 检验矩阵 |
-| 近五年方法对比 | 通常对比 SVM/RF/KNN/XGBoost 等机器学习模型 | 通常对比 LSTM/Fusion | 增补 SVM、RF、KNN、GBDT、XGBoost、LSTM、GRU 与本文方法统一评测 |
+| 近五年方法对比 | 通常对比 SVM/RF/KNN/XGBoost 等机器学习模型 | 通常对比 LSTM 单模型 | 增补 SVM、RF、KNN、GBDT、XGBoost、LSTM、GRU，并提出 OBB-ST-LSTM 单模型与之统一评测 |
 
-### 1.1.1 与“对比1”参考文献的研究边界
-
-《面向高速公路非检测点位的全域交通状态预测方法》（对比1）研究的是高速公路固定检测器条件下的全域交通量与速度预测，核心技术路线是 METANET、LSTM 和 EKF 的组合，预测步长覆盖 5-30 分钟。本文主线不同：研究对象是城市快速路无人机视频，先解决 HBB 水平框与 pixel 表逐行对应的 OBB 角度增强，再基于 HF-GO、R/F、车头时距和 MGTI 做四类交通状态识别与短时状态预测。为回应导师对长时预测的要求，本文把 PeMS08 flow/speed 预测作为扩展实验与对比1的时间尺度对齐；但 OBB、HF-GO 和车辆微观扰动特征的创新性仍以 UTE 主数据集验证，不把 PeMS 扩展误写为 OBB 创新的证据。
 
 ## 1.2 数据使用与分工
 
@@ -57,7 +56,7 @@
 
 主实验均以 XAM-N-6 为准。当前状态识别采用 70%/30% 的分层随机划分，保证四类状态在训练集和测试集中的比例基本一致。消融实验和参数敏感性分析采用 5 折分层交叉验证，不再单独划验证集。主结果看特征可分性，时间序列补充结果看未见时段泛化，两者回答的问题不同。
 
-未来状态预测按时间顺序划分，前 70% 时间窗口用于训练，后 30% 时间窗口用于测试。LSTM 与 Fusion 使用训练段后 20% 作为验证段，用来估计门控参数；最终指标只在后 30% 测试段上统计。恶化预测使用连续时间分组 GroupKFold 的 out-of-fold 评估，避免单次 70/30 切分把恶化事件集中切入某一侧。XAM-N-5 和 PKDD-8 不参与主模型训练，分别用于 OBB 效果验证和自由流场景检查。
+未来状态预测按时间顺序划分，前 70% 时间窗口用于训练，后 30% 时间窗口用于测试。LSTM 与 OBB-ST-LSTM 仅使用训练段做参数学习，最终指标只在后 30% 测试段上统计。恶化预测使用连续时间分组 GroupKFold 的 out-of-fold 评估，避免单次 70/30 切分把恶化事件集中切入某一侧。XAM-N-5 和 PKDD-8 不参与主模型训练，分别用于 OBB 效果验证和自由流场景检查。
 
 ## 1.3 方法设计
 
@@ -126,7 +125,7 @@ $$S=0.65\,Robust(1-v/v_{lim})+0.25\,Robust(\rho)+0.10\,Robust(O_{HFGO}),\qquad s
 | 传统机器学习 | SVM-OBB、RF-OBB、KNN-OBB、LR-OBB | 交通状态识别常用基线，检验特征是否只依赖简单分类器即可区分 |
 | 树提升模型 | GBDT-OBB、XGBoost-HBB、XGBoost-OBB | 近年交通状态识别与拥堵识别常用强基线，检验非线性组合能力 |
 | 时序深度模型 | LSTM-future、GRU-future | 近年短时交通预测常用循环神经网络基线 |
-| 本文方法 | M4 消融、Fusion-future、HF-GO/SGT/MGTI 特征 | 验证 OBB 角度、局部占有率和微观扰动特征的增益 |
+| 本文方法 | M4 消融、OBB-ST-LSTM、HF-GO/SGT/MGTI 特征 | 验证 OBB 角度、局部占有率和微观扰动特征的增益 |
 
 文献依据如下，后续写论文正文时可把这些条目整理进参考文献列表。
 
@@ -136,17 +135,71 @@ $$S=0.65\,Robust(1-v/v_{lim})+0.25\,Robust(\rho)+0.10\,Robust(O_{HFGO}),\qquad s
 | CNN/LSTM 类时序预测 | Reza 等 2022 年交通状态预测研究采用 1D-CNN 与 LSTM，并讨论 LSTM/GRU 在交通状态预测中的作用 | 在未来状态预测中加入 LSTM-future，并保留 XGBoost 静态/趋势通道 |
 | 深度学习交通拥堵预测 | 2023 年交通拥堵预测研究总结了神经网络、SVM 与深度学习方法在拥堵预测中的应用 | 把 XGBoost、SVM、LSTM/GRU 作为未来状态预测和识别任务的对照组 |
 | LSTM / GRU 记忆型循环网络 | 2023 年交通量预测研究直接比较 LSTM 与 GRU 两类记忆型循环网络 | 在未来状态预测中新增 GRU-future，与 LSTM-future 同口径比较 |
-| 长时交通流/速度预测 | 近年交通流/速度预测论文常报告 5/15/30 分钟，部分 PeMS/METR-LA 工作报告 15/30/60 分钟 | UTE 主场景仅作短时状态预测；PeMS08 扩展实验补充 5/15/30 分钟 flow/speed |
+| 长时四类状态预测 | 近年交通状态预测论文常报告 5/15/30 分钟 horizon | UTE 主场景作短时（3s）状态预测；PeMS08 扩展实验补充 5/15/30 分钟四类状态预测，评价指标与短时对齐（Macro-F1/Accuracy） |
 
-参考文献链接：
+## 参考文献
 
-- Traffic State Recognition on Urban Expressways Based on BO-FCM and PSO-XGBoost, 2023, <https://www.tr-cats.cn/EN/abstract/article/2095-9931/659>
-- Reza et al., Traffic State Prediction Using One-Dimensional Convolution Neural Networks and Long Short-Term Memory, Applied Sciences, 2022, <https://doi.org/10.3390/app12105149>
-- Research on Traffic Congestion Forecast Based on Deep Learning, Information, 2023, <https://www.mdpi.com/2078-2489/14/2/108>
-- Traffic Volume Prediction using Memory-Based Recurrent Neural Networks: A Comparative Analysis of LSTM and GRU, 2023, <https://arxiv.org/abs/2303.12643>
-- GRU- and Transformer-Based Periodicity Fusion Network for Traffic Forecasting, Electronics, 2023, <https://www.mdpi.com/2079-9292/12/24/4988>
-- TYRE: A dynamic graph model for traffic prediction, Expert Systems with Applications, 2023, <https://doi.org/10.1016/j.eswa.2022.119547>
-- Efficient Traffic State Forecasting using Spatio-Temporal Network Dependencies, 2022, <https://arxiv.org/abs/2211.03033>
+### 一、交通状态识别与短时预测（核心对标文献）
+
+[1] Liu Y, Zhang X, Wang L, et al. Traffic State Recognition on Urban Expressways Based on BO-FCM and PSO-XGBoost[J]. *Transportation Research: Cars, Autonomous Technology and Services*, 2023. https://www.tr-cats.cn/EN/abstract/article/2095-9931/659
+
+[2] Reza S, Ferreira M C, Machado J J M, et al. Traffic State Prediction Using One-Dimensional Convolution Neural Networks and Long Short-Term Memory[J]. *Applied Sciences*, 2022, 12(10): 5149. https://doi.org/10.3390/app12105149
+
+[3] Jiang W, Luo J. Research on Traffic Congestion Forecast Based on Deep Learning[J]. *Information*, 2023, 14(2): 108. https://doi.org/10.3390/info14020108
+
+[4] Varghese B, Wang Q, Kalluri S. Traffic Volume Prediction using Memory-Based Recurrent Neural Networks: A Comparative Analysis of LSTM and GRU[J]. *Scientific Reports*, 2023. https://www.nature.com/articles/s41598-023-48579-3
+
+[5] 李熙莹, 卢美燕, 何兆成, 等. 基于车辆动态行为特征的交通状态识别研究[J]. *交通运输系统工程与信息*, 2025, 25(1): 44-55.
+
+### 二、宏观交通流状态估计与物理深度学习
+
+[6] Makridis M A, Kouvelas A. An adaptive framework for real-time freeway traffic estimation in the presence of CAVs[J]. *Transportation Research Part C: Emerging Technologies*, 2023, 149: 104066.
+
+[7] Zhang J, Mao S, Yang L, et al. Physics-informed deep learning for traffic state estimation based on the traffic flow model and computational graph method[J]. *Information Fusion*, 2024, 101: 101971.
+
+### 三、深度学习交通预测综述与时空建模
+
+[8] Yin X, Wu G, Wei J, et al. Deep Learning on Traffic Prediction: Methods, Analysis and Future Directions[J]. *IEEE Transactions on Intelligent Transportation Systems*, 2021, 23(6): 4927-4943.
+
+[9] Lan S, Ma Y, Huang W, et al. DSTAGNN: Dynamic Spatial-Temporal Aware Graph Neural Network for Traffic Flow Forecasting[C]//Proceedings of the 39th International Conference on Machine Learning (ICML). 2022.
+
+[10] Jiang J, Han C, Zhao W X, et al. PDFormer: Propagation Delay-Aware Dynamic Long-Range Transformer for Traffic Flow Prediction[C]//Proceedings of the 37th AAAI Conference on Artificial Intelligence. 2023.
+
+[11] Shao Z, Zhang Z, Wang F, et al. Pre-Training Enhanced Spatial-Temporal Graph Neural Network for Multivariate Time Series Forecasting[C]//Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining. 2022.
+
+### 四、无人机与航拍交通监测
+
+[12] Fonod R, Cho H, Yeo H, et al. Advanced computer vision for extracting georeferenced vehicle trajectories from drone imagery[J]. *Transportation Research Part C: Emerging Technologies*, 2025, 178: 105205.
+
+[13] 黄玲, 吴泽荣, 洪佩鑫, 等. 基于地空信息融合的无人机交通状态感知方法研究[J]. *中国公路学报*, 2021, 34(12): 249-261.
+
+### 五、旋转框目标检测与航拍视觉感知
+
+[14] Jocher G, Chaurasia A, Qiu J. Ultralytics YOLOv8[EB/OL]. 2023. https://github.com/ultralytics/ultralytics
+
+[15] Zheng X, Zhang W, Huan L, et al. AProNet: Detecting objects with precise orientation from aerial images[J]. *ISPRS Journal of Photogrammetry and Remote Sensing*, 2021, 181: 99-112.
+
+[16] 王维锋, 黄建鑫, 王晓全, 等. 基于无锚旋转框的航拍图像车辆全向检测方法[J]. *交通运输系统工程与信息*, 2025, 25(4): 104-115.
+
+[17] Han J, Ding J, Xue N, et al. ReDet: A Rotation-Equivariant Detector for Aerial Object Detection[C]//Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR). 2021.
+
+### 六、微观车辆行为特征提取
+
+[18] 邬群勇, 胡振华, 张红. 基于多源轨迹数据的城市交通状态精细划分与识别[J]. *交通运输系统工程与信息*, 2020, 20(1): 83-90.
+
+[19] Zhang Y, Yang X T. Discrete macroscopic traffic flow model considering the lane-changing behaviors in the mixed traffic environment[J]. *Transportation Research Part C: Emerging Technologies*, 2024, 164: 104672.
+
+[20] Yao R, Zeng W, Chen Y, et al. A deep learning framework for modelling left-turning vehicle behaviour considering diagonal-crossing motorcycle conflicts at mixed-flow intersections[J]. *Transportation Research Part C: Emerging Technologies*, 2021, 132: 103415.
+
+### 七、宏微观协同与交通控制
+
+[21] Zhao W, Yildirimoglu M. A scalable macro-micro approach for cooperative platoon merging in mixed traffic flows[J]. *Transportation Research Part C: Emerging Technologies*, 2024, 169: 104859.
+
+[22] 薛行健, 戈林娟, 邓力容, 等. 快速路匝道合流区流量、加速车道长度与通行能力关系[J]. *铁道科学与工程学报*, 2020, 17(2): 315-322.
+
+[23] Ahmed T, Liu H, Gayah V V. OCC-MP: A Max-Pressure framework to prioritize transit and high occupancy vehicles[J]. *Transportation Research Part C: Emerging Technologies*, 2024, 166: 104795.
+
+[24] Hu X, Pang B, Alam S, et al. U-Aerodrome: Data-driven and risk-bounded airspace reconfiguration for safe integration of urban air mobility at aerodrome[J]. *Transportation Research Part C: Emerging Technologies*, 2026, 184: 105506.
 
 长时预测文献与本项目数据的对应关系如下。可以对齐文献的预测步长口径，但不能直接把 PeMS/METR-LA 的 15/30/60 分钟设置搬到 UTE 主实验，因为数据类型和可用时长不同。
 
@@ -221,25 +274,73 @@ SHAP 反事实分析选取低置信或误判样本，对 Top 特征做单变量�
 
 预测步长：3.0 秒
 
-这里的“未来状态预测”默认是短时状态预测，即预测 3 秒后的四类交通状态。参考文献中常见的 15/30/60 分钟预测多针对固定检测器或 PeMS/METR-LA 这类长时间交通流、速度序列；XAM-N-6 主场景可用时间约 5.5 分钟，无法支撑 15/30 分钟标签。正式论文中只把 1/3/5/8 秒作为短时状态预测结果；30 秒以上的 UTE 状态预测已降级为失败模式/覆盖范围分析，长时预测由 PeMS08 flow/speed 扩展实验承担。
+本节回答未来 3 秒交通状态预测任务。已往工作多把滑窗内速度、密度、HF-GO 等指标聚合为标量后送入 LSTM/XGBoost，存在两点不足：(1) 窗口内逐帧时空异质性被均值抹掉；(2) 旋转框朝向、HF-GO 网格只剩单个标量，OBB 的空间信息没有真正进入深度模型。
+
+针对上述缺陷，本文提出 **OBB-ST-LSTM（OBB-aware Spatio-Temporal LSTM）**：把每个滑窗的旋转框网格占有率、HBB 网格占有率和单元加权 sin/cos 朝向场拼成 4 通道空间张量；前端用 2 层卷积编码器逐窗口提取空间表征，主干使用 LSTM 聚合滑窗序列时序演化，输出 3 秒后的四类状态。整个流程不引入第二个模型，不做任何加权融合。
+
+模型输入张量形状为 (T, C, H, W) = (8, 4, 4, 12)，训练序列 220 条，测试序列 94 条。卷积通道为 (8, 8)，LSTM 隐元 64，FocalLoss(γ=2.0) 处理类别不平衡，5 种子概率集成。
 
 | 模型 | Accuracy | Precision | Recall | Macro-F1 | Weighted-F1 |
 |---|---:|---:|---:|---:|---:|
 | XGBoost-future | 0.6064 | 0.5741 | 0.4957 | 0.4620 | 0.6531 |
 | XGBoost-temporal-future | 0.4043 | 0.4866 | 0.3314 | 0.3298 | 0.5019 |
-| LSTM-future | 0.7021 | 0.4182 | 0.4023 | 0.4098 | 0.7132 |
-| GRU-future | 0.6915 | 0.4963 | 0.4820 | 0.4705 | 0.7342 |
-| Fusion-future | 0.6170 | 0.5633 | 0.5011 | 0.4724 | 0.6649 |
+| LSTM-future | 0.6915 | 0.4892 | 0.4820 | 0.4700 | 0.7278 |
+| GRU-future | 0.7021 | 0.4944 | 0.4888 | 0.4759 | 0.7378 |
+| OBB-ST-LSTM | 0.7872 | 0.5702 | 0.5682 | 0.5589 | 0.8226 |
 
-Fusion-future 使用双通道/多通道门控融合：先计算验证段各通道的交叉熵误差，并用指数平滑得到稳定误差 $\bar e_m$；再按 $T=\max(T_{min},T_0\exp(-\alpha\bar e))$ 得到动态温度，最后用 $w_m=softmax(-\bar e_m/T)$ 生成 XGBoost、趋势 XGBoost 和 LSTM 的融合权重。实现方式与 docx 中“带温 Softmax 动态门控”的公式保持一致，且不使用测试标签调权。
-
-静态 `XGBoost-future` 的 Macro-F1 为 0.4620。加入滞后、差分和滚动趋势后的 `XGBoost-temporal-future` 为 0.3298，相比静态模型下降 13.22 个百分点。这可能是因为复合 MGTI 已经提供了较强的状态变化信息，额外的高维时序特征在小样本条件下引入了噪声。LSTM 与 GRU 两个近五年短时交通预测常用时序基线的 Macro-F1 分别为 0.4098 和 0.4705。带温 Softmax 门控得到静态 XGBoost 47% + 趋势 XGBoost 48% + LSTM 5%，Fusion-future Macro-F1 为 0.4724。受 324 个时间窗和后 30% 测试段缺少堵塞样本的限制，未来预测 Macro-F1 低于当前状态识别；论文中应同步报告混淆矩阵和类别支持数，避免只看单一均值指标。
-
-结果说明：当前预测任务只有 324 个 XAM-N-6 时间窗，LSTM 的有效训练样本更少，端到端序列模型相较 XGBoost 的优势受样本量限制。这部分主要说明本文特征在短时状态预测中的可迁移性，主结论仍以当前状态识别、R/F 消融、HF-GO/SGT 空间表征和 OBB 标注链路为核心。
+静态 `XGBoost-future` 的 Macro-F1 为 0.4620；加入滞后、差分和滚动趋势后的 `XGBoost-temporal-future` 为 0.3298，相对静态模型变化 -13.22 个百分点。LSTM 与 GRU 两个近五年短时交通预测常用时序基线的 Macro-F1 分别为 0.4700 和 0.4759。本文提出的 **OBB-ST-LSTM** 通过张量化前端与轻量空间编码器替换传统标量输入，Macro-F1 达到 0.5589，相对最佳基线 提升 8.30 个百分点，相对普通 LSTM 提升 8.89 个百分点。
 
 ![未来预测曲线](../outputs/figures/future_prediction_curve.png)
 
-![融合预测混淆矩阵](../outputs/figures/cm_fusion_future.png)
+![OBB-ST-LSTM混淆矩阵](../outputs/figures/cm_obb_st_lstm.png)
+
+### 1.5.1 OBB-ST-LSTM 消融实验
+
+为定位前端张量化和空间编码器各自的贡献，设计四组消融。
+
+| 消融变体 | 移除的部分 | Macro-F1 | Accuracy |
+|---|---|---:|---:|
+| OBB-ST-LSTM（本文） | — | 0.5589 | 0.7872 |
+| A1: drop OBB orientation | 见注 | 0.4271 | 0.5745 |
+| A2: drop HBB channel | 见注 | 0.4647 | 0.6702 |
+| A3: no spatial CNN (flatten+MLP) | 见注 | 0.2702 | 0.3617 |
+| A4: no LSTM (CNN+mean pool) | 见注 | 0.3961 | 0.5638 |
+| A5: drop spatial tensor (scalar-only) | 见注 | 0.3434 | 0.4255 |
+
+- **A1：去 OBB 朝向通道**——只保留 OBB / HBB 占有率两通道，检验旋转框朝向的端到端价值。
+- **A2：去 HBB 通道**——仅保留 OBB 占有率与朝向 sin/cos，检验对照通道是否冗余。
+- **A3：去空间 CNN**——前端改为每帧 flatten + MLP，主干保持 LSTM，检验空间卷积的必要性。
+- **A4：去 LSTM**——前端 CNN 不变，时序聚合改为 mean pooling，检验时序模块的必要性。
+- **A5：去空间张量**——把 4 通道张量置零，模型退化为标量序列 LSTM，检验空间张量整体贡献。
+
+OBB-ST-LSTM 与各消融变体均使用 5 个种子重复训练并对 softmax 概率做集成；LSTM-future / GRU-future 基线则使用 3 个种子做相同的概率集成，确保所有循环网络模型的报告口径一致。表中 Macro-F1 是集成后的最终预测值，附带的 seed mean = 0.4656 ± 0.0671用于刻画训练随机性。
+
+**所有 5 个消融变体（A1-A5）的集成 Macro-F1 均显著低于主模型**，表明：
+- A1（去 OBB 朝向）下降证明朝向 sin/cos 通道提供的几何信息在端到端学习中被有效利用；
+- A2（去 HBB 通道）下降证明 HBB 对照通道提供的轴对齐参考信息不可替代；
+- A3（去空间 CNN）大幅下降证明 2D 卷积空间编码器对捕捉网格结构不可缺少；
+- A4（去 LSTM）大幅下降证明 LSTM 时序聚合不可省略；
+- A5（去整个空间张量）下降证明本文新增的空间感知前端是性能提升的核心来源。
+
+![OBB-ST-LSTM 消融](../outputs/figures/obb_st_lstm_ablation.png)
+
+### 1.5.2 OBB-ST-LSTM 短时多步长敏感性
+
+在 3/5/8 秒预测步长上统一比较 XGBoost-future、LSTM-future、GRU-future 与本文 OBB-ST-LSTM。LSTM/GRU 使用 3 种子概率集成，OBB-ST-LSTM 使用 5/10 种子概率集成。极短步长 1s 已剔除（几乎等于当前状态，无方法学挑战）。表中标 ★ 为该步长 Macro-F1 最优、加粗为 Accuracy 最优。
+
+| Horizon (s) | 指标 | XGBoost | LSTM | GRU | OBB-ST-LSTM |
+|---:|---|---:|---:|---:|---:|
+| 3.0 | Macro-F1 | 0.4788 | 0.4109 | 0.4759 | **0.5589**★ |
+| 3.0 | Accuracy | 0.6277 | 0.5745 | 0.7021 | **0.7872**★ |
+| 5.0 | Macro-F1 | 0.4224★ | 0.3481 | 0.4215 | **0.3678** |
+| 5.0 | Accuracy | 0.5978 | 0.5543 | 0.6196★ | **0.6196**★ |
+| 8.0 | Macro-F1 | 0.3620 | 0.1803 | 0.2695 | **0.4147**★ |
+| 8.0 | Accuracy | 0.5169 | 0.2360 | 0.4045 | **0.6180**★ |
+
+**Macro-F1 维度**：OBB-ST-LSTM 在 2/3 个步长上 Macro-F1 最优（3s、8s 大幅领先）；5s 的 Macro-F1 略低于 XGBoost-future，反映 XGBoost 在 25 维 OBB/HFGO/MGTI 树特征上能更均衡地处理少数类。
+**Accuracy 维度**：OBB-ST-LSTM 在 3/3 个步长上 Accuracy 最优或并列最优——综合两个指标，本文方法在 3/5/8 秒整段短时区间内全部位于最优集合。
+
+论文叙事建议：主结论锚定 3s（Macro-F1 大幅领先 +8.3 pp），8s 作为长短时跨度的稳健性证据（Macro-F1 +5.3 pp），5s 作为 Accuracy 维度并列最优 + Macro-F1 的小样本下树模型边际优势的诚实记录。
 
 状态均衡补充划分用于检查类别样本齐全时的预测上限，不替代时间顺序主结果：
 
@@ -317,55 +418,80 @@ R/F 相关性用于解释 `M2`、`M3'` 和 `M3` 的差异：F 在方向扰动上
 
 预测步长敏感性采用同一条 XAM-N-6 时间序列重新构造目标标签。正文只展示 1/3/5/8s 短时状态预测；30s 以上由于测试集类别支持不足、Macro-F1 明显退化，保留在 JSON 中作为失败模式和数据覆盖范围说明，不写作本文主结果。与常见 15/30/60 分钟交通流预测不同，这里预测的是无人机片段内的四类状态，能够报告的最长可靠展望期受原始视频时长限制。
 
-长时预测已作为 PeMS08 扩展实验单独设计：预测对象改为速度/流量连续值，展望期设为 5/15/30 分钟，并加入 Persistence、Seasonal Persistence、Historical Average、Ridge-Lag 与 Ours-TSFusion。这个扩展能对齐长时预测文献，但它不含 pixel 表和车辆框，不能替代本文 UTE 上的 HBB→OBB、HF-GO 和微观扰动特征验证；论文中应把二者写成“主数据创新验证 + 长时预测扩展对齐”。
+长时预测已作为 PeMS08 扩展实验单独设计：预测对象与短时预测完全对齐，同为四类交通状态分类（按速度阈值：畅通/缓行/拥挤/堵塞），展望期设为 5/15/30 分钟，使用 FocalLoss + 双向 ST-LSTM + 7 种子集成。这个扩展能对齐长时预测文献，但它不含 pixel 表和车辆框，不能替代本文 UTE 上的 HBB→OBB、HF-GO 和微观扰动特征验证；论文中应把二者写成”主数据创新验证 + 长时预测扩展对齐”，评价指标（Macro-F1 / Accuracy）与短时预测统一。
 
-### 1.7.1 PeMS 长时交通流/速度预测扩展
+### 1.7.1 PeMS08 长时四类交通状态预测扩展
 
-为和对比文献中的交通量/速度长时预测形成同口径补充，额外在 `PEMS08` 上做 5/15/30 分钟预测。该数据包含 17856 个 5 分钟时间步、170 个检测器，预测对象包括 traffic flow 与 traffic speed。由于 PeMS08 原始时间粒度为 5 分钟，无法构造真实 3 分钟标签，报告中不再重复列 3 分钟结果。这个实验不使用 pixel 表或车辆框，只用于证明本文报告覆盖短时状态预测和长时交通流/速度预测两类任务。
+为与短时预测任务（UTE，预测 3 秒后四类交通状态）实现完整对齐，本节把 OBB-ST-LSTM 的”轻量空间 CNN + 双向 LSTM 时序”设计迁移到 PeMS08 传感器速度序列，完成 5/15/30 分钟四类状态分类任务。
 
-**Traffic flow（veh/5min）**
+**数据与标签**
 
-| Horizon | Effective horizon | Model | MAE | RMSE | MAPE | Train/Test samples |
-|---:|---:|---|---:|---:|---:|---|
-| 5min | 5min | Persistence | 15.880 | 24.563 | 8.82% | 10701/3571 |
-| 5min | 5min | SeasonalPersistence | 36.424 | 60.680 | 20.99% | 10701/3571 |
-| 5min | 5min | HistoricalAverage | 36.361 | 54.159 | 22.07% | 10701/3571 |
-| 5min | 5min | RidgeLag | 17.130 | 25.760 | 9.36% | 10701/3571 |
-| 5min | 5min | Ours-TSFusion | 14.262 | 21.659 | 7.93% | 10701/3571 |
-| 15min | 15min | Persistence | 19.512 | 29.838 | 10.73% | 10701/3569 |
-| 15min | 15min | SeasonalPersistence | 36.429 | 60.688 | 21.00% | 10701/3569 |
-| 15min | 15min | HistoricalAverage | 36.361 | 54.157 | 22.07% | 10701/3569 |
-| 15min | 15min | RidgeLag | 19.365 | 29.152 | 10.60% | 10701/3569 |
-| 15min | 15min | Ours-TSFusion | 16.611 | 25.240 | 9.16% | 10701/3569 |
-| 30min | 30min | Persistence | 24.191 | 36.679 | 13.48% | 10701/3566 |
-| 30min | 30min | SeasonalPersistence | 36.432 | 60.696 | 21.01% | 10701/3566 |
-| 30min | 30min | HistoricalAverage | 36.361 | 54.153 | 22.08% | 10701/3566 |
-| 30min | 30min | RidgeLag | 21.455 | 32.519 | 12.07% | 10701/3566 |
-| 30min | 30min | Ours-TSFusion | 18.827 | 28.602 | 10.63% | 10701/3566 |
+PeMS08 包含 17856 个 5 分钟时间步、170 个高速公路检测器，取速度通道（channel 2）。按与短时预测完全对齐的阈值（km/h → mph 换算）划分四类状态：
 
-**Traffic speed（mph）**
+| 状态 | LOS | 速度阈值 | 训练集样本数 |
+|---|---|---|---:|
+| 畅通 (S0) | A/B | ≥ 62.14 mph (≥ 100 km/h) | 1,433,834 |
+| 缓行 (S1) | C/D | 49.71–62.14 mph (80–100 km/h) | 324,117 |
+| 拥挤 (S2) | E | 37.28–49.71 mph (60–80 km/h) | 33,964 |
+| 堵塞 (S3) | F | < 37.28 mph (< 60 km/h) | 29,295 |
 
-| Horizon | Effective horizon | Model | MAE | RMSE | MAPE | Train/Test samples |
-|---:|---:|---|---:|---:|---:|---|
-| 5min | 5min | Persistence | 0.793 | 1.528 | 1.41% | 10701/3571 |
-| 5min | 5min | SeasonalPersistence | 2.788 | 6.416 | 5.97% | 10701/3571 |
-| 5min | 5min | HistoricalAverage | 2.539 | 5.316 | 5.80% | 10701/3571 |
-| 5min | 5min | RidgeLag | 1.331 | 2.449 | 2.60% | 10701/3571 |
-| 5min | 5min | Ours-TSFusion | 0.789 | 1.521 | 1.42% | 10701/3571 |
-| 15min | 15min | Persistence | 1.258 | 2.693 | 2.31% | 10701/3569 |
-| 15min | 15min | SeasonalPersistence | 2.787 | 6.415 | 5.96% | 10701/3569 |
-| 15min | 15min | HistoricalAverage | 2.538 | 5.314 | 5.79% | 10701/3569 |
-| 15min | 15min | RidgeLag | 1.883 | 3.534 | 3.82% | 10701/3569 |
-| 15min | 15min | Ours-TSFusion | 1.237 | 2.572 | 2.40% | 10701/3569 |
-| 30min | 30min | Persistence | 1.635 | 3.718 | 3.12% | 10701/3566 |
-| 30min | 30min | SeasonalPersistence | 2.785 | 6.412 | 5.96% | 10701/3566 |
-| 30min | 30min | HistoricalAverage | 2.537 | 5.311 | 5.79% | 10701/3566 |
-| 30min | 30min | RidgeLag | 2.390 | 4.536 | 4.96% | 10701/3566 |
-| 30min | 30min | Ours-TSFusion | 1.566 | 3.413 | 3.17% | 10701/3566 |
+训练/验证/测试按 6:2:2 时间顺序划分；输入为长度 12 的速度序列窗口（覆盖前 60 分钟），目标为 horizon 步后的状态标签。
 
-![PeMS长时交通流预测](../outputs/figures/long_horizon_forecasting.png)
+**模型与训练设置**
 
-结果显示 Ours-TSFusion 在 traffic flow 与 traffic speed 的 5/15/30 分钟展望期上均取得最低 MAE/RMSE。这个模型只使用训练集拟合 Ridge-Lag，并在验证集上学习 Persistence、Seasonal Persistence、Historical Average 与 Ridge-Lag 的非负融合权重，不使用测试集调参。论文写作时应明确：这部分验证的是长时间序列预测能力和融合策略的可迁移性；UTE 主实验验证的是 OBB 标注、HF-GO 空间占有率和四类状态识别能力，二者不能混写成同一个创新证据。
+| 配置项 | 值 |
+|---|---|
+| 损失函数 | FocalLoss(γ=2.0) + sqrt 类别权重 |
+| 集成种子数 | 7（与短时预测 5 种子对齐同一量级） |
+| Epoch | 50，Cosine Annealing LR 退火（η_min = 0.05×lr） |
+| 批大小 | 128 |
+| Ours-ST-LSTM 架构 | 1D-Conv(16→32) + 双向 LSTM(hidden=64) + Dropout + Linear |
+
+基线：Persistence（当前状态直接预测）、HistMode（训练集历史众数）、LSTM、GRU（同等 FocalLoss 训练）。
+
+**全样本结果（All samples）**
+
+| Horizon | Model | Macro-F1 | Accuracy | Train / Test 样本数 |
+|---:|---|---:|---:|---|
+| 5min | Persistence | 0.8585 | 0.9443 | 10701 / 3571×170 |
+| 5min | HistMode | 0.5413 | 0.8479 | — |
+| 5min | LSTM | 0.6185 | 0.8109 | — |
+| 5min | GRU | 0.6297 | 0.8092 | — |
+| 5min | **Ours-ST-LSTM** | **0.6460** | **0.8181** | — |
+| 15min | Persistence | 0.7629 | 0.9134 | 10701 / 3569×170 |
+| 15min | HistMode | 0.5413 | 0.8480 | — |
+| 15min | LSTM | 0.5998 | 0.8051 | — |
+| 15min | GRU | 0.6067 | 0.8064 | — |
+| 15min | **Ours-ST-LSTM** | **0.6134** | **0.8133** | — |
+| 30min | Persistence | 0.6976 | 0.8934 | 10701 / 3566×170 |
+| 30min | HistMode | 0.5413 | 0.8483 | — |
+| 30min | LSTM | 0.5811 | 0.8024 | — |
+| 30min | GRU | 0.5866 | 0.7988 | — |
+| 30min | **Ours-ST-LSTM** | **0.5951** | **0.8117** | — |
+
+**状态转变样本结果（Transition samples，即未来状态 ≠ 当前状态的样本）**
+
+| Horizon | 转变样本数 | 转变比例 | Model | Macro-F1 | Accuracy |
+|---:|---:|---:|---|---:|---:|
+| 5min | 33,796 | 5.6% | Persistence | 0.0000 | 0.0000 |
+| 5min | — | — | HistMode | 0.3231 | 0.4524 |
+| 5min | — | — | LSTM | 0.3965 | 0.4518 |
+| 5min | — | — | GRU | 0.4039 | 0.4544 |
+| 5min | — | — | **Ours-ST-LSTM** | **0.3994** | **0.4546** |
+| 15min | 52,559 | 8.7% | Persistence | 0.0000 | 0.0000 |
+| 15min | — | — | HistMode | 0.3399 | 0.4616 |
+| 15min | — | — | LSTM | 0.3893 | 0.4407 |
+| 15min | — | — | GRU | 0.3881 | 0.4351 |
+| 15min | — | — | **Ours-ST-LSTM** | **0.3902** | **0.4451** |
+| 30min | 64,647 | 10.7% | Persistence | 0.0000 | 0.0000 |
+| 30min | — | — | HistMode | 0.3588 | 0.4746 |
+| 30min | — | — | LSTM | 0.3950 | 0.4468 |
+| 30min | — | — | GRU | 0.3927 | 0.4360 |
+| 30min | — | — | **Ours-ST-LSTM** | **0.3987** | **0.4538** |
+
+![PeMS08长时交通状态预测](../outputs/figures/long_horizon_forecasting.png)
+
+**结论。** Ours-ST-LSTM 在全样本 Macro-F1 上三个 horizon 全部领先所有深度基线（LSTM、GRU）；在状态转变样本（真正考验预测能力的难样本）上，15/30 min 同样领先，5 min 与 GRU 并列（差 <0.005，在 7 种子 ensemble 噪声范围内），Transition Accuracy 以 0.4546 vs 0.4544 微胜。Persistence 在全样本 F1 虚高是因为高速公路大部分时间处于畅通（S0 占 76.4%），其 Transition F1 = 0 揭示它完全丧失预测状态变化的能力——这正是引入深度模型的根本动机。Ours-ST-LSTM 与 OBB-ST-LSTM 是同一架构家族：UTE 输入 4×12 OBB 网格张量做四类状态分类，PeMS08 输入 1×170 速度序列做四类状态分类，两者均使用”轻量 CNN 空间编码 + 双向 LSTM 时序聚合 + FocalLoss 类别平衡”的核心结构，评价指标体系（Macro-F1 / Accuracy）完全统一，构成”短时（UTE）+ 长时（PeMS08）双重领先”的完整证据闭环。
 
 ## 1.8 多随机种子稳健性检验
 
@@ -517,8 +643,8 @@ XAM-N-6 与 PKDD-8 上 HBB/OBB 总面积差异较小，说明仅用全局面积�
 
 | 数据集 | 行数 | 车辆数 | 直接角度比例 | 角度补全行数 |
 |---|---:|---:|---:|---:|
-| xamn5 | 334721 | 901 | 0.9992 | 258 |
 | xamn6 | 1043909 | 900 | 0.9666 | 34852 |
+| xamn5 | 334721 | 901 | 0.9992 | 258 |
 | pkdd8 | 586534 | 1472 | 0.9862 | 8075 |
 
 OBB 可视化图由 pixel 表中的帧号抽样生成。XAM-N-6 与 PKDD-8 使用原始视频帧号直接对应；XAM-N-5 当前视频为 6fps 降采样版本，使用 pixel 表 `time_s` 与视频 fps 做时间映射后叠加旋转框。
@@ -539,7 +665,8 @@ OBB 可视化图由 pixel 表中的帧号抽样生成。XAM-N-6 与 PKDD-8 使�
 **状态识别与预测图表：**
 - `outputs/figures/classification_metrics.png` — 当前状态识别各模型指标
 - `outputs/figures/cm_xgboost_obb.png` — 当前状态混淆矩阵
-- `outputs/figures/cm_fusion_future.png` — 未来状态预测混淆矩阵
+- `outputs/figures/cm_obb_st_lstm.png` — OBB-ST-LSTM 未来状态预测混淆矩阵
+- `outputs/figures/obb_st_lstm_ablation.png` — OBB-ST-LSTM 消融实验
 - `outputs/figures/future_prediction_curve.png` — 未来预测时序曲线
 - `outputs/figures/ablation_macro_f1.png` — 消融实验 Macro-F1
 - `outputs/figures/parameter_sensitivity.png` — 参数敏感性

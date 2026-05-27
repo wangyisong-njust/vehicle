@@ -1,0 +1,71 @@
+{
+  "datasets": {
+    "xamn6": {
+      "name": "XAM-N-6",
+      "role": "main",
+      "root": "data/UTE/datasets/XAM-N/XAM-N-6",
+      "frenet_csv": "frenet.csv",
+      "video": "sample video.mp4",
+      "fps": 60.0,
+      "segment_length_m": 140.0,
+      "speed_limit_kmh": 60.0,
+      "frame_offset": 3901
+    },
+    "xamn5": {
+      "name": "XAM-N-5",
+      "role": "supplement",
+      "root": "data/UTE/datasets/XAM-N/XAM-N-5",
+      "frenet_csv": "frenet.csv",
+      "video": "sample video.mp4",
+      "fps": 30.0,
+      "segment_length_m": 140.0,
+      "speed_limit_kmh": 60.0,
+      "frame_offset": 1
+    },
+    "pkdd8": {
+      "name": "PKDD-8",
+      "role": "generalization",
+      "root": "data/UTE/datasets/PKDD/PKDD-8",
+      "frenet_csv": "frenet.csv",
+      "video": "sample video.mp4",
+      "fps": 30.0,
+      "segment_length_m": 280.0,
+      "speed_limit_kmh": 80.0,
+      "frame_offset": 31
+    }
+  },
+  "feature": {
+    "window_s": 5.0,
+    "step_s": 1.0,
+    "grid_cols": 12,
+    "grid_rows": 4,
+    "n_states": 4,
+    "quantiles": [0.25, 0.50, 0.75],
+    "safe_headway_s": 2.0,
+    "mgti_sensitivity": 1.0,
+    "label_smoothing_window": 5
+  },
+  "mgti_weights": {
+    "acc_interference": 0.0,
+    "density": 1.0,
+    "obb_occupancy": 1.0,
+    "speed_ratio": -1.0,
+    "headway": 1.0
+  },
+  "experiment": {
+    "main_dataset": "xamn6",
+    "random_seed": 42,
+    "test_ratio": 0.30,
+    "xgboost": {
+      "n_estimators": 60,
+      "max_depth": 5,
+      "learning_rate": 0.1,
+      "subsample": 0.85,
+      "colsample_bytree": 0.85,
+      "min_child_weight": 1,
+      "gamma": 0.0,
+      "reg_alpha": 0.0,
+      "reg_lambda": 0.5
+    }
+  }
+}

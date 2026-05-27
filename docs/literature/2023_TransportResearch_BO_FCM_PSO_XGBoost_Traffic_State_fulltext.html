@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html xmlns:mml="http://www.w3.org/1998/Math/MathML"> 
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		<title>Traffic State Recognition on Urban Expressways Based on BO-FCM and PSO-XGBoost</title>
+
+<meta name="DOI" content="10.16503/j.cnki.2095-9931.2023.04.006"/><!--文章doi-->
+<meta name="description" content="In order to accurately identify the traffic congestion state of urban expressway, based on the real-time and variability of traffic state identification, a traffic state identification model based on the combination of the improved Fuzzy C-Means (FCM) algorithm of Bayesian Optimization and the XGBoost algorithm of Particle Swarm Optimization (PSO) was constructed. Firstly, considering the influence of the initial clustering center of the FCM algorithm to the cluster results, Bayesian algorithm was used to optimize the FCM algorithm to avoid the results falling into the local optimal solution. Then, considering the problems of XGBoost algorithm with too many parameters and sensitivity to parameters, some important parameters were optimized using PSO. Finally, the PSO-XGBoost model was trained with the classified traffic flow data, and the traffic flow data of the Third Ring Road in Beijing was used for example validation and performance comparison analysis of the model. The results show that the model proposed can recognize the traffic state more accurately and stably, and the recognition accuracy reaches 99.94%, which is 1.23%, 1.06%, and 1.57% higher than that of the Support Vector Machine (SVM) model, Random Forest (RF) model, and K-Nearest Neighbor (KNN) model, respectively, and the recognition accuracy and stability of the traffic state have been effectively improved, which can provide a method to support the accurate provision of traffic and travel information and the improvement of traffic congestion."/>
+<meta name="keywords" content="expressway, traffic status, XGBoost, Bayesian optimization, FCM, particle swarm optimization"/><!--文章关键词列表，用逗号分隔-->
+<link rel="canonical" href="https://www.tr-cats.cn/EN/10.16503/j.cnki.2095-9931.2023.04.006"/><!--文章url-->
+<link rel="shortcut icon" href="https://www.tr-cats.cn/favicon.ico" /><!--网站logo图标-->
+<meta name="robots" content="index"/><!--搜索引擎-->
+
+<!--移动端访问-->
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=10, user-scalable=0"/><!--设备控制-->
+<meta name="format-detection" content="telephone=no"/><!--页面手机号验证-->
+
+<!--twitter-->
+<meta name="twitter:card" content="summary_large_image" /><!--固定-->
+<meta name="twitter:description" content="In order to accurately identify the traffic congestion state of urban expressway, based on the real-time and variability of traffic state identification, a traffic state identification model based on the combination of the improved Fuzzy C-Means (FCM) algorithm of Bayesian Optimization and the XGBoost algorithm of Particle Swarm Optimization (PSO) was constructed. Firstly, considering the influence of the initial clustering center of the FCM algorithm to the cluster results, Bayesian algorithm was used to optimize the FCM algorithm to avoid the results falling into the local optimal solution. Then, considering the problems of XGBoost algorithm with too many parameters and sensitivity to parameters, some important parameters were optimized using PSO. Finally, the PSO-XGBoost model was trained with the classified traffic flow data, and the traffic flow data of the Third Ring Road in Beijing was used for example validation and performance comparison analysis of the model. The results show that the model proposed can recognize the traffic state more accurately and stably, and the recognition accuracy reaches 99.94%, which is 1.23%, 1.06%, and 1.57% higher than that of the Support Vector Machine (SVM) model, Random Forest (RF) model, and K-Nearest Neighbor (KNN) model, respectively, and the recognition accuracy and stability of the traffic state have been effectively improved, which can provide a method to support the accurate provision of traffic and travel information and the improvement of traffic congestion." /><!--完整英文摘要-->
+<meta name="twitter:title" content="Traffic State Recognition on Urban Expressways Based on BO-FCM and PSO-XGBoost" /><!--完整英文题目-->
+
+<!--DC元数据-->
+<meta name="dc.title" content="Traffic State Recognition on Urban Expressways Based on BO-FCM and PSO-XGBoost"/><!--完整英文题目-->
+<meta name="dc.source" content="Transport Research"/><!--完整英文刊名-->
+<meta name="dc.format" content="text/html"/>
+<meta name="dc.publisher" content=""/><!--编辑部英文名称-->
+<meta name="dc.date" content="2023-08-25"/><!--正式出版：刊出日期；最新录用：录用日期-->
+<meta name="dc.type" content=""/><!--文章类型-->
+<meta name="dc.language" content="En"/><!--语种-->
+<meta name="dc.copyright" content=""/><!--编辑部名称-->
+<meta name="dc.description" content="In order to accurately identify the traffic congestion state of urban expressway, based on the real-time and variability of traffic state identification, a traffic state identification model based on the combination of the improved Fuzzy C-Means (FCM) algorithm of Bayesian Optimization and the XGBoost algorithm of Particle Swarm Optimization (PSO) was constructed. Firstly, considering the influence of the initial clustering center of the FCM algorithm to the cluster results, Bayesian algorithm was used to optimize the FCM algorithm to avoid the results falling into the local optimal solution. Then, considering the problems of XGBoost algorithm with too many parameters and sensitivity to parameters, some important parameters were optimized using PSO. Finally, the PSO-XGBoost model was trained with the classified traffic flow data, and the traffic flow data of the Third Ring Road in Beijing was used for example validation and performance comparison analysis of the model. The results show that the model proposed can recognize the traffic state more accurately and stably, and the recognition accuracy reaches 99.94%, which is 1.23%, 1.06%, and 1.57% higher than that of the Support Vector Machine (SVM) model, Random Forest (RF) model, and K-Nearest Neighbor (KNN) model, respectively, and the recognition accuracy and stability of the traffic state have been effectively improved, which can provide a method to support the accurate provision of traffic and travel information and the improvement of traffic congestion."/><!--完整英文摘要-->
+<meta name="dc.identifier" content="doi:10.16503/j.cnki.2095-9931.2023.04.006"/><!--文章doi：必须带“doi:”-->
+<meta name="dc.relation.ispartof" content="Transport Research"/><!-- 期刊名称 -->
+<meta name="dc.citation.volume" content="9"/>
+<meta name="dc.citation.issue" content="4"/>
+<meta name="dc.citation.spage" content="64"/>
+<meta name="dc.citation.epage" content="71"/>
+
+<meta name="dc.creator" content="SUN Jingwei"/>
+<meta name="dc.creator" content="GU Yuanli"/>
+
+<!--以下为文章关键词-->
+<meta name="dc.subject" content="expressway"/>
+<meta name="dc.subject" content="traffic status"/>
+<meta name="dc.subject" content="XGBoost"/>
+<meta name="dc.subject" content="Bayesian optimization"/>
+<meta name="dc.subject" content="FCM"/>
+<meta name="dc.subject" content="particle swarm optimization"/>
+
+<meta name="prism.issn" content="2095-9931"/><!--期刊印刷版ISSN-->
+<meta name="prism.publicationName" content="Transport Research"/><!--完整英文刊名-->
+<meta name="prism.publicationDate" content="2023-08-25"/><!--正式出版：刊出日期；最新录用：录用日期-->
+<meta name="prism.section" content=""/><!--文章类型-->
+<meta name="prism.volume" content="9">
+<meta name="prism.number" content="4"><!--期-->
+<meta name="prism.section" content="Theory &amp;#x00026; Method"><!--英文栏目-->
+<meta name="prism.startingPage" content="64"/><!--起始页-->
+<meta name="prism.endingPage" content="71"/><!--结束页-->
+<meta name="prism.copyright" content=""/><!--年 编辑部名称-->
+<meta name="prism.url" content="https://www.tr-cats.cn/EN/10.16503/j.cnki.2095-9931.2023.04.006"/><!--文章URL-->
+<meta name="prism.doi" content="doi:10.16503/j.cnki.2095-9931.2023.04.006"/><!--文章doi：必须带“doi:”-->
+
+<!--引用管理器-->
+<meta name="citation_fulltext_html_url" content="https://www.tr-cats.cn/EN/10.16503/j.cnki.2095-9931.2023.04.006"/><!--文章HTML页面地址-->
+<meta name="citation_journal_title" content="Transport Research"/><!--完整英文刊名-->
+<meta name="citation_journal_abbrev" content="Transport Research"/><!--英文刊名缩写-->
+<meta name="citation_publisher" content=""/><!--出版社英文名称-->
+<meta name="citation_issn" content="2095-9931"/><!--期刊ISSN-->
+<meta name="citation_title" content="Traffic State Recognition on Urban Expressways Based on BO-FCM and PSO-XGBoost"/><!--文章题目-->
+<meta name="citation_authors" content="SUN  Jingwei, GU  Yuanli" />
+<meta name="citation_online_date" content="2023-08-25"/><!--正式出版：刊出日期；最新录用：录用日期-->
+<meta name="citation_firstpage" content="64"/>
+<meta name="citation_lastpage" content="71"/>
+<meta name="citation_article_type" content=""/><!--文章类型-->
+<meta name="citation_language" content="en"/>
+<meta name="citation_doi" content="10.16503/j.cnki.2095-9931.2023.04.006"/>
+<meta name="citation_abstract" content="In order to accurately identify the traffic congestion state of urban expressway, based on the real-time and variability of traffic state identification, a traffic state identification model based on the combination of the improved Fuzzy C-Means (FCM) algorithm of Bayesian Optimization and the XGBoost algorithm of Particle Swarm Optimization (PSO) was constructed. Firstly, considering the influence of the initial clustering center of the FCM algorithm to the cluster results, Bayesian algorithm was used to optimize the FCM algorithm to avoid the results falling into the local optimal solution. Then, considering the problems of XGBoost algorithm with too many parameters and sensitivity to parameters, some important parameters were optimized using PSO. Finally, the PSO-XGBoost model was trained with the classified traffic flow data, and the traffic flow data of the Third Ring Road in Beijing was used for example validation and performance comparison analysis of the model. The results show that the model proposed can recognize the traffic state more accurately and stably, and the recognition accuracy reaches 99.94%, which is 1.23%, 1.06%, and 1.57% higher than that of the Support Vector Machine (SVM) model, Random Forest (RF) model, and K-Nearest Neighbor (KNN) model, respectively, and the recognition accuracy and stability of the traffic state have been effectively improved, which can provide a method to support the accurate provision of traffic and travel information and the improvement of traffic congestion."/><!--完整英文摘要-->
+<meta name="citation_keywords" content="expressway"/>
+<meta name="citation_keywords" content="traffic status"/>
+<meta name="citation_keywords" content="XGBoost"/>
+<meta name="citation_keywords" content="Bayesian optimization"/>
+<meta name="citation_keywords" content="FCM"/>
+<meta name="citation_keywords" content="particle swarm optimization"/>
+<meta name="citation_volume" content="9" />
+<meta name="citation_issue" content="4" />
+<meta name="citation_online_date" content="2023/08/25"/><!--正式出版：刊出日期；最新录用：录用日期-->
+<meta name="citation_date" content="2023/08/25"/><!--正式出版：刊出日期；最新录用：录用日期-->
+
+<meta name="citation_author" content="SUN Jingwei"/>
+	<meta name="citation_author" content="GU Yuanli"/>
+	
+<meta name="citation_abstract_html_url" content="https://www.tr-cats.cn/EN/abstract/article/2095-9931/659" />
+<meta name="citation_pdf_url" content="https://www.tr-cats.cn/EN/PDF/10.16503/j.cnki.2095-9931.2023.04.006" />
+
+<!--开放图谱协议-->
+<meta property="og:url" content="https://www.tr-cats.cn/EN/10.16503/j.cnki.2095-9931.2023.04.006"/><!--文章HTML页面地址-->
+<meta property="og:type" content="Article"/><!--固定为 Article-->
+<meta property="og:site_name" content="Transport Research"/><!--英文刊名-->
+<meta property="og:title" content="Traffic State Recognition on Urban Expressways Based on BO-FCM and PSO-XGBoost"/><!--文章题目-->
+<meta property="og:description" content="In order to accurately identify the traffic congestion state of urban expressway, based on the real-time and variability of traffic state identification, a traffic state identification model based on the combination of the improved Fuzzy C-Means (FCM) algorithm of Bayesian Optimization and the XGBoost algorithm of Particle Swarm Optimization (PSO) was constructed. Firstly, considering the influence of the initial clustering center of the FCM algorithm to the cluster results, Bayesian algorithm was used to optimize the FCM algorithm to avoid the results falling into the local optimal solution. Then, considering the problems of XGBoost algorithm with too many parameters and sensitivity to parameters, some important parameters were optimized using PSO. Finally, the PSO-XGBoost model was trained with the classified traffic flow data, and the traffic flow data of the Third Ring Road in Beijing was used for example validation and performance comparison analysis of the model. The results show that the model proposed can recognize the traffic state more accurately and stably, and the recognition accuracy reaches 99.94%, which is 1.23%, 1.06%, and 1.57% higher than that of the Support Vector Machine (SVM) model, Random Forest (RF) model, and K-Nearest Neighbor (KNN) model, respectively, and the recognition accuracy and stability of the traffic state have been effectively improved, which can provide a method to support the accurate provision of traffic and travel information and the improvement of traffic congestion."/><!--完整英文摘要-->
+
+<meta name="article_references" content="SUN Jingwei, GU Yuanli. Traffic State Recognition on Urban Expressways Based on BO-FCM and PSO-XGBoost. Transport Research. 2023, 9 (4): 64-71. https://doi.org/10.16503/j.cnki.2095-9931.2023.04.006" />
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+<link href="/js/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/develop/static/common/css/css.css">
+<link rel="stylesheet" href="/js/jqpagination/jqpagination.css" />
+<script src="/js/jquery/jquery.min.js"></script>
+<script src="/js/bootstrap/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/jquery/jquery.qrcode.min.js"></script>
+<script src="/develop/static/common/js/common_en.js"></script>
+<script src="/develop/static/common/js/component_en.js"></script>
+<script language="javascript" src="/js/store.js"></script>
+<script language="javascript" src="/develop/static/common/js/download_en.js"></script>
+<script language="javascript" src="/js/My97DatePicker/WdatePicker.js"></script>
+<script language="javascript" src="/develop/static/common/js/xss/xss.js"></script>
+<link rel="stylesheet" href="/develop/static/common/bootstrap/js/font-awesome.min.css">
+<script language="javascript" src="/develop/static/common/js/xss/mag-xss.js"></script>
+
+<script>
+	$(document).ready(function(){
+		$("title").text($("title").text().replace(/<\/?[^>]*>/g,""));
+	});
+</script>
+
+<style>
+      svg.markmap {
+        width: 100%;
+        height:100%;
+      }
+      .markmap {
+        width: 100%;
+        height:400px;
+      }
+.circle-border {
+	background-color: #CCCCCC; /* 可选，如果想要看到背景 */
+	border: 2px solid #fff; /* 边框宽度和颜色 */
+	border-radius: 50%; /* 将四个角设置为50%，形成圆形 */
+	padding:3px 8px;
+}
+#soin-summary-div img {
+    max-width: 100%;
+}
+</style>
+
+
+
+<link rel="stylesheet" href="/develop/static/js/jquery/css/jquery.webui-popover.css" />
+<link rel="stylesheet" href="/develop/vm/sitemap_en/css/sitemap_en.css" />
+<script type="text/javascript" src="/js/jquery/jquery.nicescroll.js"></script>
+<script type="text/javascript" src="/js/jquery/jquery.webui-popover.js"></script>
+<script type="text/javascript" src="/develop/vm/sitemap_en/js/sitemap_en.js"></script>
+
+
+<script>
+$(document).ready(function(){
+	//跳转到文章页面
+	mag_loading();
+	var referer = window.document.referrer;
+	if(referer!=null && referer!=undefined && $.trim(referer+'')!=''){
+		mag_ajax({
+			url:mag_currentQikanUrl()+'/CN/article/getBrowseRefererToken.do?'+new Date().getTime(),
+			data:{articleId:659,referer:referer},
+			dataType:'json',
+			success:function(data){
+				mag_request({url:'https://www.tr-cats.cn/EN/10.16503/j.cnki.2095-9931.2023.04.006?refererToken='+data.refererToken});
+			}
+		});
+	}else{
+		mag_request({url:'https://www.tr-cats.cn/EN/10.16503/j.cnki.2095-9931.2023.04.006'});
+	}
+});
+
+$(document).ready(function(){
+	window.dw_div_zhankaisq_index=0;
+	$(".mag_main_dw_div_zhankaisq").each(function(){
+		window.dw_div_zhankaisq_index++;
+		$(this).unbind("click");
+		$(this).removeAttr("onClick");
+		$(this).removeAttr("onclick");
+		if(window.dw_div_zhankaisq_index==1){//第一个，认为是英文
+			$(this).bind("click",function(){
+				show_hide(this,'EN');
+			});
+		}else{
+			$(this).bind("click",function(){
+				show_hide(this,"CN");
+			});
+		}
+	});
+	window.mag_user_name_div_index=0;
+	$(".mag_user_name_div").each(function(){
+		window.mag_user_name_div_index++;
+		$(this).unbind("click");
+		$(this).removeAttr("onClick");
+		$(this).removeAttr("onclick");
+		if(window.mag_user_name_div_index==1){//第一个，认为是英文
+			$(this).bind("click",function(){
+				name_shou_hide(this,'EN');
+			});
+		}else{
+			$(this).bind("click",function(){
+				name_shou_hide(this,"CN");
+			});
+		}
+	});
+	
+	mag_rich_ready();
+	
+	$(function(){
+		 $('#autoMenu').autoMenu();
+	})
+	$("#autoMenu").niceScroll({
+       cursorcolor: "#ccc", //滚动条的颜色
+       cursoropacitymax: 0, //滚动条的透明度，从0-1   
+       touchbehavior: false, //使光标拖动滚动像在台式电脑触摸设备 true滚动条拖动不可用  
+       cursorwidth: "6px", //滚动条的宽度  单位默认px 
+       cursorborder: "0", // 游标边框css定义    
+       cursorborderradius: "3px", //滚动条两头的圆角   
+       autohidemode: true, //是否隐藏滚动条  true的时候默认不显示滚动条，当鼠标经过的时候显示滚动条   
+       zindex: "auto", //给滚动条设置z-index值    
+       railvalign:'defaul',
+       railpadding: {
+           top: 0,
+           right: -6,
+           left: 0,
+           bottom: 0
+       }, //滚动条的位置
+	});
+	window.autoMenuFlag=true;
+	
+	//渲染公式
+	mag_mathJax();
+	
+});
+
+		
+</script>
+
+
+
+
+		
+	</head>
+	<body id="metaVue" style="background: #f5f5f5;">
+
+
+
+
+
+
+
+
+
+
+
+			
+<input type="hidden" id="mag-common-contextPath" value=""/>
+
+<div id="mag-component-store-div" style="display:none;"></div>
+
+<!-- 模态框（Modal） -->
+<div class="modal fade" id="magModal" tabindex="-1" role="dialog" data-keyboard=false data-backdrop='static' aria-labelledby="magModalLabel" aria-hidden="true">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button buttonGroup="0" type="button" class="close" aria-hidden="true" onclick="mag_layer_close();">
+					&times;
+				</button>
+				<h4 class="modal-title" id="magModalLabel">
+					模态框（Modal）标题
+				</h4>
+			</div>
+			<div class="modal-body" id="mag-modal-body" style="overflow:auto;">
+				在这里添加一些文本
+			</div>
+			<div id="mag-layer-button-div" class="modal-footer">
+				<button buttonGroup="1" type="button" class="btn btn-default" onclick="mag_layer_close();">Close
+				</button>
+				<button buttonGroup="2" type="button" class="btn btn-default" onclick="mag_layer_close();">Close
+				</button>
+				<button buttonGroup="2" type="button" class="btn btn-primary" onclick="mag_submit()" id="mag_layer_submit_button_2">
+					Submit
+				</button>
+				<button buttonGroup="3" type="button" class="btn btn-default" onclick="mag_layer_close();">Cancel
+				</button>
+				<button buttonGroup="3" type="button" class="btn btn-primary" onclick="mag_submit()" id="mag_layer_submit_button_3">
+					Confirm
+				</button>
+				
+			</div>
+		</div><!-- /.modal-content -->
+	</div><!-- /.modal -->
+</div>
+
+<div id="magModal_2" style="display:none;position:fixed;left:0px;top:0px;right:0px;bottom:0px;z-index:1060">
+	<div class="modal-dialog" style="margin-top:60px;">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button buttonGroup="0" type="button" id="mag-madal-close_bt_2"  class="close"  aria-hidden="true" onclick="mag_layer_close_2();">
+					&times;
+				</button>
+				<h4 class="modal-title" id="magModalLabel_2">
+					模态框（Modal）标题
+				</h4>
+			</div>
+			<div id="modal-body_2" class="modal-body"></div>
+		</div>
+	</div>
+</div>
+
+<!-- 模态框-Tab -->
+<div class="modal fade" id="magTabModal" tabindex="-1" role="dialog" data-keyboard=false data-backdrop='static' aria-labelledby="magTabModalLabel" aria-hidden="true">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header" style="border-bottom:0px;padding:15px 0px;">
+				<button type="button" class="close" data-dismiss="modal" aria-hidden="true" style="padding-right:15px;">
+					&times;
+				</button>
+				
+<ul id="magTab" class="nav nav-tabs">
+
+</ul>
+			</div>
+			<div class="modal-body">
+				
+<div id="magTabContent" class="tab-content">
+
+</div>
+			</div>
+			<div id="mag-tablayer-button-div" class="modal-footer">
+				
+			</div>
+			
+		</div><!-- /.modal-content -->
+	</div><!-- /.modal -->
+</div>
+
+
+		
+
+
+
+<input type="hidden" id="mag_rich_j_id" value="1"/>
+<input type="hidden" id="mag_rich_articleID" value="659"/>
+<input type="hidden" id="mag_rich_qiKanWangZhi" value="https://www.tr-cats.cn"/>
+
+<a id="mag_rich_common_a" href="#" style="position:absolute;z-index:-99999;" target="_blank">&nbsp;</a>
+<div class="qipao">
+	<img src="/develop/mag_rich_en/img/2.png" class="jiantou" alt="">
+	<div class="qipao-content">
+	</div>
+</div>
+	
+		<div class="mag_top">
+		
+			
+<script language="javascript">
+	function tabChange(obj, id) {
+		var arrayli = obj.parentNode.getElementsByTagName("li"); //获取li数组
+		var arrayul = document.getElementById(id).getElementsByTagName("ul"); //获取ul数组
+		for (i = 0; i < arrayul.length; i++) {
+			if (obj == arrayli[i]) {
+				arrayli[i].className = "cli";
+				arrayul[i].className = "";
+			} else {
+				arrayli[i].className = "";
+				arrayul[i].className = "hidden";
+			}
+		}
+	}
+</script>
+<style type="text/css">
+.tabbox {
+	width: 400px;
+	margin-top: 5px;
+	margin-bottom: 5px
+}
+
+.tabmenu {
+	width: 400px;
+	height: 28px;
+	border-left: 1px solid #CCC;
+	border-top: 1px solid #ccc;
+}
+
+.tabmenu ul {
+	margin: 0;
+	padding: 0;
+	list-style-type: none;
+}
+
+.tabmenu li {
+	text-align: center;
+	float: left;
+	display: block;
+	width: 99px;
+	overflow: hidden;
+	background-color: #f1f1f1;
+	line-height: 27px;
+	border-right: #ccc 1px solid;
+	border-bottom: #ccc 1px solid;
+	display: inline;
+}
+
+.tabmenu .cli {
+	text-align: center;
+	float: left;
+	display: block;
+	width: 99px;
+	overflow: hidden;
+	background-color: #fff;
+	line-height: 27px;
+	border-right: #ccc 1px solid;
+	border-bottom: #fff 1px solid;
+	display: inline;
+	cursor: pointer;
+	color: #c30000;
+	font-weight: bold
+}
+
+#tabcontent {
+	width: 399px;
+	background-color: #fff;
+	border-left: #CCC 1px solid;
+	border-right: #CCC 1px solid;
+	border-bottom: #CCC 1px solid;
+	height: 65px;
+}
+
+#tabcontent ul {
+	margin: 0;
+	padding: 5px;
+	list-style-type: none;
+}
+
+#tabcontent .hidden {
+	display: none;
+}
+
+img[src*='.traceImg']{
+	width:44px;
+	height:22px;
+}
+</style>
+
+
+
+<script type="text/javascript">
+   window.location.href = 'https://www.tr-cats.cn/CN/home';
+</script>
+
+
+
+			
+		</div>
+		<div class="mag_main">
+			<div class="mag_main_div">
+				<div class="mag_main_wzxx">
+					<p class="mag_yidongduan">
+						<a href="https://www.tr-cats.cn">Transport Research </a>
+						<span class="mag_main_wzxx_tiao">&gt;</span>
+					</p>
+					<p class="mag_yidongduan" style="margin-right:15px !important;">
+						<span>2023</span>
+												, <a href="https://www.tr-cats.cn/EN/archive/2023">Vol. 9</a>
+																		<span class="mag_main_wzxx_tiao">&gt;</span><a href="https://www.tr-cats.cn/EN/Y2023/V9/I4">Issue 4</a>: 
+												<span>
+												64
+						- 71												</span>
+					</p>
+										<p class="mag_yidongduan">
+						<span>DOI: </span>
+						<a href="https://doi.org/10.16503/j.cnki.2095-9931.2023.04.006">https://doi.org/10.16503/j.cnki.2095-9931.2023.04.006</a>
+					</p>
+										
+				</div>
+								<div class="mag_main_zylw">
+					<div class="mag_main_zylw_div" style="background: #edf1f8;border: 1px solid #b9c9e2;color:#5079b7;">Theory &#x00026; Method</div>
+				</div>
+								<p class="mag_main_title">Traffic State Recognition on Urban Expressways Based on BO-FCM and PSO-XGBoost</p>
+			</div>
+			
+			<div class="mag_main_zhengwen_left_div" style="margin-top: 0px;overflow: unset;border-top:none;padding-bottom: 0px;">
+				<div class="mag_main_zhengwen_left_div_top mag_rich_user_name_div" style="height: auto;box-shadow: none;border-bottom: none;">
+					<ul class="mag_user_name">
+																								<li>
+							<span class="mag_user_name_name" onclick="name_cilcks(this);" author-name="SUN Jingwei">
+							SUN Jingwei
+							</span>
+															<sup><a href="mailto:21120892@bjtu.edu.cn"><i class="glyphicon glyphicon-envelope mag-main_ry_i"></i></a></sup>
+																													                            ,
+                            						</li>
+																														<li>
+							<span class="mag_user_name_name" onclick="name_cilcks(this);" author-name="GU Yuanli">
+							GU Yuanli
+							</span>
+															<sup><a href="mailto:ylgu@bjtu.edu.cn"><i class="glyphicon glyphicon-envelope mag-main_ry_i"></i></a></sup>
+																																			</li>
+																							</ul>
+					<div class="mag_user_name_div mag_user_name_div_cn" onclick="name_shou_hide(this);">
+						<span>Expand</span>
+						<i class="glyphicon glyphicon-plus"></i>
+					</div>
+				</div>
+				<div class="mag_zw_xianshiyic mag_main_dw_div" style="border-bottom: none;padding-bottom: 0px;">
+					<div class="mag_main_dw_div_bao">
+						<ul class="mag_main_dw_div_ul">
+													<li>Key Laboratory of Transport Industry of Big Data Application Technologies for Comprehensive Transport, Ministry of Transport, Beijing Jiaotong University, Beijing 100044, China</li>
+												</ul>
+						
+						<!-- 作者说明  -->
+												
+						<!-- 作者简历资料 -->
+												
+												
+												<div class="mag_main_dw_div mag_main_dw_div_none">
+							<div class="mag_main_dw_div_none_div">
+															
+																<p class="mag_yidongduan" style="margin-bottom: 0px;">
+									<b>Received date: </b><span class="mag_main_dw_div_none_p">2023-05-23</span>
+								</p>
+																								
+																
+																
+																
+																<p class="mag_yidongduan" style="margin-bottom: 0px;">
+									<span class="mag_main_dw_div_none_tiao">&nbsp;</span>									<b>Online published: </b><span class="mag_main_dw_div_none_p">2023-09-22</span>
+								</p>
+																								
+							</div>
+						</div>
+												
+												
+												
+						<div class="mag_main_dw_div_zhankaisq" onclick="show_hide()">
+							<span><a href="javascript:;" class="mag-main_ry_a">Fold</a></span>
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<div class="mag_main_zhengwen">
+				<div class="mag_main_zhengwen_left">
+				
+										
+										<div class="mag_main_zhengwen_left_div">
+						<div class="mag_main_zhengwen_left_div_top">
+							<h3 class="mag_nav_daohang"><b>Abstract</b></h3>
+							<div class="mag_main_zhengwen_left_div_jiajian"><i class="glyphicon glyphicon-minus" onclick="content_show_hide(this)"></i></div>
+						</div>
+						<div class="mag_zw_xianshiyic">
+							<div class="mag_main_zhengwen_left_div_p">
+								<p id="p00010">In order to accurately identify the traffic congestion state of urban expressway, based on the real-time and variability of traffic state identification, a traffic state identification model based on the combination of the improved Fuzzy C-Means (FCM) algorithm of Bayesian Optimization and the XGBoost algorithm of Particle Swarm Optimization (PSO) was constructed. Firstly, considering the influence of the initial clustering center of the FCM algorithm to the cluster results, Bayesian algorithm was used to optimize the FCM algorithm to avoid the results falling into the local optimal solution. Then, considering the problems of XGBoost algorithm with too many parameters and sensitivity to parameters, some important parameters were optimized using PSO. Finally, the PSO-XGBoost model was trained with the classified traffic flow data, and the traffic flow data of the Third Ring Road in Beijing was used for example validation and performance comparison analysis of the model. The results show that the model proposed can recognize the traffic state more accurately and stably, and the recognition accuracy reaches 99.94%, which is 1.23%, 1.06%, and 1.57% higher than that of the Support Vector Machine (SVM) model, Random Forest (RF) model, and K-Nearest Neighbor (KNN) model, respectively, and the recognition accuracy and stability of the traffic state have been effectively improved, which can provide a method to support the accurate provision of traffic and travel information and the improvement of traffic congestion.</p>
+							</div>
+							
+														
+														
+														<div class="mag_main_zhengwen_left_div_gjc">
+								<p class="mag_main_zhengwen_left_div_gjc_p">
+									<b>Key words：</b>
+																												<a href="javascript:;" class="cas-main_ry_a" onclick="mag_rich_kwdSearch(this)" name="expressway" target="_blank">expressway</a>; 																			<a href="javascript:;" class="cas-main_ry_a" onclick="mag_rich_kwdSearch(this)" name="traffic status" target="_blank">traffic status</a>; 																			<a href="javascript:;" class="cas-main_ry_a" onclick="mag_rich_kwdSearch(this)" name="XGBoost" target="_blank">XGBoost</a>; 																			<a href="javascript:;" class="cas-main_ry_a" onclick="mag_rich_kwdSearch(this)" name="Bayesian optimization" target="_blank">Bayesian optimization</a>; 																			<a href="javascript:;" class="cas-main_ry_a" onclick="mag_rich_kwdSearch(this)" name="FCM" target="_blank">FCM</a>; 																			<a href="javascript:;" class="cas-main_ry_a" onclick="mag_rich_kwdSearch(this)" name="particle swarm optimization" target="_blank">particle swarm optimization</a>																										</p>
+							</div>
+														
+						</div>
+					</div>	
+										
+					<div class="mag_main_zhengwen_left_div">
+						<div class="mag_main_zhengwen_left_div_top">
+							<h3 class="mag_nav_daohang"><b>Cite this article</b></h3>
+							<div class="mag_main_zhengwen_left_div_jiajian"><i class="glyphicon glyphicon-minus" onclick="content_show_hide(this)"></i></div>
+						</div>
+						<div class="mag_zw_xianshiyic">
+							<p class="mag_main_zhengwen_left_div_p mag_rich_font_size_zero">
+																																		<span class="mag_rich_font_size_no_zero">SUN Jingwei</span>
+																																				<span class="mag_rich_font_size_no_zero">, </span>
+																		<span class="mag_rich_font_size_no_zero">GU Yuanli</span>
+																																	<span class="mag_rich_font_size_no_zero">. Traffic State Recognition on Urban Expressways Based on BO-FCM and PSO-XGBoost[J]. <i>Transport Research</i>, 2023</span>
+																<span class="mag_rich_font_size_no_zero">, 9(4)</span>
+																								<span class="mag_rich_font_size_no_zero">: 64</span>
+																<span class="mag_rich_font_size_no_zero">-71</span>
+																								<span class="mag_rich_font_size_no_zero">. </span>
+																<span class="mag_rich_font_size_no_zero"> DOI: <a href="https://doi.org/10.16503/j.cnki.2095-9931.2023.04.006" target="_blank">10.16503/j.cnki.2095-9931.2023.04.006</a></span>
+															</p>
+						</div>
+					</div>
+					
+					<!--正文-->
+					<div class="main_content_center_left_zhengwen_bao_zw">
+						<div class="mag_main_zhengwen_left_div">
+				<div class="mag_main_zhengwen_left_div_top mag_zhengwen_lanse">
+			<h3 class="mag_nav_daohang"><b>0 引言</b></h3>
+			<div class="mag_main_zhengwen_left_div_jiajian"><i class="glyphicon glyphicon-minus" onclick="content_show_hide(this)"></i></div>
+		</div>
+				<div class="mag_zw_xianshiyic">
+															
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_1">交通状态识别是智能交通管理和控制中的重要一环，通过实时、准确的交通状态识别可获得道路状态信息，据此诱导和控制交通，有助于缓解城市交通拥堵。因此，交通状态识别成为智能交通系统中重要的研究方向。</div></div>
+														
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_2">目前，交通状态识别方法主要有聚类算法和有监督的机器学习两种。聚类算法具有良好的分类效果，能对交通流数据进行有效分类，同时对交通状态识别的模糊性有较好的适应性。部分学者通过对聚类算法优化或结合其他算法对交通状态进行识别，如结合最优自编码器和K均值（K-means）聚类算法<sup>[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b1')" rid="b1">1</a>]</sup>、加权指数的模糊C均值（Fuzzy C-Means, FCM）算法 <sup>[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b2')" rid="b2">2</a>]</sup>、投影寻踪动态聚类<sup>[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b3')" rid="b3">3</a>]</sup>、高斯混合模型聚类算法<sup>[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b4')" rid="b4">4</a>]</sup>等，从而实现对交通状态实时有效的判别。不过，聚类算法结果易受初始聚类中心随机选择的影响而陷入局部最优问题，从而导致交通状态识别结果的准确性和稳定性不高。有监督的机器学习算法具有良好的学习能力，可通过训练数据样本获得较高的分类精度，目前已经在交通状态识别领域得到广泛应用。如一些学者尝试使用BP神经网络（Back Propagation Neural Network, BPNN）<sup>[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b5')" rid="b5">5</a>]</sup>、随机森林算法<sup>[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b6')" rid="b6">6</a>]</sup>、融合多个机器学习模型<sup>[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b7')" rid="b7">7</a>]</sup>、遗传算法优化SVM<sup>[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b8')" rid="b8">8</a>]</sup>、K-近邻规则（K-Nearest Neighbor, KNN）<sup>[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b9')" rid="b9">9</a>]</sup>、贝叶斯算法<sup>[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b10')" rid="b10">10</a>]</sup>等来构造交通状态识别模型，并得到较好的识别结果。不过许多研究对机器学习算法的超参数取值会影响模型训练结果和拟合程度的问题考虑不足，使得模型识别结果未达到最优。</div></div>
+														
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_3">近年来，将聚类算法和监督学习算法相结合的模型越来越多，如商强等<sup>[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b11')" rid="b11">11</a>]</sup>提出谱聚类算法和KNN算法相结合的交通状态判别模型；常丽君等<sup>[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b12')" rid="b12">12</a>]</sup>提出优化后的FCM算法结合概率神经网络的交通状态识别方法。可以看出，聚类算法和监督学习算法相结合的效果较好，聚类算法为监督学习提供了先验数据，监督学习算法则利用先验数据进行训练和测试，保证了交通状态识别结果的实时性。目前集成学习已经成为机器学习的重要组成部分，其通过结合多个学习器来获得优越的泛化能力，在分类问题上展现出明显优势<sup>[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b13')" rid="b13">13</a>]</sup>。极度梯度提升树（eXtreme Gradient Boosting, XGBoost）算法是集成学习中的重要算法，其收敛速度快，准确率高且不易过拟合，但XGBoost算法参数过多且对参数较为敏感，使得其应用较为复杂。</div></div>
+														
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_4">为提高城市快速路交通状态识别的准确性，本文将利用贝叶斯优化算法快速确定FCM算法的最优初始聚类中心，并利用粒子群算法确定XGBoost算法的最优参数，结合交通状态识别的变化性，构建基于贝叶斯优化改进的FCM聚类算法与粒子群优化改进的XGBoost算法相结合的交通状态识别模型，并使用聚类分析后的交通数据对监督学习算法进行训练，提升交通状态识别的效率和稳定性，最后采用北京市三环快速路的交通数据对模型进行实例验证，并与其他方法进行性能对比分析。</div></div>
+											</div>
+	</div>	
+		
+			
+			
+			
+									<div class="mag_main_zhengwen_left_div">
+				<div class="mag_main_zhengwen_left_div_top mag_zhengwen_lanse">
+			<h3 class="mag_nav_daohang"><b>1 模型构建</b></h3>
+			<div class="mag_main_zhengwen_left_div_jiajian"><i class="glyphicon glyphicon-minus" onclick="content_show_hide(this)"></i></div>
+		</div>
+				<div class="mag_zw_xianshiyic">
+															
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_5">本文主要通过对某一时刻的交通数据进行识别，来判断其所处的交通状态。首先对历史交通数据进行聚类分析并划分出不同的交通状态，得到先验信息，然后利用先验信息训练PSO-XGBoost模型，在模型中对待识别交通数据进行测试，得到该交通数据所处的交通状态。</div></div>
+														
+				<div class="mag_main_title_two">
+		<h4 class="mag_nav_daohang"><b>1.1 聚类分析</b></h4>
+		<i class="glyphicon glyphicon-triangle-top biaotijiantoush" onclick="twotitle_show_hide(this)"></i>
+	</div>
+		<div class="mag_zw_xianshiyic">
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_6">模糊C均值算法是一种经典的聚类算法，因其能提供灵活的聚类结果且适用于不同的数据类型而在众多模糊算法中应用最为广泛。本文利用FCM算法对交通流量、速度和道路占有率进行聚类分析，得到每个交通数据的状态标签，目的是实现被划分为同一聚类的样本数据对象间的最大相似性和不同聚类的样本数据对象间的最小相似性。通过对目标函数进行优化，获取每个样本对所有类中心的相似程度，即隶属度，进而对样本进行自动分类。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_7">目标函数<sup>[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b14')" rid="b14">14</a>]</sup>为：</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_8"><div id="e1" class="mag-xml-disp-formula"> <label>（1）</label> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml1"> <mml:mi>J</mml:mi> <mml:mo>=</mml:mo> <mml:mrow> <mml:munderover> <mml:mo stretchy="false">&#x02211;</mml:mo> <mml:mrow> <mml:mi>i</mml:mi> <mml:mo>=</mml:mo> <mml:mn>1</mml:mn></mml:mrow> <mml:mrow> <mml:mi>n</mml:mi></mml:mrow></mml:munderover> <mml:mrow> <mml:mrow> <mml:munderover> <mml:mo stretchy="false">&#x02211;</mml:mo> <mml:mrow> <mml:mi>j</mml:mi> <mml:mo>=</mml:mo> <mml:mn>1</mml:mn></mml:mrow> <mml:mrow> <mml:mi>c</mml:mi></mml:mrow></mml:munderover> <mml:mrow> <mml:msubsup> <mml:mrow> <mml:mi>u</mml:mi></mml:mrow> <mml:mrow> <mml:mi>i</mml:mi> <mml:mi>j</mml:mi></mml:mrow> <mml:mrow> <mml:mi>m</mml:mi></mml:mrow></mml:msubsup></mml:mrow></mml:mrow></mml:mrow></mml:mrow> <mml:msup> <mml:mrow> <mml:mfenced open="&#x02016;" close="&#x02016;" separators="|"> <mml:mrow> <mml:msub> <mml:mrow> <mml:mi>x</mml:mi></mml:mrow> <mml:mrow> <mml:mi>i</mml:mi></mml:mrow></mml:msub> <mml:mo>-</mml:mo> <mml:msub> <mml:mrow> <mml:mi>c</mml:mi></mml:mrow> <mml:mrow> <mml:mi>j</mml:mi></mml:mrow></mml:msub></mml:mrow></mml:mfenced></mml:mrow> <mml:mrow> <mml:mn>2</mml:mn></mml:mrow></mml:msup></math></div></div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_9">式（1）中：<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml2"> <mml:mi>J</mml:mi></math></span>是目标函数；<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml3"> <mml:mi>n</mml:mi></math></span>是样本数；<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml4"> <mml:mi>c</mml:mi></math></span>是聚类中心个数；<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml5"> <mml:mi>m</mml:mi></math></span>是任何大于1的实数；<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml6"> <mml:msub> <mml:mrow> <mml:mi>x</mml:mi></mml:mrow> <mml:mrow> <mml:mi>i</mml:mi></mml:mrow></mml:msub></math></span>是第<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml7"> <mml:mi>i</mml:mi></math></span>个样本点；<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml8"> <mml:msub> <mml:mrow> <mml:mi>u</mml:mi></mml:mrow> <mml:mrow> <mml:mi>i</mml:mi> <mml:mi>j</mml:mi></mml:mrow></mml:msub></math></span>是第<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml9"> <mml:mi>i</mml:mi></math></span>个样本点的第<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml10"> <mml:mi>j</mml:mi></math></span>个类中心的隶属度；<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml11"> <mml:msub> <mml:mrow> <mml:mi>c</mml:mi></mml:mrow> <mml:mrow> <mml:mi>j</mml:mi></mml:mrow></mml:msub></math></span>是第<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml12"> <mml:mi>j</mml:mi></math></span>个类中心。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_10">FCM算法初始聚类中心的随机性对聚类的结果影响很大，容易使算法陷入局部最优，造成聚类结果的准确度不高且运行时间较长，故需要优化FCM算法以解决算法局部收敛的问题。贝叶斯算法是一种运行速度快、稳定性良好的全局优化算法，其利用已搜索过的点的信息来提升搜索效率，减少迭代次数，进而快速获得最优解，可有效解决FCM算法问题。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_11">贝叶斯优化FCM算法（Bayesian Optimization, BO-FCM）的流程如下：</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_12">1）初始化高斯回归模型（Gaussian Process Regression, GPR），采集函数UCB（Upper Confidence Bound），确定最大迭代次数，定义目标函数<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml13"> <mml:msub> <mml:mrow> <mml:mi>J</mml:mi></mml:mrow> <mml:mrow> <mml:mi>m</mml:mi></mml:mrow></mml:msub> <mml:mo>=</mml:mo> <mml:mi>f</mml:mi> <mml:mo>(</mml:mo> <mml:mi>C</mml:mi> <mml:mo>)</mml:mo></math></span>和聚类中心的参数空间。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_13">2）随机选取聚类中心点作为BO算法的初始值。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_14">3）拟合高斯回归模型，通过采集函数UCB来计算优化结果，执行贝叶斯优化算法后得到聚类中心<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml14"> <mml:msub> <mml:mrow> <mml:mi>C</mml:mi></mml:mrow> <mml:mrow> <mml:mi>i</mml:mi></mml:mrow></mml:msub></math></span>，计算目标函数值<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml15"> <mml:msub> <mml:mrow> <mml:mi>J</mml:mi></mml:mrow> <mml:mrow> <mml:mi>m</mml:mi></mml:mrow></mml:msub> <mml:mo>=</mml:mo> <mml:mi>f</mml:mi> <mml:mo>(</mml:mo> <mml:msub> <mml:mrow> <mml:mi>C</mml:mi></mml:mrow> <mml:mrow> <mml:mi>i</mml:mi></mml:mrow></mml:msub> <mml:mo>)</mml:mo></math></span>。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_15">4）不断迭代直至达到最大迭代次数，输出历史最佳参数即聚类中心。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_16">5）将贝叶斯优化算法的结果代入FCM算法得到样本数据的聚类结果，完成交通状态划分。</div></div>
+								</div>
+		
+			
+			
+															
+				<div class="mag_main_title_two">
+		<h4 class="mag_nav_daohang"><b>1.2 PSO-XGBoost算法</b></h4>
+		<i class="glyphicon glyphicon-triangle-top biaotijiantoush" onclick="twotitle_show_hide(this)"></i>
+	</div>
+		<div class="mag_zw_xianshiyic">
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_17">XGBoost算法<sup>[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b15')" rid="b15">15</a>]</sup>属于Boost算法，其目标函数为：</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_18"><div id="e2" class="mag-xml-disp-formula"> <label>（2）</label> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml16"> <mml:mi>L</mml:mi> <mml:mo>(</mml:mo> <mml:mi>&#x003D5;</mml:mi> <mml:mo>)</mml:mo> <mml:mo>=</mml:mo> <mml:mrow> <mml:munder> <mml:mo stretchy="false">&#x02211;</mml:mo> <mml:mrow> <mml:mi>i</mml:mi></mml:mrow></mml:munder> <mml:mrow> <mml:mi>l</mml:mi></mml:mrow></mml:mrow> <mml:mfenced separators="|"> <mml:mrow> <mml:msub> <mml:mrow> <mml:mi>y</mml:mi></mml:mrow> <mml:mrow> <mml:mi>i</mml:mi></mml:mrow></mml:msub> <mml:mo>,</mml:mo> <mml:msub> <mml:mrow> <mml:mover accent="true"> <mml:mrow> <mml:mi>y</mml:mi></mml:mrow> <mml:mo>^</mml:mo></mml:mover></mml:mrow> <mml:mrow> <mml:mi>i</mml:mi></mml:mrow></mml:msub></mml:mrow></mml:mfenced> <mml:mo>+</mml:mo> <mml:mi>&#x003A9;</mml:mi> <mml:mfenced separators="|"> <mml:mrow> <mml:msub> <mml:mrow> <mml:mi>f</mml:mi></mml:mrow> <mml:mrow> <mml:mi>k</mml:mi></mml:mrow></mml:msub></mml:mrow></mml:mfenced></math></div> <div id="e3" class="mag-xml-disp-formula"> <label>（3）</label> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml17"> <mml:mo> </mml:mo> <mml:mi>&#x003A9;</mml:mi> <mml:mfenced separators="|"> <mml:mrow> <mml:msub> <mml:mrow> <mml:mi>f</mml:mi></mml:mrow> <mml:mrow> <mml:mi>k</mml:mi></mml:mrow></mml:msub></mml:mrow></mml:mfenced> <mml:mo>=</mml:mo> <mml:mi>&#x003B3;</mml:mi> <mml:mi>T</mml:mi> <mml:mo>+</mml:mo> <mml:mfrac> <mml:mrow> <mml:mn>1</mml:mn></mml:mrow> <mml:mrow> <mml:mn>2</mml:mn></mml:mrow></mml:mfrac> <mml:mi>&#x003BB;</mml:mi> <mml:mo>&#x02016;</mml:mo> <mml:mi>w</mml:mi> <mml:msup> <mml:mrow> <mml:mo>&#x02016;</mml:mo></mml:mrow> <mml:mrow> <mml:mn>2</mml:mn></mml:mrow></mml:msup></math></div></div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_19">式（2）~式（3）中：<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml18"> <mml:mi>L</mml:mi> <mml:mo>(</mml:mo> <mml:mi>&#x003D5;</mml:mi> <mml:mo>)</mml:mo></math></span>为目标函数；<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml19"> <mml:mi>l</mml:mi></math></span>为单个样本的损失；<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml20"> <mml:msub> <mml:mrow> <mml:mi>y</mml:mi></mml:mrow> <mml:mrow> <mml:mi>i</mml:mi></mml:mrow></mml:msub></math></span>为标签值；<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml21"> <mml:msub> <mml:mrow> <mml:mover accent="true"> <mml:mrow> <mml:mi>y</mml:mi></mml:mrow> <mml:mo>^</mml:mo></mml:mover></mml:mrow> <mml:mrow> <mml:mi>i</mml:mi></mml:mrow></mml:msub></math></span>为预测输出；<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml22"> <mml:mi>&#x003A9;</mml:mi> <mml:mo>(</mml:mo> <mml:msub> <mml:mrow> <mml:mi>f</mml:mi></mml:mrow> <mml:mrow> <mml:mi>k</mml:mi></mml:mrow></mml:msub> <mml:mo>)</mml:mo></math></span>为正则化项；<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml23"> <mml:msub> <mml:mrow> <mml:mi>f</mml:mi></mml:mrow> <mml:mrow> <mml:mi>k</mml:mi></mml:mrow></mml:msub></math></span>为树模型；<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml24"> <mml:mi>k</mml:mi></math></span>为树的数量；<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml25"> <mml:mi>&#x003B3;</mml:mi></math></span>为叶子树惩罚正则项；<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml26"> <mml:mi>T</mml:mi></math></span>为树叶子节点数；<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml27"> <mml:mi>w</mml:mi></math></span>为叶子权重值；<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml28"> <mml:mi>&#x003BB;</mml:mi></math></span>为叶子权重惩罚正则项。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_20">XGBoost算法主要是在损失函数的基础上加入了正则化和采用缩减办法来防止过拟合，同时对目标函数进行泰勒展开，利用推导得到的表达式作为分裂准则来构建每一棵树。该算法能在避免过拟合的前提下对目标函数进行拟合，提升识别精度，具有较强的泛化能力，同时支持并行化处理，运行速度得以提高。XGBoost算法的缺点是参数过多，对参数敏感，因此算法的应用较为复杂。为了合理有效地选择算法的超参数，提高算法识别精度，使用收敛速度快、可调整参数少、寻优能力强的粒子群优化算法（Particle Swarm Optimization, PSO）对XGBoost的参数进行优化。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_21">粒子群优化算法通过在一组无质量的粒子中对鸟类进行建模，所有粒子根据所寻求的个体极值和当前全局最优解来调整位置和速度，进而找到粒子群的全局最优解。PSO算法实现较为简单，不涉及复杂的神经网络模型且收敛速度较快。PSO-XGBoost算法流程如<a href="javascript:;" class="mag_content_a mag_xref_fig" onclick="clickFigXref(this,'F1')" rid="F1">图1</a>所示。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_22"><div id="F1" class="mag-rich-fig mag_zw_img" magId="f12c4d9a-9e9e-4ed6-a116-55ce9e1bf0f5"><div class="mag-rich-fig-img mag_zw_img_img" id="273272e5-bba2-4464-88c9-8a00f77ebfd8" onmouseleave="likai(this)"><img src="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/thumbnail/img_1.png" onmouseover="huoqukuanduimg(this)" onclick="clickss(this)"><div class="mag_zw_img_div"><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_1.png" class="mag-main_ry_a" target="_blank">显示原图</a><span class="mag_main_wzxx_tiao">|</span><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_1.png.zip" class="mag-main_ry_a">下载原图ZIP</a><span class="mag_main_wzxx_tiao">|</span><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_1.png.ppt" class="mag-main_ry_a">生成PPT</a></div></div><div class="mag_main_zhengwen_left_div_img_shuoming"><table class="mag-rich-fig-shuoming-table"><tbody><tr class="mag-rich-fig-shuoming-tr"><td class="mag-rich-fig-shuoming-td"><h5 class="mag_nav_daohang"><strong>图1 PSO-XGBoost算法流程图</strong></h5></td></tr></tbody></table></div></div></div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_23">根据<a href="javascript:;" class="mag_content_a mag_xref_fig" onclick="clickFigXref(this,'F1')" rid="F1">图1</a>，PSO-XGBoost算法的具体流程如下：</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_24">1）定义PSO算法的参数，包括粒子群规模<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml29"> <mml:mi>N</mml:mi></math></span>、粒子维度<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml30"> <mml:mi>D</mml:mi></math></span>、迭代次数<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml31"> <mml:mi>K</mml:mi></math></span>、惯性权重<span class="mag-xml-inline-formula"> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml32"> <mml:mi>&#x003C9;</mml:mi></math></span>，确定需要优化的超参数，同时设置每个参数的调节范围。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_25">2）随机初始化粒子群，通过评估粒子的适应度值来对粒子和群体的全局最优位置进行比较，不断更新速度和位置，当达到最大迭代次数后结束粒子群算法流程，得到最优参数。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_26">3）将历史交通流数据的聚类结果分为训练集和测试集，对参数优化后的XGBoost模型进行训练和测试，实现交通状态识别。</div></div>
+								</div>
+		
+			
+			
+															
+				<div class="mag_main_title_two">
+		<h4 class="mag_nav_daohang"><b>1.3 交通状态识别模型</b></h4>
+		<i class="glyphicon glyphicon-triangle-top biaotijiantoush" onclick="twotitle_show_hide(this)"></i>
+	</div>
+		<div class="mag_zw_xianshiyic">
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_27">本文利用贝叶斯优化后的FCM 算法对历史交通流数据进行状态划分，将聚类结果分为训练集和测试集，对PSO-XGBoost算法进行训练和测试验证，从而实现交通状态识别。完整的交通状态识别步骤如下：</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_28">1）以交通流量、速度和道路占有率作为特征参数，进行交通状态划分。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_29">2）根据文献[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b12')" rid="b12">12</a>]，将城市交通状态划分为畅通、平稳、拥挤和拥堵4个等级，对应的标签编号为0, 1, 2, 3。使用BO-FCM模型对交通流数据进行聚类分析并获得实验数据的交通状态标签。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_30">3）将已经划分交通状态的特征变量数据按4∶1分为训练数据和测试数据，其中训练集的输入为所选取的3个特征参数，输出为相应的交通状态。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_31">4）使用训练集数据对PSO-XGBoost模型进行训练，然后利用测试数据对训练后的模型进行验证测试，对模型性能进行评价。</div></div>
+								</div>
+		
+			
+			
+												</div>
+	</div>	
+		
+			
+			
+			
+									<div class="mag_main_zhengwen_left_div">
+				<div class="mag_main_zhengwen_left_div_top mag_zhengwen_lanse">
+			<h3 class="mag_nav_daohang"><b>2 实例验证</b></h3>
+			<div class="mag_main_zhengwen_left_div_jiajian"><i class="glyphicon glyphicon-minus" onclick="content_show_hide(this)"></i></div>
+		</div>
+				<div class="mag_zw_xianshiyic">
+															
+				<div class="mag_main_title_two">
+		<h4 class="mag_nav_daohang"><b>2.1 数据处理</b></h4>
+		<i class="glyphicon glyphicon-triangle-top biaotijiantoush" onclick="twotitle_show_hide(this)"></i>
+	</div>
+		<div class="mag_zw_xianshiyic">
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_32">采用北京市西三环快速路的交通流数据进行交通状态识别实验和模型测试。选取西三环航天桥南—紫竹桥北作为实验路段，检测器分布如<a href="javascript:;" class="mag_content_a mag_xref_fig" onclick="clickFigXref(this,'F2')" rid="F2">图2</a>所示。采集2014年1月6日—2014年1月10日全天流量、速度和道路占有率数据，以2 min为时间间隔，日交通数据序列个数为720个，数据缺失率不高于5%，数据总量为17 897条，能较好地展现交通流变化和交通流特性。在实验开始前，先对原始数据进行筛选，剔除缺失数据和异常数据，如北京市三环快速路的限速为80 km/h，因此删除速度为80 km/h以上的数据点，然后使用Z-score标准化方法将数据转换为正态分布，同时将Z-score值的绝对值小于3的数据点视为异常点，予以删除。将所有数据点绘制成箱线图，如<a href="javascript:;" class="mag_content_a mag_xref_fig" onclick="clickFigXref(this,'F3')" rid="F3">图3</a>所示，可以看出3项交通流参数属性正常，异常点已剔除。以1月6日—1月9日的数据为训练数据，1月10日的数据为测试数据，在Python平台进行模型实验。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_33"><div id="F2" class="mag-rich-fig mag_zw_img" magId="2eff0196-3a1c-4ce4-aa8e-e66d62ef8101"><div class="mag-rich-fig-img mag_zw_img_img" id="f102673f-f179-4454-8845-415cd4588296" onmouseleave="likai(this)"><img src="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/thumbnail/img_2.png" onmouseover="huoqukuanduimg(this)" onclick="clickss(this)"><div class="mag_zw_img_div"><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_2.png" class="mag-main_ry_a" target="_blank">显示原图</a><span class="mag_main_wzxx_tiao">|</span><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_2.png.zip" class="mag-main_ry_a">下载原图ZIP</a><span class="mag_main_wzxx_tiao">|</span><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_2.png.ppt" class="mag-main_ry_a">生成PPT</a></div></div><div class="mag_main_zhengwen_left_div_img_shuoming"><table class="mag-rich-fig-shuoming-table"><tbody><tr class="mag-rich-fig-shuoming-tr"><td class="mag-rich-fig-shuoming-td"><h5 class="mag_nav_daohang"><strong>图2 检测器分布图</strong></h5></td></tr></tbody></table></div></div> <div id="F3" class="mag-rich-fig mag_zw_img" magId="38bcac5e-4461-4c18-be33-02bf1e423b14"><div class="mag-rich-fig-img mag_zw_img_img" id="7f3bd322-b9b1-4815-87aa-86e49d818177" onmouseleave="likai(this)"><img src="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/thumbnail/img_3.png" onmouseover="huoqukuanduimg(this)" onclick="clickss(this)"><div class="mag_zw_img_div"><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_3.png" class="mag-main_ry_a" target="_blank">显示原图</a><span class="mag_main_wzxx_tiao">|</span><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_3.png.zip" class="mag-main_ry_a">下载原图ZIP</a><span class="mag_main_wzxx_tiao">|</span><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_3.png.ppt" class="mag-main_ry_a">生成PPT</a></div></div><div class="mag_main_zhengwen_left_div_img_shuoming"><table class="mag-rich-fig-shuoming-table"><tbody><tr class="mag-rich-fig-shuoming-tr"><td class="mag-rich-fig-shuoming-td"><h5 class="mag_nav_daohang"><strong>图3 样本数据箱线图</strong></h5></td></tr></tbody></table></div></div></div></div>
+								</div>
+		
+			
+			
+															
+				<div class="mag_main_title_two">
+		<h4 class="mag_nav_daohang"><b>2.2 基于BO-FCM的交通状态划分</b></h4>
+		<i class="glyphicon glyphicon-triangle-top biaotijiantoush" onclick="twotitle_show_hide(this)"></i>
+	</div>
+		<div class="mag_zw_xianshiyic">
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_34">根据交通流中的速度、交通流量及道路占有率，将样本数据所处的交通状态划分为4类，分别是顺畅、平稳、拥挤、拥堵。确定聚类数目为4，通过贝叶斯优化算法不断迭代300次得到FCM算法的初始聚类中心矩阵为：</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_35"><div id="e4" class="mag-xml-disp-formula"><label> </label> <math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="Mml33"> <mml:mfenced separators="|"> <mml:mrow> <mml:mtable> <mml:mtr> <mml:mtd> <mml:mn>302.735</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>33</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>261</mml:mn></mml:mtd> <mml:mtd> <mml:mn>43.826</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>942</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>43</mml:mn></mml:mtd> <mml:mtd> <mml:mn>179.769</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>325</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>61</mml:mn></mml:mtd></mml:mtr> <mml:mtr> <mml:mtd> <mml:mn>271.666</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>131</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>15</mml:mn></mml:mtd> <mml:mtd> <mml:mn>55.299</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>770</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>54</mml:mn></mml:mtd> <mml:mtd> <mml:mn>97.629</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>913</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>59</mml:mn></mml:mtd></mml:mtr> <mml:mtr> <mml:mtd> <mml:mn>197.674</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>309</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>5</mml:mn></mml:mtd> <mml:mtd> <mml:mn>60.683</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>024</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>33</mml:mn></mml:mtd> <mml:mtd> <mml:mn>62.496</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>006</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>25</mml:mn></mml:mtd></mml:mtr> <mml:mtr> <mml:mtd> <mml:mn>44.200</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>231</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>7</mml:mn></mml:mtd> <mml:mtd> <mml:mn>62.863</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>543</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>97</mml:mn></mml:mtd> <mml:mtd> <mml:mn>11.638</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>085</mml:mn> <mml:mi mathvariant="normal">&nbsp;</mml:mi> <mml:mn>04</mml:mn></mml:mtd></mml:mtr></mml:mtable></mml:mrow></mml:mfenced></math></div></div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_36">基于以上初始聚类中心进行聚类，得到聚类结果如<a href="javascript:;" class="mag_content_a mag_xref_fig" onclick="clickFigXref(this,'F4')" rid="F4">图4</a>所示。每类交通状态下的交通流量、速度和道路占有率的均值如<a href="javascript:;" class="mag_content_a mag_xref_table" onclick="clickTabXref(this,'T1')" rid="T1">表1</a>所示。从表中可以看出，每种交通状态下的交通流量、速度和道路占有率都有较大差异，且4种交通状态都有较明显的规律。处于第0类交通状态下的速度较大，但交通流量和道路占有率都很低，对应于顺畅的交通状态；第1类交通状态的速度较第0类下降，但交通流量和道路占有率有所提高，此时处于平稳状态；第2类和第3类的交通状态变化情况相同，对应于拥挤和拥堵状态。从顺畅到拥堵的交通状态变化过程中，可以看出速度在不断降低，而交通流量和道路占有率不断提高，算法优化后所得结果与实际交通流变化规律相同。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_37"><div id="F4" class="mag-rich-fig mag_zw_img" magId="080a6944-07a1-4978-9f97-a297bf6f5bc4"><div class="mag-rich-fig-img mag_zw_img_img" id="f8f2341c-094e-4035-9fc6-e82059a62919" onmouseleave="likai(this)"><img src="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/thumbnail/img_4.png" onmouseover="huoqukuanduimg(this)" onclick="clickss(this)"><div class="mag_zw_img_div"><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_4.png" class="mag-main_ry_a" target="_blank">显示原图</a><span class="mag_main_wzxx_tiao">|</span><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_4.png.zip" class="mag-main_ry_a">下载原图ZIP</a><span class="mag_main_wzxx_tiao">|</span><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_4.png.ppt" class="mag-main_ry_a">生成PPT</a></div></div><div class="mag_main_zhengwen_left_div_img_shuoming"><table class="mag-rich-fig-shuoming-table"><tbody><tr class="mag-rich-fig-shuoming-tr"><td class="mag-rich-fig-shuoming-td"><h5 class="mag_nav_daohang"><strong>图4 聚类结果</strong></h5></td></tr></tbody></table></div></div> <div id="T1" magId="56e430f6-2dd9-42cf-89f4-fb08d8cc3b02" class="mag_main_table"><div class="mag_main_table_title"><table class="mag-rich-table-title-tab"><tbody><tr class="mag-rich-table-title-tr"><td class="mag-rich-table-title-td"><h6 class="mag_nav_daohang"><strong>表1 交通流参数均值</strong></h6></td></tr></tbody></table></div><div class="table-responsive mag_table_div"><table class="mag_table table"> <thead> <tr> <th valign="middle" align="center" style="border-top:1px solid #000;border-bottom:1px solid #000;">聚类编号</th> <th valign="middle" align="center" style="border-top:1px solid #000;border-bottom:1px solid #000;">交通状态</th> <th valign="middle" align="center" style="border-top:1px solid #000;border-bottom:1px solid #000;">交通流量<br>/（pcu/2 min）</th> <th valign="middle" align="center" style="border-top:1px solid #000;border-bottom:1px solid #000;">速度<br>/（km/h）</th> <th valign="middle" align="center" style="border-top:1px solid #000;border-bottom:1px solid #000;">道路占有率<br>（%）</th></tr></thead> <tbody> <tr> <td valign="middle" align="center" style="border-top:1px solid #000;">0</td> <td valign="middle" align="center" style="border-top:1px solid #000;">顺畅</td> <td valign="middle" align="center" style="border-top:1px solid #000;">67.6</td> <td valign="middle" align="center" style="border-top:1px solid #000;">167.9</td> <td valign="middle" align="center" style="border-top:1px solid #000;">2.3</td></tr> <tr> <td valign="middle" align="center">1</td> <td valign="middle" align="center">平稳</td> <td valign="middle" align="center">240.7</td> <td valign="middle" align="center">56.8</td> <td valign="middle" align="center">14.7</td></tr> <tr> <td valign="middle" align="center">2</td> <td valign="middle" align="center">拥挤</td> <td valign="middle" align="center">350.8</td> <td valign="middle" align="center">46.7</td> <td valign="middle" align="center">26.6</td></tr> <tr> <td valign="middle" align="center" style="border-bottom:1px solid #000;">3</td> <td valign="middle" align="center" style="border-bottom:1px solid #000;">拥堵</td> <td valign="middle" align="center" style="border-bottom:1px solid #000;">452.4</td> <td valign="middle" align="center" style="border-bottom:1px solid #000;">43.9</td> <td valign="middle" align="center" style="border-bottom:1px solid #000;">36.8</td></tr></tbody></table></div></div></div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_38">为验证聚类结果的准确性，以点位3 063的数据聚类结果为例，其2014年1月6日—1月9日的交通状态变化情况如<a href="javascript:;" class="mag_content_a mag_xref_fig" onclick="clickFigXref(this,'F5')" rid="F5">图5</a>所示。可以看出，0:00—6:00，交通流处于顺畅状态；6:00之后车流量不断加大，出现早高峰，交通流状态从顺畅转为拥堵；随后交通流状态不断波动，晚高峰出现在15:00—18:00，此时交通状态又转变为拥堵，之后逐渐趋于平稳状态。模型得到的聚类结果和实际道路交通变化情况较为接近，BO-FCM模型能有效划分交通状态。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_39"><div id="F5" class="mag-rich-fig mag_zw_img" magId="a6275e66-c1b2-4397-bacb-58cd33d0c41a"><div class="mag-rich-fig-img mag_zw_img_img" id="c4f573d6-0888-48fe-a9ca-ac4e24497646" onmouseleave="likai(this)"><img src="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/thumbnail/img_5.png" onmouseover="huoqukuanduimg(this)" onclick="clickss(this)"><div class="mag_zw_img_div"><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_5.png" class="mag-main_ry_a" target="_blank">显示原图</a><span class="mag_main_wzxx_tiao">|</span><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_5.png.zip" class="mag-main_ry_a">下载原图ZIP</a><span class="mag_main_wzxx_tiao">|</span><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_5.png.ppt" class="mag-main_ry_a">生成PPT</a></div></div><div class="mag_main_zhengwen_left_div_img_shuoming"><table class="mag-rich-fig-shuoming-table"><tbody><tr class="mag-rich-fig-shuoming-tr"><td class="mag-rich-fig-shuoming-td"><h5 class="mag_nav_daohang"><strong>图5 1月6日—1月9日交通状态变化</strong></h5></td></tr></tbody></table></div></div></div></div>
+								</div>
+		
+			
+			
+															
+				<div class="mag_main_title_two">
+		<h4 class="mag_nav_daohang"><b>2.3 PSO-XGBoost模型交通状态识别</b></h4>
+		<i class="glyphicon glyphicon-triangle-top biaotijiantoush" onclick="twotitle_show_hide(this)"></i>
+	</div>
+		<div class="mag_zw_xianshiyic">
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_40">实验中，选取6个对模型结果影响较大的参数对XGBoost算法进行优化，分别为影响模型稳定性的学习率，控制模型拟合程度的树的最大深度，最小叶子节点样本权重，随机采样比例，控制随机采样列数占比的使用的特征占比，影响模型损失函数值的节点分裂所需的最小损失函数下降值。设置各参数的变化范围，使用PSO算法进行寻优得到最佳模型参数，如<a href="javascript:;" class="mag_content_a mag_xref_table" onclick="clickTabXref(this,'T2')" rid="T2">表2</a>所示。将优化得到的模型参数代入XGBoost中进行训练和测试，使用1月6日—1月9日的数据作为训练数据，1月10日的数据作为测试数据。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_41"><div id="T2" magId="f1cddfd3-3053-4c3a-b5ef-f42669abb879" class="mag_main_table"><div class="mag_main_table_title"><table class="mag-rich-table-title-tab"><tbody><tr class="mag-rich-table-title-tr"><td class="mag-rich-table-title-td"><h6 class="mag_nav_daohang"><strong>表2 最优参数值</strong></h6></td></tr></tbody></table></div><div class="table-responsive mag_table_div"><table class="mag_table table"> <thead> <tr> <th valign="middle" align="center" style="border-top:1px solid #000;border-bottom:1px solid #000;">参数名称</th> <th valign="middle" align="center" style="border-top:1px solid #000;border-bottom:1px solid #000;">变化范围</th> <th valign="middle" align="center" style="border-top:1px solid #000;border-bottom:1px solid #000;">默认值</th> <th valign="middle" align="center" style="border-top:1px solid #000;border-bottom:1px solid #000;">最优值</th></tr></thead> <tbody> <tr> <td valign="middle" align="center" style="border-top:1px solid #000;">学习率</td> <td valign="middle" align="center" style="border-top:1px solid #000;">0.01~0.2</td> <td valign="middle" align="center" style="border-top:1px solid #000;">0.3</td> <td valign="middle" align="center" style="border-top:1px solid #000;">0.2</td></tr> <tr> <td valign="middle" align="center">树的最大深度</td> <td valign="middle" align="center">3~10</td> <td valign="middle" align="center">6.0</td> <td valign="middle" align="center">3.0</td></tr> <tr> <td valign="middle" align="center">随机采样比例</td> <td valign="middle" align="center">0.5~1</td> <td valign="middle" align="center">1.0</td> <td valign="middle" align="center">0.5</td></tr> <tr> <td valign="middle" align="center">使用的特征占比</td> <td valign="middle" align="center">0.5~1</td> <td valign="middle" align="center">1.0</td> <td valign="middle" align="center">1.0</td></tr> <tr> <td valign="middle" align="center">最小叶子节点样本权重</td> <td valign="middle" align="center">1~10</td> <td valign="middle" align="center">1.0</td> <td valign="middle" align="center">1.0</td></tr> <tr> <td valign="middle" align="center" style="border-bottom:1px solid #000;">节点分裂所需的最小损失函数下降值</td> <td valign="middle" align="center" style="border-bottom:1px solid #000;">0~1</td> <td valign="middle" align="center" style="border-bottom:1px solid #000;">0</td> <td valign="middle" align="center" style="border-bottom:1px solid #000;">0.43</td></tr></tbody></table></div></div></div></div>
+								</div>
+		
+			
+			
+															
+				<div class="mag_main_title_two">
+		<h4 class="mag_nav_daohang"><b>2.4 模型性能整体评价</b></h4>
+		<i class="glyphicon glyphicon-triangle-top biaotijiantoush" onclick="twotitle_show_hide(this)"></i>
+	</div>
+		<div class="mag_zw_xianshiyic">
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_42">为了明确本文模型的准确率和稳定性，将其与支持向量机（Support Vector Machine, SVM）模型、随机森林（Random Forest, RF）算法、K最近邻算法进行对比分析。依据文献[<a href="javascript:;" class="mag_content_a" onclick="piaofuRef(this,'b8')" rid="b8">8</a>]，先将SVM模型中的RBF核函数设置为21，惩罚系数设置为0.5，随机森林算法和K最近邻算法的参数值采用默认值，然后采用Python中的sklearn库建立和运行SVM, RF, KNN模型。本文模型和其他模型的交通状态识别混淆矩阵如<a href="javascript:;" class="mag_content_a mag_xref_fig" onclick="clickFigXref(this,'F6')" rid="F6">图6</a>所示，图中各行是实际交通状态，每列是预测交通状态，对角方格中的数表示每个交通状态识别正确的数量，如第1行第1列表示能正确识别为顺畅状态的数据有853个。由该图可知，本文算法在全部3 487个测试数据中，识别错误的数据只有2个，其识别出的状态和实际状态只相差1个交通状态类型，分别是将实际的平稳状态识别为顺畅状态和拥挤状态，模型的总体准确率达99.94%，识别精度较高，其他模型则多次出现识别状态和实际状态相差2个类型的情况，这表明本文算法稳定性较好。本文算法与另外3种算法的识别结果如<a href="javascript:;" class="mag_content_a mag_xref_table" onclick="clickTabXref(this,'T3')" rid="T3">表3</a>所示。从该表可知，本文模型的识别准确率比SVM, RF, KNN等常见模型分别提高了1.23%, 1.06%, 1.57%。</div></div>
+												
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_43"><div id="F6" class="mag-rich-fig mag_zw_img" magId="beb03995-2b53-48e0-8819-80ab55306e7f"><div class="mag-rich-fig-img mag_zw_img_img" id="06e73418-fe28-4b9f-a172-a6c66d14d932" onmouseleave="likai(this)"><img src="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/thumbnail/img_6.png" onmouseover="huoqukuanduimg(this)" onclick="clickss(this)"><div class="mag_zw_img_div"><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_6.png" class="mag-main_ry_a" target="_blank">显示原图</a><span class="mag_main_wzxx_tiao">|</span><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_6.png.zip" class="mag-main_ry_a">下载原图ZIP</a><span class="mag_main_wzxx_tiao">|</span><a href="https://www.tr-cats.cn/article/2023/2095-9931/659/2095-9931-9-4-64/img_6.png.ppt" class="mag-main_ry_a">生成PPT</a></div></div><div class="mag_main_zhengwen_left_div_img_shuoming"><table class="mag-rich-fig-shuoming-table"><tbody><tr class="mag-rich-fig-shuoming-tr"><td class="mag-rich-fig-shuoming-td"><h5 class="mag_nav_daohang"><strong>图6 不同模型识别结果的混淆矩阵</strong></h5></td></tr></tbody></table></div></div> <div id="T3" magId="a3f7f327-8fd0-4700-bdf3-7774060b3d94" class="mag_main_table"><div class="mag_main_table_title"><table class="mag-rich-table-title-tab"><tbody><tr class="mag-rich-table-title-tr"><td class="mag-rich-table-title-td"><h6 class="mag_nav_daohang"><strong>表3 不同方法的识别结果比较</strong></h6></td></tr></tbody></table></div><div class="table-responsive mag_table_div"><table class="mag_table table"> <thead> <tr> <th valign="middle" align="center" style="border-top:1px solid #000;border-bottom:1px solid #000;">模型</th> <th valign="middle" align="center" style="border-top:1px solid #000;border-bottom:1px solid #000;">准确预测样<br>本数/个</th> <th valign="middle" align="center" style="border-top:1px solid #000;border-bottom:1px solid #000;">错误预测<br>样本数/个</th> <th valign="middle" align="center" style="border-top:1px solid #000;border-bottom:1px solid #000;">准确率<br>（%）</th></tr></thead> <tbody> <tr> <td valign="middle" align="center" style="border-top:1px solid #000;">本文模型</td> <td valign="middle" align="center" style="border-top:1px solid #000;">3 485</td> <td valign="middle" align="center" style="border-top:1px solid #000;">2</td> <td valign="middle" align="center" style="border-top:1px solid #000;">99.94</td></tr> <tr> <td valign="middle" align="center">RF</td> <td valign="middle" align="center">3 448</td> <td valign="middle" align="center">39</td> <td valign="middle" align="center">98.88</td></tr> <tr> <td valign="middle" align="center">SVM</td> <td valign="middle" align="center">3 442</td> <td valign="middle" align="center">45</td> <td valign="middle" align="center">98.71</td></tr> <tr> <td valign="middle" align="center" style="border-bottom:1px solid #000;">KNN</td> <td valign="middle" align="center" style="border-bottom:1px solid #000;">3 430</td> <td valign="middle" align="center" style="border-bottom:1px solid #000;">57</td> <td valign="middle" align="center" style="border-bottom:1px solid #000;">98.37</td></tr></tbody></table></div></div></div></div>
+								</div>
+		
+			
+			
+												</div>
+	</div>	
+		
+			
+			
+			
+									<div class="mag_main_zhengwen_left_div">
+				<div class="mag_main_zhengwen_left_div_top mag_zhengwen_lanse">
+			<h3 class="mag_nav_daohang"><b>3 结束语</b></h3>
+			<div class="mag_main_zhengwen_left_div_jiajian"><i class="glyphicon glyphicon-minus" onclick="content_show_hide(this)"></i></div>
+		</div>
+				<div class="mag_zw_xianshiyic">
+															
+			
+			
+			
+			<div><div class="mag_main_zhengwen_left_div_p mag_rich_body_p" id="mag_rich_body_p_44">交通状态识别是城市智能交通的重要基础，为提高交通状态识别的准确率，本文结合聚类算法和监督学习算法的优势，提出一种基于贝叶斯优化的FCM算法和PSO-XGBoost算法相结合的快速路交通状态识别模型，针对FCM算法易陷入局部最优和XGBoost算法参数复杂敏感的问题，对FCM算法的初始聚类中心和XGBoost算法的重要超参数两个方面进行优化，最后利用历史交通流数据对模型性能进行了测试和比较分析。结果表明，本文方法实现了对交通状态的精准识别，对比其他常见算法，不仅对交通状态识别的准确率更高，错判率更低，而且稳定性好，表明所建立的模型性能更优越，可为准确获取交通出行信息和改善交通拥堵提供方法支撑。本文在交通状态识别过程中未考虑聚类中心数量对识别结果的影响，在未来研究中将对不同聚类中心数量下不同道路的交通数据进行测试和模型性能分析。</div></div>
+											</div>
+	</div>	
+		
+			
+			
+			
+				</div>
+ 
+
+					
+										
+										
+										
+					
+										
+										
+										
+										<div class="mag_main_zhengwen_left_div">
+						<div class="mag_main_zhengwen_left_div_top">
+							<h3 class="mag_nav_daohang" style="float: left;margin-right:5%;width:auto;"><b>References</b></h3>
+							<a href="javascript:;" class="mag-main_ry_a yidong_hide" onclick="referenceOrderByType(1)">Publishing order</a>
+							<span class="mag_main_dw_div_none_tiao yidong_hide">|</span>
+							<a href="javascript:;" class="mag-main_ry_a yidong_hide" onclick="referenceOrderByType(2)">Descend order by publishing year</a>
+							<span class="mag_main_dw_div_none_tiao yidong_hide">|</span>
+							<a href="javascript:;" class="mag-main_ry_a yidong_hide" onclick="referenceOrderByType(3)">Descend order by cited within</a>
+							
+							<div class="mag_main_zhengwen_left_div_jiajian"><i class="glyphicon glyphicon-minus" onclick="content_show_hide(this)"></i></div>
+						</div>
+						<div id="mag-rich-references-div" class="mag_zw_xianshiyic" style="padding:0px 15px;">
+																					<table class="mag_main_zhengwen_left_div_ckwx_table" order-1-num="0" order-2-num="2020" order-3-num="1">
+								<tr id="mag_rich_ref_b1" class="mag_rich_ckwxsk">
+									<td class="mag-rich-ckwx-order" valign="top" width="5%" nowrap>[1]</td>
+									<td width="95%">
+																				<div class="mag_main_zhengwen_left_div_p_1">
+											彭博, 张媛媛, 唐聚, 等. 基于自编码器与 k-means聚类的视频交通状态自动识别[J]. <span class="sourceStyle">公路交通科技</span>, <span class="yearStyle">2020</span>, <span class="volStyele">37</span>(12):117-123.
+										</div>
+										<p>
+																																</p>
+																			</td>
+								</tr>
+							</table>
+																					<table class="mag_main_zhengwen_left_div_ckwx_table" order-1-num="1" order-2-num="2017" order-3-num="1">
+								<tr id="mag_rich_ref_b2" class="mag_rich_ckwxsk">
+									<td class="mag-rich-ckwx-order" valign="top" width="5%" nowrap>[2]</td>
+									<td width="95%">
+																				<div class="mag_main_zhengwen_left_div_p_1">
+											吴启顺, 蔡晓禹, 蔡明. 基于FCM快速路交通状态判别加权指数研究[J]. <span class="sourceStyle">科学技术与工程</span>, <span class="yearStyle">2017</span>, <span class="volStyele">17</span>(6):289-295.
+										</div>
+										<p>
+																																</p>
+																			</td>
+								</tr>
+							</table>
+																					<table class="mag_main_zhengwen_left_div_ckwx_table" order-1-num="2" order-2-num="2015" order-3-num="1">
+								<tr id="mag_rich_ref_b3" class="mag_rich_ckwxsk">
+									<td class="mag-rich-ckwx-order" valign="top" width="5%" nowrap>[3]</td>
+									<td width="95%">
+																				<div class="mag_main_zhengwen_left_div_p_1">
+											邴其春, 龚勃文, 杨兆升, 等. 基于投影寻踪动态聚类的快速路交通状态判别[J]. <span class="sourceStyle">西南交通大学学报</span>, <span class="yearStyle">2015</span>, <span class="volStyele">50</span>(6):1164-1169.
+										</div>
+										<p>
+																																</p>
+																			</td>
+								</tr>
+							</table>
+																					<table class="mag_main_zhengwen_left_div_ckwx_table" order-1-num="3" order-2-num="2022" order-3-num="1">
+								<tr id="mag_rich_ref_b4" class="mag_rich_ckwxsk">
+									<td class="mag-rich-ckwx-order" valign="top" width="5%" nowrap>[4]</td>
+									<td width="95%">
+																				<div class="mag_main_zhengwen_left_div_p_1">
+											黄艳国, 张升升, 刘红军. 基于高斯混合模型聚类算法的交通状态划分[J]. <span class="sourceStyle">现代电子技术</span>, <span class="yearStyle">2022</span>, <span class="volStyele">45</span>(7):168-173.
+										</div>
+										<p>
+																																</p>
+																			</td>
+								</tr>
+							</table>
+																					<table class="mag_main_zhengwen_left_div_ckwx_table" order-1-num="4" order-2-num="2011" order-3-num="1">
+								<tr id="mag_rich_ref_b5" class="mag_rich_ckwxsk">
+									<td class="mag-rich-ckwx-order" valign="top" width="5%" nowrap>[5]</td>
+									<td width="95%">
+																				<div class="mag_main_zhengwen_left_div_p_1">
+											巫威眺, 靳文舟, 林培群. 基于BP神经网络的道路交通状态判别方法研究[J]. <span class="sourceStyle">交通信息与安全</span>, <span class="yearStyle">2011</span>, <span class="volStyele">29</span>(4):71-74,79.
+										</div>
+										<p>
+																																</p>
+																			</td>
+								</tr>
+							</table>
+																					<table class="mag_main_zhengwen_left_div_ckwx_table" order-1-num="5" order-2-num="2017" order-3-num="1">
+								<tr id="mag_rich_ref_b6" class="mag_rich_ckwxsk">
+									<td class="mag-rich-ckwx-order" valign="top" width="5%" nowrap>[6]</td>
+									<td width="95%">
+																				<div class="mag_main_zhengwen_left_div_p_1">
+											高林, 刘英, 盛子豪. 随机森林算法在交通状态判别中的应用[J]. <span class="sourceStyle">实验技术与管理</span>, <span class="yearStyle">2017</span>, <span class="volStyele">34</span>(4):43-46.
+										</div>
+										<p>
+																																</p>
+																			</td>
+								</tr>
+							</table>
+																					<table class="mag_main_zhengwen_left_div_ckwx_table" order-1-num="6" order-2-num="2014" order-3-num="1">
+								<tr id="mag_rich_ref_b7" class="mag_rich_ckwxsk">
+									<td class="mag-rich-ckwx-order" valign="top" width="5%" nowrap>[7]</td>
+									<td width="95%">
+																				<div class="mag_main_zhengwen_left_div_p_1">
+											<name><surname>LI</surname> <given-names>L</given-names></name>, <name><surname>CHEN</surname> <given-names>X</given-names></name>, <name><surname>ZHANG</surname> <given-names>L</given-names></name>. Multimodel ensemble for freeway traffic state estimations[J]. <span class="sourceStyle">IEEE Transactions on Intelligent Transportation Systems</span>, <span class="yearStyle">2014</span>, <span class="volStyele">15</span>(3): 1323-1336.
+										</div>
+										<p>
+																																</p>
+																			</td>
+								</tr>
+							</table>
+																					<table class="mag_main_zhengwen_left_div_ckwx_table" order-1-num="7" order-2-num="2020" order-3-num="2">
+								<tr id="mag_rich_ref_b8" class="mag_rich_ckwxsk">
+									<td class="mag-rich-ckwx-order" valign="top" width="5%" nowrap>[8]</td>
+									<td width="95%">
+																				<div class="mag_main_zhengwen_left_div_p_1">
+											李巧茹, 郝恩强, 陈亮, 等. 遗传算法优化支持向量机的城市交通状态识别[J]. <span class="sourceStyle">重庆交通大学学报(自然科学版)</span>, <span class="yearStyle">2020</span>, <span class="volStyele">39</span>(8):1-5,13.
+										</div>
+										<p>
+																																</p>
+																			</td>
+								</tr>
+							</table>
+																					<table class="mag_main_zhengwen_left_div_ckwx_table" order-1-num="8" order-2-num="2017" order-3-num="1">
+								<tr id="mag_rich_ref_b9" class="mag_rich_ckwxsk">
+									<td class="mag-rich-ckwx-order" valign="top" width="5%" nowrap>[9]</td>
+									<td width="95%">
+																				<div class="mag_main_zhengwen_left_div_p_1">
+											刘擎超, 蔡英凤, 江浩斌, 等. 基于强空间集成的交通状态判别方法[J]. <span class="sourceStyle">计算机工程</span>, <span class="yearStyle">2017</span>, <span class="volStyele">43</span>(11):297-302.
+										</div>
+										<p>
+																																</p>
+																			</td>
+								</tr>
+							</table>
+																					<table class="mag_main_zhengwen_left_div_ckwx_table" order-1-num="9" order-2-num="2023" order-3-num="1">
+								<tr id="mag_rich_ref_b10" class="mag_rich_ckwxsk">
+									<td class="mag-rich-ckwx-order" valign="top" width="5%" nowrap>[10]</td>
+									<td width="95%">
+																				<div class="mag_main_zhengwen_left_div_p_1">
+											<name><surname>KYRIACOU</surname> <given-names>V</given-names></name>, <name><surname>ENGLEZOU</surname> <given-names>Y</given-names></name>, <name><surname>PANAYIOTOU</surname> <given-names>C G</given-names></name>, et al.  Bayesian traffic state estimation using extended floating car data[J]. <span class="sourceStyle">IEEE Transactions on Intelligent Transportation Systems</span>, <span class="yearStyle">2023</span>, <span class="volStyele">24</span>(2): 1518-1532.
+										</div>
+										<p>
+																																</p>
+																			</td>
+								</tr>
+							</table>
+																					<table class="mag_main_zhengwen_left_div_ckwx_table" order-1-num="10" order-2-num="2017" order-3-num="1">
+								<tr id="mag_rich_ref_b11" class="mag_rich_ckwxsk">
+									<td class="mag-rich-ckwx-order" valign="top" width="5%" nowrap>[11]</td>
+									<td width="95%">
+																				<div class="mag_main_zhengwen_left_div_p_1">
+											商强, 林赐云, 杨兆升, 等. 基于谱聚类与RS-KNN的城市快速路交通状态判别[J]. <span class="sourceStyle">华南理工大学学报(自然科学版)</span>, <span class="yearStyle">2017</span>, <span class="volStyele">45</span>(6):52-58.
+										</div>
+										<p>
+																																</p>
+																			</td>
+								</tr>
+							</table>
+																					<table class="mag_main_zhengwen_left_div_ckwx_table" order-1-num="11" order-2-num="2019" order-3-num="2">
+								<tr id="mag_rich_ref_b12" class="mag_rich_ckwxsk">
+									<td class="mag-rich-ckwx-order" valign="top" width="5%" nowrap>[12]</td>
+									<td width="95%">
+																				<div class="mag_main_zhengwen_left_div_p_1">
+											常丽君, 郑黎黎, 杨帆. 基于(SAGA-FCM)-PNN的交通状态判别方法研究[J]. <span class="sourceStyle">交通信息与安全</span>, <span class="yearStyle">2019</span>, <span class="volStyele">37</span>(2):120-127.
+										</div>
+										<p>
+																																</p>
+																			</td>
+								</tr>
+							</table>
+																					<table class="mag_main_zhengwen_left_div_ckwx_table" order-1-num="12" order-2-num="2017" order-3-num="1">
+								<tr id="mag_rich_ref_b13" class="mag_rich_ckwxsk">
+									<td class="mag-rich-ckwx-order" valign="top" width="5%" nowrap>[13]</td>
+									<td width="95%">
+																				<div class="mag_main_zhengwen_left_div_p_1">
+											<name><surname>GOMEZ</surname> <given-names>S E</given-names></name>, <name><surname>MARTINEZ</surname> <given-names>B C</given-names></name>, <name><surname>SANCHEZ-ESGUEVILLAS</surname> <given-names>A J</given-names></name>, et al.  Ensemble network traffic classification: Algorithm comparison and novel ensemble scheme proposal[J]. <span class="sourceStyle">Computer Networks</span>, <span class="yearStyle">2017</span>, <span class="volStyele">127</span>: 68-80.
+										</div>
+										<p>
+																																</p>
+																			</td>
+								</tr>
+							</table>
+																					<table class="mag_main_zhengwen_left_div_ckwx_table" order-1-num="13" order-2-num="1984" order-3-num="1">
+								<tr id="mag_rich_ref_b14" class="mag_rich_ckwxsk">
+									<td class="mag-rich-ckwx-order" valign="top" width="5%" nowrap>[14]</td>
+									<td width="95%">
+																				<div class="mag_main_zhengwen_left_div_p_1">
+											<name><surname>BEZDEK</surname> <given-names>J C</given-names></name>, <name><surname>EHRLICH</surname> <given-names>R</given-names></name>, <name><surname>FULL</surname> <given-names>W</given-names></name>. FCM: The fuzzy c-means clustering algorithm[J]. <span class="sourceStyle">Computers &#x00026; Geosciences</span>, <span class="yearStyle">1984</span>, <span class="volStyele">10</span>(2): 191-203.
+										</div>
+										<p>
+																																</p>
+																			</td>
+								</tr>
+							</table>
+																					<table class="mag_main_zhengwen_left_div_ckwx_table" order-1-num="14" order-2-num="2023" order-3-num="1">
+								<tr id="mag_rich_ref_b15" class="mag_rich_ckwxsk">
+									<td class="mag-rich-ckwx-order" valign="top" width="5%" nowrap>[15]</td>
+									<td width="95%">
+																				<div class="mag_main_zhengwen_left_div_p_1">
+											王博文, 王景升, 吴恩重. 面向不平衡数据集的SMOTENC-XGBoost驾驶人交通安全评估模型[J]. <span class="sourceStyle">科学技术与工程</span>, <span class="yearStyle">2023</span>, <span class="volStyele">23</span>(2):831-837.
+										</div>
+										<p>
+																																</p>
+																			</td>
+								</tr>
+							</table>
+																				</div>
+					</div>
+										
+				</div>
+				<div class="mag_main_zhengwen_right" >
+					<div class="mag_main_zhengwen_left_div" style="padding-bottom: 0px;">
+						<div class="mag_main_zhengwen_left_div_top">
+							<b>Options</b>
+						</div>
+						<ul class="mag_main_zhengwen_right_ul">
+														<li><a href="javascript:;" onclick="lsdy1('PDF',659);return false;">PDF (2547)</a></li>
+														<li><a href="https://www.tr-cats.cn/EN/10.16503/j.cnki.2095-9931.2023.04.006">Abstract</a></li>
+						</ul>
+					</div>
+					
+					<div class="huoquoffset"></div>
+					<div class="mag_main_zhengwen_left_div" id="mag_right_nav">
+						<div class="mag_main_zhengwen_left_div_top">
+							<b>Outlines</b>
+						</div>
+						<div id="autoMenu" style="width: 100%;height:auto;"></div>
+						<div style="display:none;">
+							<div id="autoMenu-bottom"><!-- 此处内容将会被添加到导航最底部 --></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="mag_right">
+			<div class="mag_right_top" title="TOP" onclick="fanhuidingbu();"  onmouseover="shu_fanhuidinfgbu(this)" onmouseout="u_shu_fanhuidinfgbu(this);">
+				<i class="glyphicon glyphicon-arrow-up"></i>
+			</div>
+			<div class="mag_right_top" title="Hide" onclick="zhedieyouce();" onmouseover="shu_zedieyouce(this)" onmouseout="u_shu_zedieyouce(this);">
+				<i class="glyphicon glyphicon-transfer"></i>
+			</div>
+		</div>
+		
+		<div class="mag_motaikuang" onclick="guanbiann();"></div>
+		<div class="mag_model">
+			<i class="glyphicon glyphicon-remove-circle mag_guanbi" onclick="guanbiann();"></i>
+			<p class="mag_biaotitupiana">
+				<span class="yige"></span>/<span class="zongdea"></span>	
+			</p>
+			<div class="mag_imgaesa">
+				<table class="mag_haoshi">
+					<tbody>
+						<tr>
+							<td onclick="shang();" class="zuo" width="5%">
+								〈
+							</td>
+							<td class="zhong">
+								<img src="" class="tp">
+							</td>
+							<td onclick="xia();" class="you" width="5%">
+									〉
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<div class="neirong">
+				<p class="mag_model_shuoming"></p>
+				<p class="mag_model_shuoming"></p>
+			</div>
+		</div>
+		<div class="mag_bottom">
+		
+			
+
+
+
+			
+		</div>
+	</body>
+</html>

@@ -15,401 +15,280 @@
     "train_end_step": 10713,
     "test_start_step": 14284
   },
-  "lags_steps": [
-    1,
-    2,
-    3,
-    6,
-    12
-  ],
-  "targets": {
-    "flow": {
-      "channel": 0,
-      "label": "Traffic flow",
-      "unit": "veh/5min",
-      "mape_threshold": 10.0,
-      "horizons": {
-        "5min": {
-          "horizon_minutes": 5,
-          "horizon_steps": 1,
-          "effective_minutes": 5,
-          "train_samples": 10701,
-          "validation_samples": 3571,
-          "test_samples": 3571,
-          "fusion_weights": {
-            "Persistence": 0.550000011920929,
-            "SeasonalPersistence": 0.05000000074505806,
-            "HistoricalAverage": 0.0,
-            "RidgeLag": 0.4000000059604645
-          },
-          "models": {
-            "Persistence": {
-              "mae": 15.880363464355469,
-              "rmse": 24.56263294135461,
-              "mape": 8.823223412036896
-            },
-            "SeasonalPersistence": {
-              "mae": 36.4236946105957,
-              "rmse": 60.68001691763937,
-              "mape": 20.99090814590454
-            },
-            "HistoricalAverage": {
-              "mae": 36.361202239990234,
-              "rmse": 54.15897731880422,
-              "mape": 22.066673636436462
-            },
-            "RidgeLag": {
-              "mae": 17.130300521850586,
-              "rmse": 25.760019667718616,
-              "mape": 9.35979038476944
-            },
-            "Ours-TSFusion": {
-              "mae": 14.2622709274292,
-              "rmse": 21.659355612457055,
-              "mape": 7.931297272443771
-            }
-          }
-        },
-        "15min": {
-          "horizon_minutes": 15,
-          "horizon_steps": 3,
-          "effective_minutes": 15,
-          "train_samples": 10701,
-          "validation_samples": 3571,
-          "test_samples": 3569,
-          "fusion_weights": {
-            "Persistence": 0.44999998807907104,
-            "SeasonalPersistence": 0.05000000074505806,
-            "HistoricalAverage": 0.0,
-            "RidgeLag": 0.5
-          },
-          "models": {
-            "Persistence": {
-              "mae": 19.51154136657715,
-              "rmse": 29.83809153654048,
-              "mape": 10.731498152017593
-            },
-            "SeasonalPersistence": {
-              "mae": 36.42913818359375,
-              "rmse": 60.68813159429321,
-              "mape": 20.997436344623566
-            },
-            "HistoricalAverage": {
-              "mae": 36.360870361328125,
-              "rmse": 54.156599374954986,
-              "mape": 22.072520852088928
-            },
-            "RidgeLag": {
-              "mae": 19.36497688293457,
-              "rmse": 29.151998032001384,
-              "mape": 10.595444589853287
-            },
-            "Ours-TSFusion": {
-              "mae": 16.61136245727539,
-              "rmse": 25.240143013381232,
-              "mape": 9.16001945734024
-            }
-          }
-        },
-        "30min": {
-          "horizon_minutes": 30,
-          "horizon_steps": 6,
-          "effective_minutes": 30,
-          "train_samples": 10701,
-          "validation_samples": 3571,
-          "test_samples": 3566,
-          "fusion_weights": {
-            "Persistence": 0.3499999940395355,
-            "SeasonalPersistence": 0.10000000149011612,
-            "HistoricalAverage": 0.0,
-            "RidgeLag": 0.550000011920929
-          },
-          "models": {
-            "Persistence": {
-              "mae": 24.19135856628418,
-              "rmse": 36.67889792148034,
-              "mape": 13.484284281730652
-            },
-            "SeasonalPersistence": {
-              "mae": 36.43175506591797,
-              "rmse": 60.695680045386055,
-              "mape": 21.005932986736298
-            },
-            "HistoricalAverage": {
-              "mae": 36.36063003540039,
-              "rmse": 54.15333544883801,
-              "mape": 22.081665694713593
-            },
-            "RidgeLag": {
-              "mae": 21.454605102539062,
-              "rmse": 32.519106838446724,
-              "mape": 12.068666517734528
-            },
-            "Ours-TSFusion": {
-              "mae": 18.827465057373047,
-              "rmse": 28.601551830099076,
-              "mape": 10.627305507659912
-            }
-          }
-        }
-      }
-    },
-    "speed": {
-      "channel": 2,
-      "label": "Traffic speed",
-      "unit": "mph",
-      "mape_threshold": 1.0,
-      "horizons": {
-        "5min": {
-          "horizon_minutes": 5,
-          "horizon_steps": 1,
-          "effective_minutes": 5,
-          "train_samples": 10701,
-          "validation_samples": 3571,
-          "test_samples": 3571,
-          "fusion_weights": {
-            "Persistence": 0.8999999761581421,
-            "SeasonalPersistence": 0.0,
-            "HistoricalAverage": 0.0,
-            "RidgeLag": 0.10000000149011612
-          },
-          "models": {
-            "Persistence": {
-              "mae": 0.7930589914321899,
-              "rmse": 1.5279090401103967,
-              "mape": 1.4064312912523746
-            },
-            "SeasonalPersistence": {
-              "mae": 2.7878780364990234,
-              "rmse": 6.415750743676103,
-              "mape": 5.968265235424042
-            },
-            "HistoricalAverage": {
-              "mae": 2.539405107498169,
-              "rmse": 5.31554226998746,
-              "mape": 5.798926576972008
-            },
-            "RidgeLag": {
-              "mae": 1.330505132675171,
-              "rmse": 2.448742103739183,
-              "mape": 2.5956299155950546
-            },
-            "Ours-TSFusion": {
-              "mae": 0.7894105315208435,
-              "rmse": 1.5206685259979222,
-              "mape": 1.4175948686897755
-            }
-          }
-        },
-        "15min": {
-          "horizon_minutes": 15,
-          "horizon_steps": 3,
-          "effective_minutes": 15,
-          "train_samples": 10701,
-          "validation_samples": 3571,
-          "test_samples": 3569,
-          "fusion_weights": {
-            "Persistence": 0.800000011920929,
-            "SeasonalPersistence": 0.05000000074505806,
-            "HistoricalAverage": 0.05000000074505806,
-            "RidgeLag": 0.10000000149011612
-          },
-          "models": {
-            "Persistence": {
-              "mae": 1.2578856945037842,
-              "rmse": 2.692823858875738,
-              "mape": 2.3144427686929703
-            },
-            "SeasonalPersistence": {
-              "mae": 2.7869231700897217,
-              "rmse": 6.414716680251017,
-              "mape": 5.963464453816414
-            },
-            "HistoricalAverage": {
-              "mae": 2.5383853912353516,
-              "rmse": 5.313686821704884,
-              "mape": 5.793482065200806
-            },
-            "RidgeLag": {
-              "mae": 1.8828308582305908,
-              "rmse": 3.5343256696501455,
-              "mape": 3.8198553025722504
-            },
-            "Ours-TSFusion": {
-              "mae": 1.2368295192718506,
-              "rmse": 2.5723553455784023,
-              "mape": 2.4010490626096725
-            }
-          }
-        },
-        "30min": {
-          "horizon_minutes": 30,
-          "horizon_steps": 6,
-          "effective_minutes": 30,
-          "train_samples": 10701,
-          "validation_samples": 3571,
-          "test_samples": 3566,
-          "fusion_weights": {
-            "Persistence": 0.75,
-            "SeasonalPersistence": 0.05000000074505806,
-            "HistoricalAverage": 0.10000000149011612,
-            "RidgeLag": 0.10000000149011612
-          },
-          "models": {
-            "Persistence": {
-              "mae": 1.6350395679473877,
-              "rmse": 3.7179506869357266,
-              "mape": 3.1165823340415955
-            },
-            "SeasonalPersistence": {
-              "mae": 2.784921407699585,
-              "rmse": 6.412416346786991,
-              "mape": 5.956185236573219
-            },
-            "HistoricalAverage": {
-              "mae": 2.5366318225860596,
-              "rmse": 5.310876037116307,
-              "mape": 5.7858966290950775
-            },
-            "RidgeLag": {
-              "mae": 2.390329122543335,
-              "rmse": 4.536298162856898,
-              "mape": 4.9621108919382095
-            },
-            "Ours-TSFusion": {
-              "mae": 1.5660529136657715,
-              "rmse": 3.4125702344213225,
-              "mape": 3.170044720172882
-            }
-          }
-        }
-      }
-    }
+  "task": "4-class traffic state classification",
+  "state_definitions": {
+    "畅通(S0)": "speed >= 100 km/h (>= 62.14 mph)",
+    "缓行(S1)": "80 <= speed < 100 km/h (49.71–62.14 mph)",
+    "拥挤(S2)": "60 <= speed < 80 km/h (37.28–49.71 mph)",
+    "堵塞(S3)": "speed < 60 km/h (< 37.28 mph)"
   },
-  "target": "traffic_flow_channel_0",
+  "train_class_distribution": {
+    "畅通(S0)": 1433834,
+    "缓行(S1)": 324117,
+    "拥挤(S2)": 33964,
+    "堵塞(S3)": 29295
+  },
   "horizons": {
     "5min": {
       "horizon_minutes": 5,
       "horizon_steps": 1,
       "effective_minutes": 5,
-      "train_samples": 10701,
-      "validation_samples": 3571,
+      "train_samples": 10702,
       "test_samples": 3571,
-      "fusion_weights": {
-        "Persistence": 0.550000011920929,
-        "SeasonalPersistence": 0.05000000074505806,
-        "HistoricalAverage": 0.0,
-        "RidgeLag": 0.4000000059604645
-      },
+      "transition_samples": 33796,
+      "transition_ratio": 0.0556706804816578,
+      "seq_len": 12,
+      "epochs": 50,
+      "seeds": [
+        7,
+        42,
+        73,
+        115,
+        211,
+        337,
+        503
+      ],
+      "loss": "FocalLoss(gamma=2.0, class_weighted)",
       "models": {
         "Persistence": {
-          "mae": 15.880363464355469,
-          "rmse": 24.56263294135461,
-          "mape": 8.823223412036896
+          "all": {
+            "macro_f1": 0.8584576067046242,
+            "accuracy": 0.9443293195183422,
+            "n_samples": 607070
+          },
+          "transitions": {
+            "macro_f1": 0.0,
+            "accuracy": 0.0,
+            "n_samples": 33796
+          }
         },
-        "SeasonalPersistence": {
-          "mae": 36.4236946105957,
-          "rmse": 60.68001691763937,
-          "mape": 20.99090814590454
+        "HistMode": {
+          "all": {
+            "macro_f1": 0.5413169174921252,
+            "accuracy": 0.8478676264681173,
+            "n_samples": 607070
+          },
+          "transitions": {
+            "macro_f1": 0.32310886133626604,
+            "accuracy": 0.45239081548112203,
+            "n_samples": 33796
+          }
         },
-        "HistoricalAverage": {
-          "mae": 36.361202239990234,
-          "rmse": 54.15897731880422,
-          "mape": 22.066673636436462
+        "LSTM": {
+          "all": {
+            "macro_f1": 0.6184919444260467,
+            "accuracy": 0.8109493139176701,
+            "n_samples": 607070
+          },
+          "transitions": {
+            "macro_f1": 0.3965206503470108,
+            "accuracy": 0.4517990294709433,
+            "n_samples": 33796
+          }
         },
-        "RidgeLag": {
-          "mae": 17.130300521850586,
-          "rmse": 25.760019667718616,
-          "mape": 9.35979038476944
+        "GRU": {
+          "all": {
+            "macro_f1": 0.6297315675120675,
+            "accuracy": 0.8092098110596802,
+            "n_samples": 607070
+          },
+          "transitions": {
+            "macro_f1": 0.4039046137458214,
+            "accuracy": 0.45437329861522074,
+            "n_samples": 33796
+          }
         },
-        "Ours-TSFusion": {
-          "mae": 14.2622709274292,
-          "rmse": 21.659355612457055,
-          "mape": 7.931297272443771
+        "Ours-ST-LSTM": {
+          "all": {
+            "macro_f1": 0.6459538506577986,
+            "accuracy": 0.8180588729471066,
+            "n_samples": 607070
+          },
+          "transitions": {
+            "macro_f1": 0.3993878412488664,
+            "accuracy": 0.45463960231980116,
+            "n_samples": 33796
+          }
         }
-      }
+      },
+      "best_model_all_by_macro_f1": "Persistence",
+      "best_model_transitions_by_macro_f1": "GRU",
+      "ours_leads_all": false,
+      "ours_leads_transitions": false
     },
     "15min": {
       "horizon_minutes": 15,
       "horizon_steps": 3,
       "effective_minutes": 15,
-      "train_samples": 10701,
-      "validation_samples": 3571,
+      "train_samples": 10702,
       "test_samples": 3569,
-      "fusion_weights": {
-        "Persistence": 0.44999998807907104,
-        "SeasonalPersistence": 0.05000000074505806,
-        "HistoricalAverage": 0.0,
-        "RidgeLag": 0.5
-      },
+      "transition_samples": 52559,
+      "transition_ratio": 0.08662667084205496,
+      "seq_len": 12,
+      "epochs": 50,
+      "seeds": [
+        7,
+        42,
+        73,
+        115,
+        211,
+        337,
+        503
+      ],
+      "loss": "FocalLoss(gamma=2.0, class_weighted)",
       "models": {
         "Persistence": {
-          "mae": 19.51154136657715,
-          "rmse": 29.83809153654048,
-          "mape": 10.731498152017593
+          "all": {
+            "macro_f1": 0.7629477210680378,
+            "accuracy": 0.913373329157945,
+            "n_samples": 606730
+          },
+          "transitions": {
+            "macro_f1": 0.0,
+            "accuracy": 0.0,
+            "n_samples": 52559
+          }
         },
-        "SeasonalPersistence": {
-          "mae": 36.42913818359375,
-          "rmse": 60.68813159429321,
-          "mape": 20.997436344623566
+        "HistMode": {
+          "all": {
+            "macro_f1": 0.5413285615034877,
+            "accuracy": 0.8480444349216291,
+            "n_samples": 606730
+          },
+          "transitions": {
+            "macro_f1": 0.3398631558099007,
+            "accuracy": 0.46159554025000477,
+            "n_samples": 52559
+          }
         },
-        "HistoricalAverage": {
-          "mae": 36.360870361328125,
-          "rmse": 54.156599374954986,
-          "mape": 22.072520852088928
+        "LSTM": {
+          "all": {
+            "macro_f1": 0.5997914458949399,
+            "accuracy": 0.8050928749196512,
+            "n_samples": 606730
+          },
+          "transitions": {
+            "macro_f1": 0.38929794462008244,
+            "accuracy": 0.440723758062368,
+            "n_samples": 52559
+          }
         },
-        "RidgeLag": {
-          "mae": 19.36497688293457,
-          "rmse": 29.151998032001384,
-          "mape": 10.595444589853287
+        "GRU": {
+          "all": {
+            "macro_f1": 0.6066505125239313,
+            "accuracy": 0.8064196594860976,
+            "n_samples": 606730
+          },
+          "transitions": {
+            "macro_f1": 0.3881062562879781,
+            "accuracy": 0.4351300443311326,
+            "n_samples": 52559
+          }
         },
-        "Ours-TSFusion": {
-          "mae": 16.61136245727539,
-          "rmse": 25.240143013381232,
-          "mape": 9.16001945734024
+        "Ours-ST-LSTM": {
+          "all": {
+            "macro_f1": 0.6134362811346376,
+            "accuracy": 0.8132661974848779,
+            "n_samples": 606730
+          },
+          "transitions": {
+            "macro_f1": 0.3902026299823287,
+            "accuracy": 0.4450617401396526,
+            "n_samples": 52559
+          }
         }
-      }
+      },
+      "best_model_all_by_macro_f1": "Persistence",
+      "best_model_transitions_by_macro_f1": "Ours-ST-LSTM",
+      "ours_leads_all": false,
+      "ours_leads_transitions": true
     },
     "30min": {
       "horizon_minutes": 30,
       "horizon_steps": 6,
       "effective_minutes": 30,
-      "train_samples": 10701,
-      "validation_samples": 3571,
+      "train_samples": 10702,
       "test_samples": 3566,
-      "fusion_weights": {
-        "Persistence": 0.3499999940395355,
-        "SeasonalPersistence": 0.10000000149011612,
-        "HistoricalAverage": 0.0,
-        "RidgeLag": 0.550000011920929
-      },
+      "transition_samples": 64647,
+      "transition_ratio": 0.10663950381049785,
+      "seq_len": 12,
+      "epochs": 50,
+      "seeds": [
+        7,
+        42,
+        73,
+        115,
+        211,
+        337,
+        503
+      ],
+      "loss": "FocalLoss(gamma=2.0, class_weighted)",
       "models": {
         "Persistence": {
-          "mae": 24.19135856628418,
-          "rmse": 36.67889792148034,
-          "mape": 13.484284281730652
+          "all": {
+            "macro_f1": 0.6976320509287423,
+            "accuracy": 0.8933604961895022,
+            "n_samples": 606220
+          },
+          "transitions": {
+            "macro_f1": 0.0,
+            "accuracy": 0.0,
+            "n_samples": 64647
+          }
         },
-        "SeasonalPersistence": {
-          "mae": 36.43175506591797,
-          "rmse": 60.695680045386055,
-          "mape": 21.005932986736298
+        "HistMode": {
+          "all": {
+            "macro_f1": 0.5413287741548216,
+            "accuracy": 0.8483174425126192,
+            "n_samples": 606220
+          },
+          "transitions": {
+            "macro_f1": 0.35879949379179277,
+            "accuracy": 0.47456185128466905,
+            "n_samples": 64647
+          }
         },
-        "HistoricalAverage": {
-          "mae": 36.36063003540039,
-          "rmse": 54.15333544883801,
-          "mape": 22.081665694713593
+        "LSTM": {
+          "all": {
+            "macro_f1": 0.5810744253841715,
+            "accuracy": 0.8023984692025997,
+            "n_samples": 606220
+          },
+          "transitions": {
+            "macro_f1": 0.39504842546526264,
+            "accuracy": 0.44684208083901805,
+            "n_samples": 64647
+          }
         },
-        "RidgeLag": {
-          "mae": 21.454605102539062,
-          "rmse": 32.519106838446724,
-          "mape": 12.068666517734528
+        "GRU": {
+          "all": {
+            "macro_f1": 0.5866474987004671,
+            "accuracy": 0.7988090132295206,
+            "n_samples": 606220
+          },
+          "transitions": {
+            "macro_f1": 0.39266499820499345,
+            "accuracy": 0.4360140455086856,
+            "n_samples": 64647
+          }
         },
-        "Ours-TSFusion": {
-          "mae": 18.827465057373047,
-          "rmse": 28.601551830099076,
-          "mape": 10.627305507659912
+        "Ours-ST-LSTM": {
+          "all": {
+            "macro_f1": 0.5950770045436146,
+            "accuracy": 0.8117119197651018,
+            "n_samples": 606220
+          },
+          "transitions": {
+            "macro_f1": 0.3986830881514555,
+            "accuracy": 0.45380296069423176,
+            "n_samples": 64647
+          }
         }
-      }
+      },
+      "best_model_all_by_macro_f1": "Persistence",
+      "best_model_transitions_by_macro_f1": "Ours-ST-LSTM",
+      "ours_leads_all": false,
+      "ours_leads_transitions": true
     }
   }
 }
