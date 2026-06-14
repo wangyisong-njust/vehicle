@@ -9,6 +9,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
+from matplotlib.lines import Line2D
 import numpy as np
 
 from ute_pipeline.config import load_config
@@ -366,8 +367,8 @@ def plot_rf_feature_space(rows: list[dict[str, str]], labels: np.ndarray, out_pa
     state_names = configure_plot_font()
     speed = np.asarray([float(r["mean_speed_kmh"]) for r in xamn_rows])
     density = np.asarray([float(r["density_veh_per_m"]) for r in xamn_rows])
-    r_vals = np.asarray([float(r["lane_change_rate"]) for r in xamn_rows])
-    f_vals = np.asarray([float(r["direction_fluctuation"]) for r in xamn_rows])
+    occupancy = np.asarray([float(r["hfgo_occupancy"]) for r in xamn_rows])
+    mgti = np.asarray([float(r["mgti"]) for r in xamn_rows])
     colors = np.asarray(labels[: len(xamn_rows)], dtype=np.int64)
 
     fig = plt.figure(figsize=(10.5, 8.5))
@@ -377,25 +378,29 @@ def plot_rf_feature_space(rows: list[dict[str, str]], labels: np.ndarray, out_pa
     ax4 = fig.add_subplot(2, 2, 4, projection="3d")
     axes = [ax1, ax2, ax3]
     pairs = [
-        (speed, density, "mean_speed_kmh V", "density D"),
-        (speed, r_vals, "mean_speed_kmh V", "lane_change_rate R"),
-        (speed, f_vals, "mean_speed_kmh V", "direction_fluctuation F"),
+        (speed, density, "V: mean_speed_kmh", "D: density_veh_per_m"),
+        (speed, occupancy, "V: mean_speed_kmh", "O: hfgo_occupancy"),
+        (speed, mgti, "V: mean_speed_kmh", "M: mgti"),
     ]
     for ax, (x_vals, y_vals, xlabel, ylabel) in zip(axes, pairs):
         sc = ax.scatter(x_vals, y_vals, c=colors, cmap="viridis", s=18, alpha=0.75)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         ax.grid(alpha=0.25)
-    ax4.scatter(density, r_vals, f_vals, c=colors, cmap="viridis", s=16, alpha=0.75)
-    ax4.set_xlabel("density D")
-    ax4.set_ylabel("R")
-    ax4.set_zlabel("F")
-    ax4.set_title("D-R-F projection")
-    cbar = fig.colorbar(sc, ax=[ax1, ax2, ax3, ax4], fraction=0.025, pad=0.02)
-    cbar.ax.set_yticks(range(min(4, len(state_names))))
-    cbar.ax.set_yticklabels(state_names[:4])
-    fig.suptitle("V-D-R-F State Feature Space", fontsize=12)
-    fig.subplots_adjust(left=0.07, right=0.90, bottom=0.08, top=0.92, wspace=0.30, hspace=0.35)
+    ax4.scatter(density, occupancy, mgti, c=colors, cmap="viridis", s=16, alpha=0.75)
+    ax4.set_xlabel("D: density")
+    ax4.set_ylabel("O: HF-GO occupancy")
+    ax4.set_zlabel("M: MGTI")
+    ax4.set_title("D-O-M projection")
+    cmap = plt.get_cmap("viridis")
+    norm = plt.Normalize(vmin=float(colors.min()), vmax=float(colors.max()))
+    handles = [
+        Line2D([0], [0], marker="o", color="none", label=state_names[i], markerfacecolor=cmap(norm(i)), markersize=7)
+        for i in range(min(4, len(state_names)))
+    ]
+    fig.legend(handles=handles, loc="lower center", ncol=len(handles), frameon=False, bbox_to_anchor=(0.5, 0.03))
+    fig.suptitle("V-D-O-M 特征敏感性分布图", fontsize=12)
+    fig.subplots_adjust(left=0.07, right=0.95, bottom=0.13, top=0.92, wspace=0.30, hspace=0.35)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
@@ -1374,9 +1379,9 @@ def write_report(root: Path) -> None:
         "",
         "![R-F相关散点](../outputs/figures/rf_scatter_by_state.png)",
         "",
-        "把速度 V、密度 D、变道干扰率 R 和方向波动指数 F 放入同一特征空间观察。V-D 投影反映宏观交通状态分离，V-R/V-F 与 D-R-F 投影用于展示微观扰动特征对状态边界样本的补充解释。",
+        "把平均速度 V、交通密度 D、HF-GO 占有率 O 和 MGTI 指标 M 放入同一特征空间观察。V-D 投影反映宏观交通状态分离，V-O/V-M 与 D-O-M 投影用于展示空间占有与综合扰动指标对状态边界样本的补充解释。",
         "",
-        "![V-D-R-F状态特征空间](../outputs/figures/vd_rf_feature_space.png)",
+        "![V-D-O-M特征敏感性分布图](../outputs/figures/vd_rf_feature_space.png)",
         "",
     ])
     lines.extend(
@@ -1667,7 +1672,7 @@ def write_report(root: Path) -> None:
             "- `outputs/figures/hfgo_local_by_state.png` — 四类状态下 HBB/HF-GO 局部对比",
             "- `outputs/figures/pkdd_free_probability_hist.png` — PKDD 畅通类预测概率分布",
             "- `outputs/figures/rf_scatter_by_state.png` — R/F 相关性散点图",
-            "- `outputs/figures/vd_rf_feature_space.png` — V-D-R-F 状态特征空间",
+            "- `outputs/figures/vd_rf_feature_space.png` — V-D-O-M 特征敏感性分布图",
             "",
             "**恶化预测图表：**",
             "- `outputs/figures/deterioration_ablation_auc.png` — 恶化预测消融 AUC",
