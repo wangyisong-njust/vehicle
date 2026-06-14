@@ -18,6 +18,103 @@ class FocalLoss(nn.Module):
         return ((1.0 - pt) ** self.gamma * ce).mean()
 
 
+class DisturbanceGatedLSTM(nn.Module):
+    """Single-layer LSTM with an extra disturbance gate on candidate memory writes."""
+
+    def __init__(
+        self,
+        input_size: int,
+        hidden_size: int,
+        disturbance_dim: int = 1,
+        bidirectional: bool = False,
+    ):
+        super().__init__()
+        self.input_size = int(input_size)
+        self.hidden_size = int(hidden_size)
+        self.disturbance_dim = int(disturbance_dim)
+        self.bidirectional = bool(bidirectional)
+        self.forward_cell = DisturbanceGatedLSTMCell(input_size, hidden_size, disturbance_dim)
+        self.reverse_cell = (
+            DisturbanceGatedLSTMCell(input_size, hidden_size, disturbance_dim)
+            if self.bidirectional
+            else None
+        )
+
+    @property
+    def output_size(self) -> int:
+        return self.hidden_size * (2 if self.bidirectional else 1)
+
+    def _run_direction(
+        self,
+        cell: "DisturbanceGatedLSTMCell",
+        x: torch.Tensor,
+        disturbance: torch.Tensor,
+        reverse: bool,
+    ) -> torch.Tensor:
+        b, t, _ = x.shape
+        h = x.new_zeros(b, self.hidden_size)
+        c = x.new_zeros(b, self.hidden_size)
+        outputs = []
+        indices = range(t - 1, -1, -1) if reverse else range(t)
+        for step in indices:
+            h, c = cell(x[:, step, :], disturbance[:, step, :], h, c)
+            outputs.append(h)
+        if reverse:
+            outputs.reverse()
+        return torch.stack(outputs, dim=1)
+
+    def forward(self, x: torch.Tensor, disturbance: torch.Tensor | None = None) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+        if disturbance is None:
+            disturbance = x.new_zeros(x.shape[0], x.shape[1], self.disturbance_dim)
+        if disturbance.ndim == 2:
+            disturbance = disturbance.unsqueeze(-1)
+        if disturbance.shape[:2] != x.shape[:2]:
+            raise ValueError("disturbance must have shape (B, T, D) aligned with x")
+        if disturbance.shape[-1] != self.disturbance_dim:
+            raise ValueError(f"Expected disturbance_dim={self.disturbance_dim}, got {disturbance.shape[-1]}")
+
+        out_f = self._run_direction(self.forward_cell, x, disturbance, reverse=False)
+        last_h = [out_f[:, -1, :]]
+        last_c = [self.forward_cell.last_c]
+        if self.reverse_cell is not None:
+            out_r = self._run_direction(self.reverse_cell, x, disturbance, reverse=True)
+            out = torch.cat([out_f, out_r], dim=-1)
+            last_h.append(out_r[:, 0, :])
+            last_c.append(self.reverse_cell.last_c)
+        else:
+            out = out_f
+        return out, (torch.stack(last_h, dim=0), torch.stack(last_c, dim=0))
+
+
+class DisturbanceGatedLSTMCell(nn.Module):
+    def __init__(self, input_size: int, hidden_size: int, disturbance_dim: int = 1):
+        super().__init__()
+        self.hidden_size = int(hidden_size)
+        self.xh = nn.Linear(int(input_size) + self.hidden_size, 4 * self.hidden_size)
+        self.disturbance_gate = nn.Linear(int(disturbance_dim), self.hidden_size)
+        nn.init.constant_(self.disturbance_gate.bias, -2.0)
+        self.last_c: torch.Tensor | None = None
+
+    def forward(
+        self,
+        x_t: torch.Tensor,
+        d_t: torch.Tensor,
+        h_prev: torch.Tensor,
+        c_prev: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        xh = torch.cat([x_t, h_prev], dim=-1)
+        i, f, g, o = self.xh(xh).chunk(4, dim=-1)
+        i = torch.sigmoid(i)
+        f = torch.sigmoid(f)
+        g = torch.tanh(g)
+        o = torch.sigmoid(o)
+        r = torch.sigmoid(self.disturbance_gate(d_t))
+        c = f * c_prev + i * (1.0 + r) * g
+        h = o * torch.tanh(c)
+        self.last_c = c
+        return h, c
+
+
 class OBBSTLSTM(nn.Module):
     """OBB-aware Spatio-Temporal LSTM.
 
@@ -49,6 +146,8 @@ class OBBSTLSTM(nn.Module):
         scalar_dim: int = 0,
         bidirectional: bool = True,
         lstm_layers: int = 1,
+        use_disturbance_gate: bool = True,
+        disturbance_dim: int = 1,
         use_persistence_prior: bool = False,
         persistence_alpha_init: float = 1.0,
         channel_dropout_p: float = 0.0,
@@ -67,14 +166,24 @@ class OBBSTLSTM(nn.Module):
         spatial_out = conv_channels[-1]
         self.scalar_dim = int(scalar_dim)
         self.embed_dim = spatial_out + self.scalar_dim
-        self.lstm = nn.LSTM(
-            self.embed_dim,
-            hidden_size,
-            num_layers=int(lstm_layers),
-            batch_first=True,
-            bidirectional=bool(bidirectional),
-            dropout=float(dropout) if int(lstm_layers) > 1 else 0.0,
-        )
+        self.use_disturbance_gate = bool(use_disturbance_gate)
+        self.disturbance_dim = int(disturbance_dim)
+        if self.use_disturbance_gate:
+            self.lstm = DisturbanceGatedLSTM(
+                self.embed_dim,
+                hidden_size,
+                disturbance_dim=self.disturbance_dim,
+                bidirectional=bool(bidirectional),
+            )
+        else:
+            self.lstm = nn.LSTM(
+                self.embed_dim,
+                hidden_size,
+                num_layers=int(lstm_layers),
+                batch_first=True,
+                bidirectional=bool(bidirectional),
+                dropout=float(dropout) if int(lstm_layers) > 1 else 0.0,
+            )
         head_in = hidden_size * (2 if bidirectional else 1)
         self.head = nn.Sequential(
             nn.Dropout(dropout),
@@ -96,6 +205,7 @@ class OBBSTLSTM(nn.Module):
         self,
         x: torch.Tensor,
         x_scalar: torch.Tensor | None = None,
+        disturbance: torch.Tensor | None = None,
         current_state: torch.Tensor | None = None,
     ) -> torch.Tensor:
         b, t, c, h, w = x.shape
@@ -112,7 +222,10 @@ class OBBSTLSTM(nn.Module):
             z = torch.cat([z_spatial, x_scalar], dim=-1)
         else:
             z = z_spatial
-        out, _ = self.lstm(z)
+        if self.use_disturbance_gate:
+            out, _ = self.lstm(z, disturbance=disturbance)
+        else:
+            out, _ = self.lstm(z)
         logits = self.head(out[:, -1, :])
         if self.use_persistence_prior:
             if current_state is None:
@@ -217,6 +330,8 @@ def fit_obb_st_lstm(
     train_cfg: dict,
     train_scalar: torch.Tensor | None = None,
     test_scalar: torch.Tensor | None = None,
+    train_disturbance: torch.Tensor | None = None,
+    test_disturbance: torch.Tensor | None = None,
     train_current_state: torch.Tensor | None = None,
     test_current_state: torch.Tensor | None = None,
 ) -> np.ndarray:
@@ -247,6 +362,7 @@ def fit_obb_st_lstm(
     loss_fn = FocalLoss(gamma=2.0, weight=torch.tensor(class_weights, dtype=torch.float32))
     batch_size = int(train_cfg.get("batch_size", 32))
     use_scalar = train_scalar is not None
+    use_disturbance = train_disturbance is not None
     use_state = train_current_state is not None
     model.train()
     for _ in range(epochs):
@@ -256,6 +372,8 @@ def fit_obb_st_lstm(
             kwargs = {}
             if use_scalar:
                 kwargs["x_scalar"] = train_scalar[idx]
+            if use_disturbance:
+                kwargs["disturbance"] = train_disturbance[idx]
             if use_state:
                 kwargs["current_state"] = train_current_state[idx]
             logits = model(train_x[idx], **kwargs)
@@ -272,6 +390,8 @@ def fit_obb_st_lstm(
         kwargs = {}
         if use_scalar:
             kwargs["x_scalar"] = test_scalar
+        if use_disturbance:
+            kwargs["disturbance"] = test_disturbance
         if use_state:
             kwargs["current_state"] = test_current_state
         prob = torch.softmax(model(test_x, **kwargs), dim=1).cpu().numpy()

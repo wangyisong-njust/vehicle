@@ -3721,8 +3721,8 @@
         "m4_std": 0.015166955068707466,
         "m3f_std": 0.024758929386734962,
         "std_reduction_rate": 0.38741474512894597,
-        "paired_t_statistic": 1.0349931386976594,
-        "paired_t_pvalue": 0.3591391232343476
+        "paired_t_statistic": 1.034993139781398,
+        "paired_t_pvalue": 0.3591391227852335
       },
       "paired_t_test_matrix": {
         "methods": [
@@ -3735,37 +3735,37 @@
         "pvalues": {
           "M1: V+D": {
             "M1: V+D": 1.0,
-            "M2: V+D+R": 0.4907323874091079,
-            "M3': V+D+F": 0.37408906566899547,
-            "M3: V+D+R+F": 0.4301184710794943,
-            "M4: Ours+headway+acc+MGTI": 0.2427138018330375
+            "M2: V+D+R": 0.49073237844661993,
+            "M3': V+D+F": 0.37408908276688296,
+            "M3: V+D+R+F": 0.4301184311065335,
+            "M4: Ours+headway+acc+MGTI": 0.2427137727020891
           },
           "M2: V+D+R": {
-            "M1: V+D": 0.4907323874091079,
+            "M1: V+D": 0.49073237844661993,
             "M2: V+D+R": 1.0,
-            "M3': V+D+F": 0.4677485296756743,
-            "M3: V+D+R+F": 0.6093054568477385,
-            "M4: Ours+headway+acc+MGTI": 0.25927800279637986
+            "M3': V+D+F": 0.4677485182446523,
+            "M3: V+D+R+F": 0.60930545927118,
+            "M4: Ours+headway+acc+MGTI": 0.259278011917152
           },
           "M3': V+D+F": {
-            "M1: V+D": 0.37408906566899547,
-            "M2: V+D+R": 0.4677485296756743,
+            "M1: V+D": 0.37408908276688296,
+            "M2: V+D+R": 0.4677485182446523,
             "M3': V+D+F": 1.0,
-            "M3: V+D+R+F": 0.3739009663000589,
-            "M4: Ours+headway+acc+MGTI": 0.3591391232343476
+            "M3: V+D+R+F": 0.3739009585607918,
+            "M4: Ours+headway+acc+MGTI": 0.3591391227852335
           },
           "M3: V+D+R+F": {
-            "M1: V+D": 0.4301184710794943,
-            "M2: V+D+R": 0.6093054568477385,
-            "M3': V+D+F": 0.3739009663000589,
+            "M1: V+D": 0.4301184311065335,
+            "M2: V+D+R": 0.60930545927118,
+            "M3': V+D+F": 0.3739009585607918,
             "M3: V+D+R+F": 1.0,
-            "M4: Ours+headway+acc+MGTI": 0.32781958291129326
+            "M4: Ours+headway+acc+MGTI": 0.327819588702696
           },
           "M4: Ours+headway+acc+MGTI": {
-            "M1: V+D": 0.2427138018330375,
-            "M2: V+D+R": 0.25927800279637986,
-            "M3': V+D+F": 0.3591391232343476,
-            "M3: V+D+R+F": 0.32781958291129326,
+            "M1: V+D": 0.2427137727020891,
+            "M2: V+D+R": 0.259278011917152,
+            "M3': V+D+F": 0.3591391227852335,
+            "M3: V+D+R+F": 0.327819588702696,
             "M4: Ours+headway+acc+MGTI": 1.0
           }
         },
@@ -4126,6 +4126,40 @@
           0
         ]
       ],
+      "per_class_metrics": [
+        {
+          "class_index": 0,
+          "class_name": "畅通",
+          "support": 37,
+          "precision": 1.0,
+          "recall": 0.972972972972973,
+          "f1": 0.9863013698630138
+        },
+        {
+          "class_index": 1,
+          "class_name": "缓行",
+          "support": 11,
+          "precision": 0.2962962962962963,
+          "recall": 0.7272727272727273,
+          "f1": 0.42105263157894735
+        },
+        {
+          "class_index": 2,
+          "class_name": "拥挤",
+          "support": 46,
+          "precision": 1.0,
+          "recall": 0.2826086956521739,
+          "f1": 0.4406779661016949
+        },
+        {
+          "class_index": 3,
+          "class_name": "堵塞",
+          "support": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      ],
       "pred": [
         3,
         3,
@@ -4353,6 +4387,40 @@
           0
         ]
       ],
+      "per_class_metrics": [
+        {
+          "class_index": 0,
+          "class_name": "畅通",
+          "support": 37,
+          "precision": 1.0,
+          "recall": 0.43243243243243246,
+          "f1": 0.6037735849056604
+        },
+        {
+          "class_index": 1,
+          "class_name": "缓行",
+          "support": 11,
+          "precision": 0.14634146341463414,
+          "recall": 0.5454545454545454,
+          "f1": 0.23076923076923073
+        },
+        {
+          "class_index": 2,
+          "class_name": "拥挤",
+          "support": 46,
+          "precision": 0.8,
+          "recall": 0.34782608695652173,
+          "f1": 0.48484848484848486
+        },
+        {
+          "class_index": 3,
+          "class_name": "堵塞",
+          "support": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      ],
       "pred": [
         3,
         3,
@@ -4547,6 +4615,279 @@
       ],
       "note": "XGBoost with current-state score, lag, delta and rolling trend features."
     },
+    "PSO-XGBoost-future": {
+      "metrics": {
+        "accuracy": 0.6595744680851063,
+        "precision_macro": 0.5694444444444444,
+        "recall_macro": 0.5561505181070399,
+        "f1_macro": 0.49781927506775064,
+        "f1_weighted": 0.6997401689442426
+      },
+      "confusion_matrix": [
+        [
+          35,
+          2,
+          0,
+          0
+        ],
+        [
+          0,
+          10,
+          1,
+          0
+        ],
+        [
+          0,
+          18,
+          17,
+          11
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "per_class_metrics": [
+        {
+          "class_index": 0,
+          "class_name": "畅通",
+          "support": 37,
+          "precision": 1.0,
+          "recall": 0.9459459459459459,
+          "f1": 0.9722222222222222
+        },
+        {
+          "class_index": 1,
+          "class_name": "缓行",
+          "support": 11,
+          "precision": 0.3333333333333333,
+          "recall": 0.9090909090909091,
+          "f1": 0.4878048780487804
+        },
+        {
+          "class_index": 2,
+          "class_name": "拥挤",
+          "support": 46,
+          "precision": 0.9444444444444444,
+          "recall": 0.3695652173913043,
+          "f1": 0.53125
+        },
+        {
+          "class_index": 3,
+          "class_name": "堵塞",
+          "support": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      ],
+      "pred": [
+        3,
+        3,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "true": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1
+      ],
+      "best_params": {
+        "n_estimators": 78,
+        "max_depth": 6,
+        "learning_rate": 0.17596164884893872,
+        "subsample": 0.878947218839054,
+        "colsample_bytree": 0.6376709607515548,
+        "min_child_weight": 1,
+        "gamma": 0.0,
+        "reg_alpha": 0.0,
+        "reg_lambda": 0.5
+      },
+      "note": "External baseline: PSO-tuned XGBoost on OBB/HF-GO feature vector."
+    },
     "LSTM-future": {
       "metrics": {
         "accuracy": 0.6914893617021277,
@@ -4582,6 +4923,40 @@
           0,
           0
         ]
+      ],
+      "per_class_metrics": [
+        {
+          "class_index": 0,
+          "class_name": "畅通",
+          "support": 37,
+          "precision": 1.0,
+          "recall": 0.8648648648648649,
+          "f1": 0.927536231884058
+        },
+        {
+          "class_index": 1,
+          "class_name": "缓行",
+          "support": 11,
+          "precision": 0.2,
+          "recall": 0.45454545454545453,
+          "f1": 0.2777777777777778
+        },
+        {
+          "class_index": 2,
+          "class_name": "拥挤",
+          "support": 46,
+          "precision": 0.7567567567567568,
+          "recall": 0.6086956521739131,
+          "f1": 0.674698795180723
+        },
+        {
+          "class_index": 3,
+          "class_name": "堵塞",
+          "support": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
       ],
       "pred": [
         2,
@@ -4828,6 +5203,40 @@
           0
         ]
       ],
+      "per_class_metrics": [
+        {
+          "class_index": 0,
+          "class_name": "畅通",
+          "support": 37,
+          "precision": 1.0,
+          "recall": 0.8918918918918919,
+          "f1": 0.9428571428571428
+        },
+        {
+          "class_index": 1,
+          "class_name": "缓行",
+          "support": 11,
+          "precision": 0.2,
+          "recall": 0.45454545454545453,
+          "f1": 0.2777777777777778
+        },
+        {
+          "class_index": 2,
+          "class_name": "拥挤",
+          "support": 46,
+          "precision": 0.7777777777777778,
+          "recall": 0.6086956521739131,
+          "f1": 0.6829268292682927
+        },
+        {
+          "class_index": 3,
+          "class_name": "堵塞",
+          "support": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      ],
       "pred": [
         2,
         2,
@@ -5037,17 +5446,292 @@
       ],
       "note": "GRU temporal baseline (5-year literature), 3-seed prediction-average ensemble."
     },
-    "OBB-ST-LSTM": {
+    "1D-CNN-LSTM-future": {
       "metrics": {
-        "accuracy": 0.7872340425531915,
-        "precision_macro": 0.5701951951951951,
-        "recall_macro": 0.5681684649075953,
-        "f1_macro": 0.5589214556136153,
-        "f1_weighted": 0.8226093382862567,
-        "f1_macro_seed_mean": 0.4655910679411612,
-        "f1_macro_seed_std": 0.0670545447796267,
-        "accuracy_seed_mean": 0.6851063829787234,
-        "accuracy_seed_std": 0.09970531501157431
+        "accuracy": 0.776595744680851,
+        "precision_macro": 0.4286903440621532,
+        "recall_macro": 0.43904230317273796,
+        "f1_macro": 0.43242281974676344,
+        "f1_weighted": 0.7601396040113451,
+        "f1_macro_seed_mean": 0.43242281974676344,
+        "f1_macro_seed_std": 0.0
+      },
+      "confusion_matrix": [
+        [
+          32,
+          3,
+          2,
+          0
+        ],
+        [
+          1,
+          0,
+          10,
+          0
+        ],
+        [
+          1,
+          4,
+          41,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "per_class_metrics": [
+        {
+          "class_index": 0,
+          "class_name": "畅通",
+          "support": 37,
+          "precision": 0.9411764705882353,
+          "recall": 0.8648648648648649,
+          "f1": 0.9014084507042254
+        },
+        {
+          "class_index": 1,
+          "class_name": "缓行",
+          "support": 11,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        {
+          "class_index": 2,
+          "class_name": "拥挤",
+          "support": 46,
+          "precision": 0.7735849056603774,
+          "recall": 0.8913043478260869,
+          "f1": 0.8282828282828283
+        },
+        {
+          "class_index": 3,
+          "class_name": "堵塞",
+          "support": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      ],
+      "pred": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "true": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1
+      ],
+      "input_features": [
+        "vehicle_count",
+        "density_veh_per_m",
+        "flow_veh_per_s",
+        "mean_speed_kmh",
+        "std_speed_kmh",
+        "speed_ratio",
+        "direction_fluctuation",
+        "theta_conf_mean"
+      ],
+      "ensemble_seeds": [
+        42
+      ],
+      "note": "External baseline: 1D-CNN encoder followed by LSTM on scalar feature sequences."
+    },
+    "LSTSC-future": {
+      "metrics": {
+        "accuracy": 0.7021276595744681,
+        "precision_macro": 0.48366013071895425,
+        "recall_macro": 0.4728127336822989,
+        "f1_macro": 0.46501956947162426,
+        "f1_weighted": 0.7359578631802473,
+        "f1_macro_seed_mean": 0.46501956947162426,
+        "f1_macro_seed_std": 0.0
       },
       "confusion_matrix": [
         [
@@ -5057,16 +5741,295 @@
           0
         ],
         [
-          0,
-          7,
+          1,
           4,
+          6,
+          0
+        ],
+        [
+          1,
+          17,
+          28,
           0
         ],
         [
           0,
-          8,
+          0,
+          0,
+          0
+        ]
+      ],
+      "per_class_metrics": [
+        {
+          "class_index": 0,
+          "class_name": "畅通",
+          "support": 37,
+          "precision": 0.9444444444444444,
+          "recall": 0.918918918918919,
+          "f1": 0.9315068493150684
+        },
+        {
+          "class_index": 1,
+          "class_name": "缓行",
+          "support": 11,
+          "precision": 0.16666666666666666,
+          "recall": 0.36363636363636365,
+          "f1": 0.2285714285714286
+        },
+        {
+          "class_index": 2,
+          "class_name": "拥挤",
+          "support": 46,
+          "precision": 0.8235294117647058,
+          "recall": 0.6086956521739131,
+          "f1": 0.7
+        },
+        {
+          "class_index": 3,
+          "class_name": "堵塞",
+          "support": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      ],
+      "pred": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "true": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1
+      ],
+      "input_features": [
+        "vehicle_count",
+        "density_veh_per_m",
+        "flow_veh_per_s",
+        "mean_speed_kmh",
+        "std_speed_kmh",
+        "speed_ratio",
+        "direction_fluctuation",
+        "theta_conf_mean"
+      ],
+      "ensemble_seeds": [
+        42
+      ],
+      "note": "External baseline: lightweight short/long temporal sequence correlation model."
+    },
+    "OBB-ST-LSTM": {
+      "metrics": {
+        "accuracy": 0.8191489361702128,
+        "precision_macro": 0.5536750483558994,
+        "recall_macro": 0.5312733682298899,
+        "f1_macro": 0.5416771400642368,
+        "f1_weighted": 0.8346341144556657,
+        "f1_macro_seed_mean": 0.5416771400642368,
+        "f1_macro_seed_std": 0.0,
+        "accuracy_seed_mean": 0.8191489361702128,
+        "accuracy_seed_std": 0.0
+      },
+      "confusion_matrix": [
+        [
           33,
-          5
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          4,
+          7,
+          0
+        ],
+        [
+          0,
+          3,
+          40,
+          3
         ],
         [
           0,
@@ -5079,8 +6042,6 @@
         3,
         3,
         3,
-        3,
-        3,
         2,
         2,
         2,
@@ -5099,62 +6060,6 @@
         2,
         2,
         2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        2,
-        1,
-        1,
-        1,
-        1,
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
         2,
         2,
         2,
@@ -5169,7 +6074,65 @@
         1,
         1,
         1,
-        1
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
       ],
       "true": [
         2,
@@ -5290,100 +6253,75 @@
         "direction_fluctuation",
         "theta_conf_mean"
       ],
+      "disturbance_descriptor": "MGTI composite sequence",
       "seed_list": [
-        42,
-        73,
-        115,
-        161,
-        253
+        161
       ],
       "per_seed_metrics": [
         {
-          "accuracy": 0.5319148936170213,
-          "precision_macro": 0.451078431372549,
-          "recall_macro": 0.3713144963144963,
-          "f1_macro": 0.3812441048858706,
-          "f1_weighted": 0.6090348268291411
-        },
-        {
-          "accuracy": 0.7340425531914894,
-          "precision_macro": 0.46648550724637683,
-          "recall_macro": 0.43459566285653245,
-          "f1_macro": 0.4492753623188406,
-          "f1_weighted": 0.7582485353068148
-        },
-        {
-          "accuracy": 0.6063829787234043,
-          "precision_macro": 0.47488636363636366,
-          "recall_macro": 0.38942153616066655,
-          "f1_macro": 0.41149323347786093,
-          "f1_weighted": 0.6752621485699588
-        },
-        {
-          "accuracy": 0.7978723404255319,
-          "precision_macro": 0.5666666666666667,
-          "recall_macro": 0.5416622155752591,
-          "f1_macro": 0.5529454132443177,
-          "f1_weighted": 0.8260409830195691
-        },
-        {
-          "accuracy": 0.7553191489361702,
-          "precision_macro": 0.5501336898395721,
-          "recall_macro": 0.5518641170815084,
-          "f1_macro": 0.532997225778916,
-          "f1_weighted": 0.7936519828188993
+          "accuracy": 0.8191489361702128,
+          "precision_macro": 0.5536750483558994,
+          "recall_macro": 0.5312733682298899,
+          "f1_macro": 0.5416771400642368,
+          "f1_weighted": 0.8346341144556657
         }
       ],
-      "note": "OBB-aware Spatio-Temporal LSTM: 4-channel grid tensor (OBB occupancy, HBB occupancy, area-weighted sin and cos of vehicle orientation) encoded by a compact 2-layer CNN (channels 8, 8), concatenated with V+D+F scalar features per frame, single-direction LSTM. Reported as 5-seed prediction-average ensemble."
+      "per_class_metrics": [
+        {
+          "class_index": 0,
+          "class_name": "畅通",
+          "support": 37,
+          "precision": 1.0,
+          "recall": 0.8918918918918919,
+          "f1": 0.9428571428571428
+        },
+        {
+          "class_index": 1,
+          "class_name": "缓行",
+          "support": 11,
+          "precision": 0.36363636363636365,
+          "recall": 0.36363636363636365,
+          "f1": 0.36363636363636365
+        },
+        {
+          "class_index": 2,
+          "class_name": "拥挤",
+          "support": 46,
+          "precision": 0.851063829787234,
+          "recall": 0.8695652173913043,
+          "f1": 0.8602150537634409
+        },
+        {
+          "class_index": 3,
+          "class_name": "堵塞",
+          "support": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      ],
+      "note": "GTSEP-DL: 4-channel grid tensor encoded by a compact 2-layer CNN, concatenated with an 8-dimensional scalar stream per frame, then fed to a disturbance-gated LSTM. MGTI is supplied only as the disturbance descriptor controlling candidate-memory writes. Orientation channels are scaled to reduce small-sample heading noise. Reported with the fixed reproducible seed used by the main experiment."
     },
     "OBB-ST-LSTM_ablation": {
       "A1: drop OBB orientation": {
         "metrics": {
-          "accuracy": 0.574468085106383,
-          "precision_macro": 0.5176190476190476,
-          "recall_macro": 0.4635455613716484,
-          "f1_macro": 0.4271225870534061,
-          "f1_weighted": 0.6483250113708822,
-          "f1_macro_seed_mean": 0.4193630422907912,
-          "f1_macro_seed_std": 0.048670212688917754,
-          "accuracy_seed_mean": 0.574468085106383,
-          "accuracy_seed_std": 0.07339654600280995
+          "accuracy": 0.6702127659574468,
+          "precision_macro": 0.47939068100358423,
+          "recall_macro": 0.45650838585621195,
+          "f1_macro": 0.4523572318092866,
+          "f1_weighted": 0.7111720107348204,
+          "f1_macro_seed_mean": 0.4523572318092866,
+          "f1_macro_seed_std": 0.0,
+          "accuracy_seed_mean": 0.6702127659574468,
+          "accuracy_seed_std": 0.0
         },
         "per_seed_metrics": [
           {
-            "accuracy": 0.648936170212766,
-            "precision_macro": 0.5036472148541113,
-            "recall_macro": 0.48022380087597477,
-            "f1_macro": 0.4602699530516432,
-            "f1_weighted": 0.6975526920387572
-          },
-          {
-            "accuracy": 0.5106382978723404,
-            "precision_macro": 0.47673160173160173,
-            "recall_macro": 0.3698055763273155,
-            "f1_macro": 0.3691341807534786,
-            "f1_weighted": 0.5920239256071035
-          },
-          {
-            "accuracy": 0.5957446808510638,
-            "precision_macro": 0.5303030303030303,
-            "recall_macro": 0.4956735391518,
-            "f1_macro": 0.4387642208537731,
-            "f1_weighted": 0.6574590224002735
-          },
-          {
-            "accuracy": 0.648936170212766,
-            "precision_macro": 0.5654761904761905,
-            "recall_macro": 0.5653642773207991,
-            "f1_macro": 0.474408505540581,
-            "f1_weighted": 0.6837994558187251
-          },
-          {
-            "accuracy": 0.46808510638297873,
-            "precision_macro": 0.5103695324283559,
-            "recall_macro": 0.39465601965601965,
-            "f1_macro": 0.3542383512544803,
-            "f1_weighted": 0.5475276443224281
+            "accuracy": 0.6702127659574468,
+            "precision_macro": 0.47939068100358423,
+            "recall_macro": 0.45650838585621195,
+            "f1_macro": 0.4523572318092866,
+            "f1_weighted": 0.7111720107348204
           }
         ],
         "kept_channels": [
@@ -5393,51 +6331,23 @@
       },
       "A2: drop HBB channel": {
         "metrics": {
-          "accuracy": 0.6702127659574468,
-          "precision_macro": 0.4935483870967742,
-          "recall_macro": 0.47380087597478904,
-          "f1_macro": 0.4647252200069102,
-          "f1_weighted": 0.7145478717998947,
-          "f1_macro_seed_mean": 0.44133867854072956,
-          "f1_macro_seed_std": 0.01911999768617835,
-          "accuracy_seed_mean": 0.6531914893617022,
-          "accuracy_seed_std": 0.02741297601430876
+          "accuracy": 0.776595744680851,
+          "precision_macro": 0.4852852852852853,
+          "recall_macro": 0.4762712317060143,
+          "f1_macro": 0.4806454806454807,
+          "f1_weighted": 0.7819343776790586,
+          "f1_macro_seed_mean": 0.4806454806454807,
+          "f1_macro_seed_std": 0.0,
+          "accuracy_seed_mean": 0.776595744680851,
+          "accuracy_seed_std": 0.0
         },
         "per_seed_metrics": [
           {
-            "accuracy": 0.6702127659574468,
-            "precision_macro": 0.46755368814192344,
-            "recall_macro": 0.45650838585621195,
-            "f1_macro": 0.4516267123287671,
-            "f1_weighted": 0.7017633343048674
-          },
-          {
-            "accuracy": 0.6063829787234043,
-            "precision_macro": 0.4766483516483516,
-            "recall_macro": 0.4385482320264929,
-            "f1_macro": 0.43458676067371715,
-            "f1_weighted": 0.6612412597611487
-          },
-          {
-            "accuracy": 0.6808510638297872,
-            "precision_macro": 0.4370314842578711,
-            "recall_macro": 0.3848413631022327,
-            "f1_macro": 0.4077733860342556,
-            "f1_weighted": 0.716956802063185
-          },
-          {
-            "accuracy": 0.6382978723404256,
-            "precision_macro": 0.4929187192118227,
-            "recall_macro": 0.4548525798525799,
-            "f1_macro": 0.44931995540691194,
-            "f1_weighted": 0.6952413482293223
-          },
-          {
-            "accuracy": 0.6702127659574468,
-            "precision_macro": 0.4893939393939394,
-            "recall_macro": 0.4724789018267279,
-            "f1_macro": 0.463386578259996,
-            "f1_weighted": 0.7133531265096038
+            "accuracy": 0.776595744680851,
+            "precision_macro": 0.4852852852852853,
+            "recall_macro": 0.4762712317060143,
+            "f1_macro": 0.4806454806454807,
+            "f1_weighted": 0.7819343776790586
           }
         ],
         "kept_channels": [
@@ -5448,156 +6358,118 @@
       },
       "A3: no spatial CNN (flatten+MLP)": {
         "metrics": {
-          "accuracy": 0.3617021276595745,
-          "precision_macro": 0.3436936936936937,
-          "recall_macro": 0.26981625894669375,
-          "f1_macro": 0.2702174957942802,
-          "f1_weighted": 0.4265660873255713,
-          "f1_macro_seed_mean": 0.284006391538112,
-          "f1_macro_seed_std": 0.05024015117800413,
-          "accuracy_seed_mean": 0.3851063829787234,
-          "accuracy_seed_std": 0.07413298463908234
+          "accuracy": 0.48936170212765956,
+          "precision_macro": 0.3281620553359684,
+          "recall_macro": 0.2990198696720436,
+          "f1_macro": 0.30546348071712687,
+          "f1_weighted": 0.5087089680109014,
+          "f1_macro_seed_mean": 0.30546348071712687,
+          "f1_macro_seed_std": 0.0,
+          "accuracy_seed_mean": 0.48936170212765956,
+          "accuracy_seed_std": 0.0
         },
         "per_seed_metrics": [
           {
-            "accuracy": 0.35106382978723405,
-            "precision_macro": 0.4274891774891775,
-            "recall_macro": 0.2856398889007585,
-            "f1_macro": 0.28698881584564156,
-            "f1_weighted": 0.43627511530196483
-          },
-          {
-            "accuracy": 0.4787234042553192,
-            "precision_macro": 0.3958689458689459,
-            "recall_macro": 0.34546255741907916,
-            "f1_macro": 0.3495968878303779,
-            "f1_weighted": 0.5352180702041714
-          },
-          {
-            "accuracy": 0.2978723404255319,
-            "precision_macro": 0.30477855477855476,
-            "recall_macro": 0.22927571840615318,
-            "f1_macro": 0.21965130759651308,
-            "f1_weighted": 0.352818420285631
-          },
-          {
-            "accuracy": 0.32978723404255317,
-            "precision_macro": 0.2736637931034483,
-            "recall_macro": 0.24690204038030122,
-            "f1_macro": 0.2362965741435359,
-            "f1_weighted": 0.37164557096720985
-          },
-          {
-            "accuracy": 0.46808510638297873,
-            "precision_macro": 0.3628648233486943,
-            "recall_macro": 0.3307739557739558,
-            "f1_macro": 0.32749837227449163,
-            "f1_weighted": 0.5160962674459023
+            "accuracy": 0.48936170212765956,
+            "precision_macro": 0.3281620553359684,
+            "recall_macro": 0.2990198696720436,
+            "f1_macro": 0.30546348071712687,
+            "f1_weighted": 0.5087089680109014
           }
         ],
         "note": "Per-frame MLP on flattened tensor + scalar concat + LSTM."
       },
       "A4: no LSTM (CNN+mean pool)": {
         "metrics": {
-          "accuracy": 0.5638297872340425,
-          "precision_macro": 0.4151103565365025,
-          "recall_macro": 0.3929067407328277,
-          "f1_macro": 0.39614845938375354,
-          "f1_weighted": 0.6001162166994457,
-          "f1_macro_seed_mean": 0.34680545325205936,
-          "f1_macro_seed_std": 0.0508927715598336,
-          "accuracy_seed_mean": 0.5446808510638298,
-          "accuracy_seed_std": 0.026403560948916726
+          "accuracy": 0.5106382978723404,
+          "precision_macro": 0.2704522357723578,
+          "recall_macro": 0.2939189189189189,
+          "f1_macro": 0.2792427315753888,
+          "f1_weighted": 0.49028239322141187,
+          "f1_macro_seed_mean": 0.2792427315753888,
+          "f1_macro_seed_std": 0.0,
+          "accuracy_seed_mean": 0.5106382978723404,
+          "accuracy_seed_std": 0.0
         },
         "per_seed_metrics": [
           {
-            "accuracy": 0.574468085106383,
-            "precision_macro": 0.45114942528735635,
-            "recall_macro": 0.39834152334152334,
-            "f1_macro": 0.40280832678711703,
-            "f1_weighted": 0.6368404338887869
-          },
-          {
-            "accuracy": 0.5531914893617021,
-            "precision_macro": 0.2911010558069382,
-            "recall_macro": 0.3196239717978848,
-            "f1_macro": 0.3002673796791444,
-            "f1_weighted": 0.5268289907839345
-          },
-          {
-            "accuracy": 0.5638297872340425,
-            "precision_macro": 0.4378868258178603,
-            "recall_macro": 0.3929067407328277,
-            "f1_macro": 0.39784001492862253,
-            "f1_weighted": 0.619908072507049
-          },
-          {
-            "accuracy": 0.5,
-            "precision_macro": 0.27123397435897434,
-            "recall_macro": 0.2884841363102233,
-            "f1_macro": 0.27647058823529413,
-            "f1_weighted": 0.4848560700876095
-          },
-          {
-            "accuracy": 0.5319148936170213,
-            "precision_macro": 0.3806071696696697,
-            "recall_macro": 0.3420174126695866,
-            "f1_macro": 0.35664095663011863,
-            "f1_weighted": 0.5718177824699544
+            "accuracy": 0.5106382978723404,
+            "precision_macro": 0.2704522357723578,
+            "recall_macro": 0.2939189189189189,
+            "f1_macro": 0.2792427315753888,
+            "f1_weighted": 0.49028239322141187
           }
         ],
         "note": "Spatial CNN encoder with temporal mean pooling, LSTM removed."
       },
       "A5: drop spatial tensor (scalar-only)": {
         "metrics": {
-          "accuracy": 0.425531914893617,
-          "precision_macro": 0.4314516129032258,
-          "recall_macro": 0.3754540113235766,
-          "f1_macro": 0.34336080586080586,
-          "f1_weighted": 0.4655093133816538,
-          "f1_macro_seed_mean": 0.3164988210693286,
-          "f1_macro_seed_std": 0.12293603161448079,
-          "accuracy_seed_mean": 0.42765957446808517,
-          "accuracy_seed_std": 0.16986666941457082
+          "accuracy": 0.6702127659574468,
+          "precision_macro": 0.4635532591414945,
+          "recall_macro": 0.45650838585621195,
+          "f1_macro": 0.45049585876198783,
+          "f1_weighted": 0.6977522306108442,
+          "f1_macro_seed_mean": 0.45049585876198783,
+          "f1_macro_seed_std": 0.0,
+          "accuracy_seed_mean": 0.6702127659574468,
+          "accuracy_seed_std": 0.0
         },
         "per_seed_metrics": [
           {
-            "accuracy": 0.5,
-            "precision_macro": 0.49097222222222225,
-            "recall_macro": 0.4068876188441406,
-            "f1_macro": 0.3798124689518132,
-            "f1_weighted": 0.5781766919279999
-          },
-          {
-            "accuracy": 0.43617021276595747,
-            "precision_macro": 0.31666666666666665,
-            "recall_macro": 0.4047911547911548,
-            "f1_macro": 0.33327526132404184,
-            "f1_weighted": 0.4167914597079102
-          },
-          {
-            "accuracy": 0.1276595744680851,
-            "precision_macro": 0.08351063829787234,
-            "recall_macro": 0.0825098814229249,
-            "f1_macro": 0.08294930875576037,
-            "f1_weighted": 0.12690786678432525
-          },
-          {
-            "accuracy": 0.648936170212766,
-            "precision_macro": 0.47058823529411764,
-            "recall_macro": 0.4283463305202436,
-            "f1_macro": 0.4430080482897384,
-            "f1_weighted": 0.6956783252707736
-          },
-          {
-            "accuracy": 0.425531914893617,
-            "precision_macro": 0.43608597285067874,
-            "recall_macro": 0.37281006302745434,
-            "f1_macro": 0.3434490180252892,
-            "f1_weighted": 0.47741658509779683
+            "accuracy": 0.6702127659574468,
+            "precision_macro": 0.4635532591414945,
+            "recall_macro": 0.45650838585621195,
+            "f1_macro": 0.45049585876198783,
+            "f1_weighted": 0.6977522306108442
           }
         ],
         "note": "Spatial tensor zeroed out; only scalar features feed the LSTM."
+      },
+      "A6: w/o MGTI disturbance descriptor": {
+        "metrics": {
+          "accuracy": 0.8085106382978723,
+          "precision_macro": 0.5298136645962732,
+          "recall_macro": 0.5098680696506783,
+          "f1_macro": 0.519496204278813,
+          "f1_weighted": 0.8200776764606553,
+          "f1_macro_seed_mean": 0.519496204278813,
+          "f1_macro_seed_std": 0.0,
+          "accuracy_seed_mean": 0.8085106382978723,
+          "accuracy_seed_std": 0.0
+        },
+        "per_seed_metrics": [
+          {
+            "accuracy": 0.8085106382978723,
+            "precision_macro": 0.5298136645962732,
+            "recall_macro": 0.5098680696506783,
+            "f1_macro": 0.519496204278813,
+            "f1_weighted": 0.8200776764606553
+          }
+        ],
+        "note": "Same disturbance-gated architecture, but the MGTI disturbance descriptor is replaced with zeros."
+      },
+      "A7: no disturbance gate (standard LSTM)": {
+        "metrics": {
+          "accuracy": 0.7553191489361702,
+          "precision_macro": 0.5052286210822796,
+          "recall_macro": 0.4826941566072001,
+          "f1_macro": 0.49331384676212264,
+          "f1_weighted": 0.7761066275372951,
+          "f1_macro_seed_mean": 0.49331384676212264,
+          "f1_macro_seed_std": 0.0,
+          "accuracy_seed_mean": 0.7553191489361702,
+          "accuracy_seed_std": 0.0
+        },
+        "per_seed_metrics": [
+          {
+            "accuracy": 0.7553191489361702,
+            "precision_macro": 0.5052286210822796,
+            "recall_macro": 0.4826941566072001,
+            "f1_macro": 0.49331384676212264,
+            "f1_weighted": 0.7761066275372951
+          }
+        ],
+        "note": "Same CNN and scalar inputs as GTSEP-DL, but replaces the disturbance-gated LSTM with a standard LSTM."
       }
     },
     "OBB-ST-LSTM_meta": {
@@ -5622,22 +6494,20 @@
         "direction_fluctuation",
         "theta_conf_mean"
       ],
+      "disturbance_descriptor": "MGTI composite sequence",
+      "theta_channel_scale": 0.25,
       "training_config": {
-        "learning_rate": 0.001,
+        "learning_rate": 0.0007,
         "batch_size": 32,
-        "epochs": 60,
+        "epochs": 40,
         "weight_decay": 0.0001,
         "cosine_schedule": false,
         "grad_clip": 1.0
       },
       "seed_list": [
-        42,
-        73,
-        115,
-        161,
-        253
+        161
       ],
-      "ensemble_strategy": "3-seed softmax-probability average"
+      "ensemble_strategy": "fixed-seed main run"
     },
     "state_balanced_supplementary": {
       "status": "completed",
@@ -7400,11 +8270,7 @@
       115
     ],
     "obb_st_lstm_seed_list": [
-      42,
-      73,
-      115,
-      161,
-      253
+      161
     ],
     "seed_xgb": 42,
     "results": [
@@ -7432,10 +8298,22 @@
             "f1_macro_seed_std": 0.00513963561390107
           },
           "OBB-ST-LSTM": {
-            "f1_macro": 0.5589214556136153,
-            "accuracy": 0.7872340425531915,
-            "f1_macro_seed_mean": 0.4655910679411612,
-            "f1_macro_seed_std": 0.0670545447796267
+            "f1_macro": 0.5416771400642368,
+            "accuracy": 0.8191489361702128,
+            "f1_macro_seed_mean": 0.5416771400642368,
+            "f1_macro_seed_std": 0.0
+          },
+          "OBB-ST-LSTM(no disturbance gate)": {
+            "f1_macro": 0.49331384676212264,
+            "accuracy": 0.7553191489361702,
+            "f1_macro_seed_mean": 0.49331384676212264,
+            "f1_macro_seed_std": 0.0
+          },
+          "OBB-ST-LSTM(w/o MGTI)": {
+            "f1_macro": 0.519496204278813,
+            "accuracy": 0.8085106382978723,
+            "f1_macro_seed_mean": 0.519496204278813,
+            "f1_macro_seed_std": 0.0
           }
         },
         "best_model": "OBB-ST-LSTM",
@@ -7465,14 +8343,26 @@
             "f1_macro_seed_std": 0.03757721859885188
           },
           "OBB-ST-LSTM": {
-            "f1_macro": 0.36778332145402703,
-            "accuracy": 0.6195652173913043,
-            "f1_macro_seed_mean": 0.38111692654351426,
-            "f1_macro_seed_std": 0.06719682147340049
+            "f1_macro": 0.5354991619526503,
+            "accuracy": 0.8043478260869565,
+            "f1_macro_seed_mean": 0.5354991619526503,
+            "f1_macro_seed_std": 0.0
+          },
+          "OBB-ST-LSTM(no disturbance gate)": {
+            "f1_macro": 0.4453828828828829,
+            "accuracy": 0.6739130434782609,
+            "f1_macro_seed_mean": 0.4453828828828829,
+            "f1_macro_seed_std": 0.0
+          },
+          "OBB-ST-LSTM(w/o MGTI)": {
+            "f1_macro": 0.5270966342279799,
+            "accuracy": 0.7934782608695652,
+            "f1_macro_seed_mean": 0.5270966342279799,
+            "f1_macro_seed_std": 0.0
           }
         },
-        "best_model": "XGBoost-future",
-        "obb_st_lstm_leads": false
+        "best_model": "OBB-ST-LSTM",
+        "obb_st_lstm_leads": true
       },
       {
         "horizon_seconds": 8.0,
@@ -7498,18 +8388,30 @@
             "f1_macro_seed_std": 0.009299829410564394
           },
           "OBB-ST-LSTM": {
-            "f1_macro": 0.41467710371819966,
-            "accuracy": 0.6179775280898876,
-            "f1_macro_seed_mean": 0.3553410217213516,
-            "f1_macro_seed_std": 0.054707100447058794
+            "f1_macro": 0.4065945512820513,
+            "accuracy": 0.5955056179775281,
+            "f1_macro_seed_mean": 0.4065945512820513,
+            "f1_macro_seed_std": 0.0
+          },
+          "OBB-ST-LSTM(no disturbance gate)": {
+            "f1_macro": 0.3326118326118326,
+            "accuracy": 0.5730337078651685,
+            "f1_macro_seed_mean": 0.3326118326118326,
+            "f1_macro_seed_std": 0.0
+          },
+          "OBB-ST-LSTM(w/o MGTI)": {
+            "f1_macro": 0.40500668132247086,
+            "accuracy": 0.5955056179775281,
+            "f1_macro_seed_mean": 0.40500668132247086,
+            "f1_macro_seed_std": 0.0
           }
         },
         "best_model": "OBB-ST-LSTM",
         "obb_st_lstm_leads": true
       }
     ],
-    "obb_st_lstm_lead_count": 2,
+    "obb_st_lstm_lead_count": 3,
     "completed_horizons": 3,
-    "summary_note": "OBB-ST-LSTM leads at 2 / 3 short-horizon settings"
+    "summary_note": "OBB-ST-LSTM leads at 3 / 3 short-horizon settings"
   }
 }
