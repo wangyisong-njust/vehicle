@@ -12,8 +12,8 @@
     "train_ratio": 0.6,
     "validation_ratio": 0.2,
     "test_ratio": 0.2,
-    "train_end_step": 10713,
-    "test_start_step": 14284
+    "train_end_step": 10714,
+    "test_start_step": 14285
   },
   "task": "long-horizon traffic flow/speed regression",
   "targets": [
@@ -36,36 +36,36 @@
   "ours_model": "1D spatial CNN + LSTM residual regressor with persistence prior",
   "metrics": [
     "MAE",
-    "RMSE",
-    "MAPE"
+    "RMSE"
   ],
+  "seed": 42,
   "results": {
     "flow": {
       "5min": {
         "models": {
           "Persistence": {
-            "mae": 15.88,
-            "rmse": 24.563,
+            "mae": 15.880253791809082,
+            "rmse": 24.56255531311035,
             "mape": null
           },
           "RidgeLag": {
-            "mae": 17.13,
-            "rmse": 25.76,
+            "mae": 14.541308403015137,
+            "rmse": 22.213733673095703,
             "mape": null
           },
           "LSTM-deep": {
-            "mae": 20.546,
-            "rmse": 31.721,
+            "mae": 21.665889739990234,
+            "rmse": 32.303680419921875,
             "mape": null
           },
           "GRU-deep": {
-            "mae": 19.588,
-            "rmse": 30.112,
+            "mae": 20.8558406829834,
+            "rmse": 31.104494094848633,
             "mape": null
           },
           "Ours-ST-LSTM": {
-            "mae": 15.129,
-            "rmse": 23.468,
+            "mae": 13.06950569152832,
+            "rmse": 20.474218368530273,
             "mape": null
           }
         },
@@ -77,28 +77,28 @@
       "15min": {
         "models": {
           "Persistence": {
-            "mae": 19.512,
-            "rmse": 29.838,
+            "mae": 19.512325286865234,
+            "rmse": 29.839460372924805,
             "mape": null
           },
           "RidgeLag": {
-            "mae": 19.365,
-            "rmse": 29.152,
+            "mae": 17.94955062866211,
+            "rmse": 27.478551864624023,
             "mape": null
           },
           "LSTM-deep": {
-            "mae": 21.939,
-            "rmse": 33.708,
+            "mae": 22.048095703125,
+            "rmse": 33.143394470214844,
             "mape": null
           },
           "GRU-deep": {
-            "mae": 21.307,
-            "rmse": 32.459,
+            "mae": 22.073461532592773,
+            "rmse": 33.2004508972168,
             "mape": null
           },
           "Ours-ST-LSTM": {
-            "mae": 16.946,
-            "rmse": 26.326,
+            "mae": 14.501251220703125,
+            "rmse": 22.89866065979004,
             "mape": null
           }
         },
@@ -110,28 +110,28 @@
       "30min": {
         "models": {
           "Persistence": {
-            "mae": 24.191,
-            "rmse": 36.679,
+            "mae": 24.192424774169922,
+            "rmse": 36.680931091308594,
             "mape": null
           },
           "RidgeLag": {
-            "mae": 21.455,
-            "rmse": 32.519,
+            "mae": 22.069387435913086,
+            "rmse": 33.65025329589844,
             "mape": null
           },
           "LSTM-deep": {
-            "mae": 23.133,
-            "rmse": 35.645,
+            "mae": 22.92304229736328,
+            "rmse": 34.732784271240234,
             "mape": null
           },
           "GRU-deep": {
-            "mae": 22.538,
-            "rmse": 34.385,
+            "mae": 22.953454971313477,
+            "rmse": 34.653358459472656,
             "mape": null
           },
           "Ours-ST-LSTM": {
-            "mae": 18.29,
-            "rmse": 28.613,
+            "mae": 15.929951667785645,
+            "rmse": 25.19942283630371,
             "mape": null
           }
         },
@@ -145,61 +145,61 @@
       "5min": {
         "models": {
           "Persistence": {
-            "mae": 0.793,
-            "rmse": 1.528,
+            "mae": 0.793009340763092,
+            "rmse": 1.527907133102417,
             "mape": null
           },
           "RidgeLag": {
-            "mae": 1.331,
-            "rmse": 2.449,
+            "mae": 0.7973783612251282,
+            "rmse": 1.516939640045166,
             "mape": null
           },
           "LSTM-deep": {
-            "mae": 1.805,
-            "rmse": 4.095,
+            "mae": 1.6750218868255615,
+            "rmse": 3.5759634971618652,
             "mape": null
           },
           "GRU-deep": {
-            "mae": 1.717,
-            "rmse": 3.882,
+            "mae": 1.6177047491073608,
+            "rmse": 3.5270426273345947,
             "mape": null
           },
           "Ours-ST-LSTM": {
-            "mae": 0.782,
-            "rmse": 1.503,
+            "mae": 0.7832221984863281,
+            "rmse": 1.518559217453003,
             "mape": null
           }
         },
         "best_model_by_mae": "Ours-ST-LSTM",
-        "best_model_by_rmse": "Ours-ST-LSTM",
+        "best_model_by_rmse": "RidgeLag",
         "ours_leads_mae": true,
-        "ours_leads_rmse": true
+        "ours_leads_rmse": false
       },
       "15min": {
         "models": {
           "Persistence": {
-            "mae": 1.258,
-            "rmse": 2.693,
+            "mae": 1.2577663660049438,
+            "rmse": 2.6927428245544434,
             "mape": null
           },
           "RidgeLag": {
-            "mae": 1.883,
-            "rmse": 3.534,
+            "mae": 1.2676689624786377,
+            "rmse": 2.6392412185668945,
             "mape": null
           },
           "LSTM-deep": {
-            "mae": 1.957,
-            "rmse": 4.371,
+            "mae": 1.8177857398986816,
+            "rmse": 4.008488655090332,
             "mape": null
           },
           "GRU-deep": {
-            "mae": 1.865,
-            "rmse": 4.165,
+            "mae": 1.8001121282577515,
+            "rmse": 3.9673519134521484,
             "mape": null
           },
           "Ours-ST-LSTM": {
-            "mae": 1.252,
-            "rmse": 2.604,
+            "mae": 1.1948487758636475,
+            "rmse": 2.5829975605010986,
             "mape": null
           }
         },
@@ -211,28 +211,28 @@
       "30min": {
         "models": {
           "Persistence": {
-            "mae": 1.635,
-            "rmse": 3.718,
+            "mae": 1.634535789489746,
+            "rmse": 3.7173826694488525,
             "mape": null
           },
           "RidgeLag": {
-            "mae": 2.39,
-            "rmse": 4.536,
+            "mae": 1.6557954549789429,
+            "rmse": 3.5786569118499756,
             "mape": null
           },
           "LSTM-deep": {
-            "mae": 2.061,
-            "rmse": 4.586,
+            "mae": 1.9788602590560913,
+            "rmse": 4.429767608642578,
             "mape": null
           },
           "GRU-deep": {
-            "mae": 2.034,
-            "rmse": 4.48,
+            "mae": 1.956810712814331,
+            "rmse": 4.396629810333252,
             "mape": null
           },
           "Ours-ST-LSTM": {
-            "mae": 1.592,
-            "rmse": 3.48,
+            "mae": 1.4740126132965088,
+            "rmse": 3.358792304992676,
             "mape": null
           }
         },
@@ -240,81 +240,56 @@
         "best_model_by_rmse": "Ours-ST-LSTM",
         "ours_leads_mae": true,
         "ours_leads_rmse": true
+      }
+    }
+  },
+  "state_mapping_supplement": {
+    "thresholds_mph": [
+      60.0,
+      45.0,
+      30.0
+    ],
+    "n_states": 4,
+    "horizons": {
+      "5min": {
+        "Persistence": {
+          "macro_f1": 0.8725,
+          "accuracy": 0.9665
+        },
+        "Ours-ST-LSTM": {
+          "macro_f1": 0.8695,
+          "accuracy": 0.9673
+        },
+        "best_model_by_macro_f1": "Persistence"
+      },
+      "15min": {
+        "Persistence": {
+          "macro_f1": 0.7851,
+          "accuracy": 0.9454
+        },
+        "Ours-ST-LSTM": {
+          "macro_f1": 0.7662,
+          "accuracy": 0.9473
+        },
+        "best_model_by_macro_f1": "Persistence"
+      },
+      "30min": {
+        "Persistence": {
+          "macro_f1": 0.7179,
+          "accuracy": 0.9306
+        },
+        "Ours-ST-LSTM": {
+          "macro_f1": 0.6804,
+          "accuracy": 0.934
+        },
+        "best_model_by_macro_f1": "Persistence"
       }
     }
   },
   "summary": {
     "ours_leads_mae_count": 6,
-    "ours_leads_rmse_count": 6,
+    "ours_leads_rmse_count": 5,
     "completed_settings": 6,
-    "note": "Ours-ST-LSTM is best on MAE and RMSE for all flow/speed x 5/15/30min settings."
-  },
-  "state_classification_supplement": {
-    "task": "4-class traffic state classification from PeMS08 speed thresholds",
-    "method": "Persistence prior + calibrated XGBoost transition correction",
-    "features": "flow/occupancy/speed lag, delta, rolling mean/std/trend, current state one-hot, sensor id",
-    "selection": "confidence threshold calibrated on validation split to maximize Macro-F1",
-    "metrics": [
-      "Macro-F1",
-      "Accuracy"
-    ],
-    "horizons": {
-      "5min": {
-        "Persistence": {
-          "macro_f1": 0.8585,
-          "accuracy": 0.9443
-        },
-        "Raw calibrated classifier": {
-          "macro_f1": 0.8404,
-          "accuracy": 0.9285
-        },
-        "Hybrid state classifier": {
-          "macro_f1": 0.8624,
-          "accuracy": 0.9446,
-          "threshold": 0.775,
-          "change_rate": 0.0065
-        },
-        "best_model_by_macro_f1": "Hybrid state classifier"
-      },
-      "15min": {
-        "Persistence": {
-          "macro_f1": 0.7629,
-          "accuracy": 0.9134
-        },
-        "Raw calibrated classifier": {
-          "macro_f1": 0.7379,
-          "accuracy": 0.8885
-        },
-        "Hybrid state classifier": {
-          "macro_f1": 0.7712,
-          "accuracy": 0.9139,
-          "threshold": 0.725,
-          "change_rate": 0.0123
-        },
-        "best_model_by_macro_f1": "Hybrid state classifier"
-      },
-      "30min": {
-        "Persistence": {
-          "macro_f1": 0.6976,
-          "accuracy": 0.8934
-        },
-        "Raw calibrated classifier": {
-          "macro_f1": 0.6702,
-          "accuracy": 0.8621
-        },
-        "Hybrid state classifier": {
-          "macro_f1": 0.7103,
-          "accuracy": 0.8928,
-          "threshold": 0.65,
-          "change_rate": 0.0238
-        },
-        "best_model_by_macro_f1": "Hybrid state classifier"
-      }
-    },
-    "summary": {
-      "hybrid_leads_macro_f1_count": 3,
-      "completed_horizons": 3,
-      "note": "Hybrid classifier improves Macro-F1 over Persistence at 5/15/30min by preserving the state-retention prior and only correcting high-confidence transitions."
-    }
+    "note": "Ours-ST-LSTM MAE/RMSE on flow/speed x 5/15/30min; state mapping is classifier-free."
   }
 }

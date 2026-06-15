@@ -2716,38 +2716,29 @@ def run_horizon_sweep_obb_st_lstm(table: FeatureTable, cfg: dict) -> dict[str, o
             current_state_test=(test_state_t if prior_alpha_init > 0 else None),
         )
 
+        def _full(metrics: dict, per_seed: list | None = None) -> dict:
+            # Report the complete five-metric set (Accuracy/Precision/Recall/
+            # Macro-F1/Weighted-F1) at every horizon so multi-step tables stay
+            # consistent with the stated short-horizon evaluation protocol.
+            entry = {
+                "accuracy": metrics["accuracy"],
+                "precision_macro": metrics["precision_macro"],
+                "recall_macro": metrics["recall_macro"],
+                "f1_macro": metrics["f1_macro"],
+                "f1_weighted": metrics["f1_weighted"],
+            }
+            if per_seed is not None:
+                entry["f1_macro_seed_mean"] = float(np.mean(per_seed))
+                entry["f1_macro_seed_std"] = float(np.std(per_seed))
+            return entry
+
         models = {
-            "XGBoost-future": {"f1_macro": xgb_metrics["f1_macro"], "accuracy": xgb_metrics["accuracy"]},
-            "LSTM-future": {
-                "f1_macro": lstm_metrics["f1_macro"],
-                "accuracy": lstm_metrics["accuracy"],
-                "f1_macro_seed_mean": float(np.mean(lstm_per_seed)),
-                "f1_macro_seed_std": float(np.std(lstm_per_seed)),
-            },
-            "GRU-future": {
-                "f1_macro": gru_metrics["f1_macro"],
-                "accuracy": gru_metrics["accuracy"],
-                "f1_macro_seed_mean": float(np.mean(gru_per_seed)),
-                "f1_macro_seed_std": float(np.std(gru_per_seed)),
-            },
-            "OBB-ST-LSTM": {
-                "f1_macro": obb_st_metrics["f1_macro"],
-                "accuracy": obb_st_metrics["accuracy"],
-                "f1_macro_seed_mean": float(np.mean(obb_st_per_seed)),
-                "f1_macro_seed_std": float(np.std(obb_st_per_seed)),
-            },
-            "OBB-ST-LSTM(no disturbance gate)": {
-                "f1_macro": standard_st_metrics["f1_macro"],
-                "accuracy": standard_st_metrics["accuracy"],
-                "f1_macro_seed_mean": float(np.mean(standard_st_per_seed)),
-                "f1_macro_seed_std": float(np.std(standard_st_per_seed)),
-            },
-            "OBB-ST-LSTM(w/o MGTI)": {
-                "f1_macro": without_mgti_metrics["f1_macro"],
-                "accuracy": without_mgti_metrics["accuracy"],
-                "f1_macro_seed_mean": float(np.mean(without_mgti_per_seed)),
-                "f1_macro_seed_std": float(np.std(without_mgti_per_seed)),
-            },
+            "XGBoost-future": _full(xgb_metrics),
+            "LSTM-future": _full(lstm_metrics, lstm_per_seed),
+            "GRU-future": _full(gru_metrics, gru_per_seed),
+            "OBB-ST-LSTM": _full(obb_st_metrics, obb_st_per_seed),
+            "OBB-ST-LSTM(no disturbance gate)": _full(standard_st_metrics, standard_st_per_seed),
+            "OBB-ST-LSTM(w/o MGTI)": _full(without_mgti_metrics, without_mgti_per_seed),
         }
         best_name = max(models.items(), key=lambda kv: kv[1]["f1_macro"])[0]
         best_f1 = float(models[best_name]["f1_macro"])

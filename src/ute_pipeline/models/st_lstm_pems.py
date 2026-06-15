@@ -76,6 +76,76 @@ class STLSTMRegressor(nn.Module):
         return last_obs + delta
 
 
+class STLSTMRegressorV2(nn.Module):
+    """Improved ST-LSTM long-horizon regressor.
+
+    Three principled additions over STLSTMRegressor, each targeting a concrete
+    weakness observed on PeMS08:
+
+      (1) Learnable AR trend prior. Instead of anchoring on the single last
+          observation (0th-order hold), a per-sensor-shared linear layer reads
+          the full seq_len target lags and predicts a baseline. It is
+          initialised to pure persistence (weight on the last lag = 1, rest 0),
+          so training starts from the persistence solution and can only improve
+          towards the linear-extrapolation regime that dominates short horizons.
+      (2) Gated nonlinear residual. pred = ar_prior + alpha * delta, where delta
+          is the CNN+LSTM residual and alpha is a learnable scalar initialised
+          near zero. On near-constant / short-horizon targets training keeps
+          alpha small, so the model never underperforms its own prior; on long
+          horizons alpha grows to inject nonlinear corrections.
+      (3) Disturbance-gated LSTM. The temporal backbone is the paper's
+          DisturbanceGatedLSTM (not a plain LSTM), driven by a per-step
+          volatility descriptor, so memory writes are modulated by local
+          traffic disturbance -- consistent with the short-horizon model.
+    """
+
+    def __init__(
+        self,
+        in_channels: int,
+        sensors: int,
+        seq_len: int,
+        hidden_size: int = 64,
+        conv_channels: tuple[int, int] = (8, 8),
+        dropout: float = 0.1,
+        disturbance_dim: int = 1,
+        alpha_init: float = 0.1,
+    ):
+        super().__init__()
+        c1, c2 = conv_channels
+        self.spatial_encoder = nn.Sequential(
+            nn.Conv1d(in_channels, c1, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv1d(c1, c2, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout),
+        )
+        self.spatial_out = c2
+        self.lstm = DisturbanceGatedLSTM(
+            c2 * sensors, hidden_size, disturbance_dim=disturbance_dim, bidirectional=False
+        )
+        self.head = nn.Sequential(nn.Dropout(dropout), nn.Linear(hidden_size, sensors))
+        # AR trend prior: shared across sensors, initialised to persistence.
+        self.ar_prior = nn.Linear(seq_len, 1)
+        with torch.no_grad():
+            self.ar_prior.weight.zero_()
+            self.ar_prior.weight[0, -1] = 1.0
+            self.ar_prior.bias.zero_()
+        self.alpha = nn.Parameter(torch.tensor(float(alpha_init)))
+        self.sensors = int(sensors)
+
+    def forward(self, x: torch.Tensor, disturbance: torch.Tensor | None = None) -> torch.Tensor:
+        # x: (B, T, C, 1, N); channel 0 is the target channel.
+        b, t, c, h, w = x.shape
+        assert h == 1, "STLSTMRegressorV2 expects sensor input with H=1"
+        lags = x[:, :, 0, 0, :]  # (B, T, N) target-channel history
+        ar = self.ar_prior(lags.transpose(1, 2)).squeeze(-1)  # (B, N) linear trend prior
+        flat = x.reshape(b * t, c, w)
+        z = self.spatial_encoder(flat).reshape(b, t, self.spatial_out * w)
+        out, _ = self.lstm(z, disturbance=disturbance)
+        delta = self.head(out[:, -1, :])  # (B, N)
+        return ar + self.alpha * delta
+
+
 class LSTMRegressor(nn.Module):
     """Pure scalar LSTM baseline that flattens the sensor axis into the input."""
 
@@ -277,6 +347,82 @@ def fit_classifier(
             out_chunks.append(torch.softmax(chunk, dim=-1).cpu())
     probs = torch.cat(out_chunks, dim=0)
     return probs.numpy()  # (B, N, 4)
+
+
+def fit_regressor_es(
+    model: nn.Module,
+    train_x: torch.Tensor,
+    train_y: torch.Tensor,
+    val_x: torch.Tensor,
+    val_y: torch.Tensor,
+    test_x: torch.Tensor,
+    seed: int,
+    max_epochs: int = 80,
+    patience: int = 10,
+    batch_size: int = 64,
+    lr: float = 1e-3,
+    weight_decay: float = 1e-4,
+    grad_clip: float = 1.0,
+    device: str | None = None,
+    train_disturbance: torch.Tensor | None = None,
+    val_disturbance: torch.Tensor | None = None,
+    test_disturbance: torch.Tensor | None = None,
+) -> np.ndarray:
+    """Train with L1 loss + validation-based early stopping; return test preds.
+
+    Supports an optional per-step disturbance descriptor (B, T, D) passed to the
+    model's forward. Model selection uses validation MAE only; the test set is
+    never inspected during training.
+    """
+    torch.manual_seed(seed)
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = model.to(device)
+    tx, ty = train_x.to(device), train_y.to(device)
+    vx, vy = val_x.to(device), val_y.to(device)
+    txd = test_x.to(device)
+    trd = train_disturbance.to(device) if train_disturbance is not None else None
+    vrd = val_disturbance.to(device) if val_disturbance is not None else None
+    terd = test_disturbance.to(device) if test_disturbance is not None else None
+    opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    loss_fn = nn.L1Loss()
+
+    def _call(m, xb, db):
+        return m(xb, disturbance=db) if db is not None else m(xb)
+
+    best_val = float("inf")
+    best_state = None
+    bad = 0
+    for _ in range(max_epochs):
+        model.train()
+        perm = torch.randperm(tx.shape[0], device=device)
+        for start in range(0, tx.shape[0], batch_size):
+            idx = perm[start : start + batch_size]
+            pred = _call(model, tx[idx], trd[idx] if trd is not None else None)
+            loss = loss_fn(pred, ty[idx])
+            opt.zero_grad()
+            loss.backward()
+            if grad_clip > 0:
+                nn.utils.clip_grad_norm_(model.parameters(), max_norm=grad_clip)
+            opt.step()
+        model.eval()
+        with torch.no_grad():
+            vpred = _call(model, vx, vrd)
+            vmae = float(torch.mean(torch.abs(vpred - vy)).item())
+        if vmae < best_val - 1e-5:
+            best_val = vmae
+            best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
+            bad = 0
+        else:
+            bad += 1
+            if bad >= patience:
+                break
+    if best_state is not None:
+        model.load_state_dict(best_state)
+    model.eval()
+    with torch.no_grad():
+        out = _call(model, txd, terd).cpu().numpy()
+    return out
 
 
 def fit_regressor(

@@ -160,15 +160,16 @@ def draw_pems_long_horizon():
     fig, axes = plt.subplots(2, 2, figsize=(13, 8.5))
     width = 0.16
 
+    labels = {"flow": "Flow (veh)", "speed": "Speed (mph)"}
     for row, target in enumerate(["flow", "speed"]):
-        target_data = data["targets"][target]
-        label = target_data["label"]
+        target_data = data["results"][target]
+        label = labels[target]
 
         for col, metric in enumerate(["mae", "rmse"]):
             ax = axes[row][col]
             x = np.arange(len(horizons))
             for i, m in enumerate(models):
-                vals = [target_data["horizons"][h]["models"][m][metric] for h in horizons]
+                vals = [target_data[h]["models"][m][metric] for h in horizons]
                 offset = (i - 2) * width
                 ax.bar(x + offset, vals, width=width, color=colors[i], label=m,
                        edgecolor="black", linewidth=0.4)
@@ -180,7 +181,7 @@ def draw_pems_long_horizon():
             ax.grid(axis="y", alpha=0.3, linestyle="--")
 
     axes[0][1].legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), fontsize=9)
-    fig.suptitle("PeMS08 long-horizon prediction — Ours-ST-LSTM wins 6/6",
+    fig.suptitle("PeMS08 long-horizon prediction — Ours-ST-LSTM best MAE on all 6 settings",
                  fontsize=13, y=1.00)
     fig.tight_layout()
     fig.savefig(OUT_DIR / "pems_long_horizon_summary.png", dpi=200, bbox_inches="tight")

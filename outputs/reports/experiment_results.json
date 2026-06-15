@@ -8282,36 +8282,54 @@
         "test_sequences": 94,
         "models": {
           "XGBoost-future": {
+            "accuracy": 0.6276595744680851,
+            "precision_macro": 0.5621980676328502,
+            "recall_macro": 0.4879686999252216,
             "f1_macro": 0.4788092320261438,
-            "accuracy": 0.6276595744680851
+            "f1_weighted": 0.6908418509247671
           },
           "LSTM-future": {
-            "f1_macro": 0.4109152232826676,
             "accuracy": 0.574468085106383,
+            "precision_macro": 0.4551282051282052,
+            "recall_macro": 0.42224388420040593,
+            "f1_macro": 0.4109152232826676,
+            "f1_weighted": 0.6247232939489432,
             "f1_macro_seed_mean": 0.40028100847177983,
             "f1_macro_seed_std": 0.014865440046128482
           },
           "GRU-future": {
-            "f1_macro": 0.4758904374758034,
             "accuracy": 0.7021276595744681,
+            "precision_macro": 0.49444444444444446,
+            "recall_macro": 0.4887832496528149,
+            "f1_macro": 0.4758904374758034,
+            "f1_weighted": 0.7378287658256523,
             "f1_macro_seed_mean": 0.47316138346516007,
             "f1_macro_seed_std": 0.00513963561390107
           },
           "OBB-ST-LSTM": {
-            "f1_macro": 0.5416771400642368,
             "accuracy": 0.8191489361702128,
+            "precision_macro": 0.5536750483558994,
+            "recall_macro": 0.5312733682298899,
+            "f1_macro": 0.5416771400642368,
+            "f1_weighted": 0.8346341144556657,
             "f1_macro_seed_mean": 0.5416771400642368,
             "f1_macro_seed_std": 0.0
           },
           "OBB-ST-LSTM(no disturbance gate)": {
-            "f1_macro": 0.49331384676212264,
             "accuracy": 0.7553191489361702,
+            "precision_macro": 0.5052286210822796,
+            "recall_macro": 0.4826941566072001,
+            "f1_macro": 0.49331384676212264,
+            "f1_weighted": 0.7761066275372951,
             "f1_macro_seed_mean": 0.49331384676212264,
             "f1_macro_seed_std": 0.0
           },
           "OBB-ST-LSTM(w/o MGTI)": {
-            "f1_macro": 0.519496204278813,
             "accuracy": 0.8085106382978723,
+            "precision_macro": 0.5298136645962732,
+            "recall_macro": 0.5098680696506783,
+            "f1_macro": 0.519496204278813,
+            "f1_weighted": 0.8200776764606553,
             "f1_macro_seed_mean": 0.519496204278813,
             "f1_macro_seed_std": 0.0
           }
@@ -8327,36 +8345,54 @@
         "test_sequences": 92,
         "models": {
           "XGBoost-future": {
+            "accuracy": 0.5978260869565217,
+            "precision_macro": 0.4513403263403264,
+            "recall_macro": 0.46514127764127766,
             "f1_macro": 0.42240259740259745,
-            "accuracy": 0.5978260869565217
+            "f1_weighted": 0.6265527950310559
           },
           "LSTM-future": {
-            "f1_macro": 0.34810606060606064,
             "accuracy": 0.5543478260869565,
+            "precision_macro": 0.40390316205533594,
+            "recall_macro": 0.3134213759213759,
+            "f1_macro": 0.34810606060606064,
+            "f1_weighted": 0.610144927536232,
             "f1_macro_seed_mean": 0.33529376882300016,
             "f1_macro_seed_std": 0.016352162334489342
           },
           "GRU-future": {
-            "f1_macro": 0.4214743589743589,
             "accuracy": 0.6195652173913043,
+            "precision_macro": 0.4573412698412699,
+            "recall_macro": 0.4210687960687961,
+            "f1_macro": 0.4214743589743589,
+            "f1_weighted": 0.6695094760312151,
             "f1_macro_seed_mean": 0.4321350134162101,
             "f1_macro_seed_std": 0.03757721859885188
           },
           "OBB-ST-LSTM": {
-            "f1_macro": 0.5354991619526503,
             "accuracy": 0.8043478260869565,
+            "precision_macro": 0.5326081576081576,
+            "recall_macro": 0.5400798525798526,
+            "f1_macro": 0.5354991619526503,
+            "f1_weighted": 0.8091717222783958,
             "f1_macro_seed_mean": 0.5354991619526503,
             "f1_macro_seed_std": 0.0
           },
           "OBB-ST-LSTM(no disturbance gate)": {
-            "f1_macro": 0.4453828828828829,
             "accuracy": 0.6739130434782609,
+            "precision_macro": 0.4550117344234991,
+            "recall_macro": 0.4548525798525799,
+            "f1_macro": 0.4453828828828829,
+            "f1_weighted": 0.6965579710144929,
             "f1_macro_seed_mean": 0.4453828828828829,
             "f1_macro_seed_std": 0.0
           },
           "OBB-ST-LSTM(w/o MGTI)": {
-            "f1_macro": 0.5270966342279799,
             "accuracy": 0.7934782608695652,
+            "precision_macro": 0.5250677506775068,
+            "recall_macro": 0.5343980343980345,
+            "f1_macro": 0.5270966342279799,
+            "f1_weighted": 0.8036925394613794,
             "f1_macro_seed_mean": 0.5270966342279799,
             "f1_macro_seed_std": 0.0
           }
@@ -8372,36 +8408,54 @@
         "test_sequences": 89,
         "models": {
           "XGBoost-future": {
+            "accuracy": 0.5168539325842697,
+            "precision_macro": 0.3983217592592593,
+            "recall_macro": 0.37813867082159763,
             "f1_macro": 0.362024521714274,
-            "accuracy": 0.5168539325842697
+            "f1_weighted": 0.5591956371174455
           },
           "LSTM-future": {
-            "f1_macro": 0.18030922565806284,
             "accuracy": 0.23595505617977527,
+            "precision_macro": 0.27924107142857146,
+            "recall_macro": 0.14995205848864385,
+            "f1_macro": 0.18030922565806284,
+            "f1_weighted": 0.30551403130446764,
             "f1_macro_seed_mean": 0.15983951355661882,
             "f1_macro_seed_std": 0.055151008390488976
           },
           "GRU-future": {
-            "f1_macro": 0.2694570135746607,
             "accuracy": 0.4044943820224719,
+            "precision_macro": 0.3287037037037037,
+            "recall_macro": 0.22874093605800924,
+            "f1_macro": 0.2694570135746607,
+            "f1_weighted": 0.4771671157659261,
             "f1_macro_seed_mean": 0.2502886034785956,
             "f1_macro_seed_std": 0.009299829410564394
           },
           "OBB-ST-LSTM": {
-            "f1_macro": 0.4065945512820513,
             "accuracy": 0.5955056179775281,
+            "precision_macro": 0.44366635543106137,
+            "recall_macro": 0.40616947324264396,
+            "f1_macro": 0.4065945512820513,
+            "f1_weighted": 0.6449737107461827,
             "f1_macro_seed_mean": 0.4065945512820513,
             "f1_macro_seed_std": 0.0
           },
           "OBB-ST-LSTM(no disturbance gate)": {
-            "f1_macro": 0.3326118326118326,
             "accuracy": 0.5730337078651685,
+            "precision_macro": 0.3529050736497545,
+            "recall_macro": 0.32350032959789055,
+            "f1_macro": 0.3326118326118326,
+            "f1_weighted": 0.5857937318611476,
             "f1_macro_seed_mean": 0.3326118326118326,
             "f1_macro_seed_std": 0.0
           },
           "OBB-ST-LSTM(w/o MGTI)": {
-            "f1_macro": 0.40500668132247086,
             "accuracy": 0.5955056179775281,
+            "precision_macro": 0.43541739231394405,
+            "recall_macro": 0.406828669023791,
+            "f1_macro": 0.40500668132247086,
+            "f1_weighted": 0.6399302372099535,
             "f1_macro_seed_mean": 0.40500668132247086,
             "f1_macro_seed_std": 0.0
           }
