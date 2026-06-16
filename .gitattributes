@@ -8,3 +8,5 @@ docs/literature/*.zip filter=lfs diff=lfs merge=lfs -text
 data_check/**/*.png filter=lfs diff=lfs merge=lfs -text
 data_check/**/*.jpg filter=lfs diff=lfs merge=lfs -text
 outputs/figures/delivery/*.png filter=lfs diff=lfs merge=lfs -text
+# Small summary figure kept as a normal (non-LFS) blob
+outputs/figures/delivery/pems_long_horizon_summary.png !filter !diff !merge
