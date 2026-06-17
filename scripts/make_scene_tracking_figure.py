@@ -183,59 +183,56 @@ def main():
 
     scenes = select_scenes(tp, true, pr, win, horizon)
     rows = []
-    for k in scenes:
+    out_dir = PROJECT_ROOT / "outputs/figures/scenes"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    meta = []
+    for i, k in enumerate(scenes, start=1):
         q = tp[k] + horizon
-        t1 = float(win.iloc[q].start_s)
-        t2 = float(win.iloc[q].end_s)
+        wrow = win.iloc[q]
+        t1 = float(wrow.start_s)
+        t2 = float(wrow.end_s)
         out = render_scene(cap, px, t1, t2, (sx, sy, cy1), (img_w, img_h))
         if out is None:
             continue
         img, vid = out
-        rows.append({
-            "img": img, "t1": t1, "t2": t2, "vid": vid,
-            "true": STATE_NAMES[int(true[k])], "pred": STATE_NAMES[int(pr[k])],
+        true_s = STATE_NAMES[int(true[k])]
+        pred_s = STATE_NAMES[int(pr[k])]
+        correct = true_s == pred_s
+
+        # One standalone figure per scene.
+        fig = plt.figure(figsize=(6.6, 5.4))
+        ax = fig.add_axes([0.02, 0.02, 0.96, 0.88]); ax.axis("off")
+        ax.imshow(img)
+        ax.text(0.008, 0.985, f"t = {t1:.0f} s", transform=ax.transAxes, ha="left", va="top",
+                fontsize=10, color="yellow", bbox=dict(facecolor="black", alpha=0.5, pad=2, edgecolor="none"))
+        ax.text(0.008, 0.49, f"t = {t2:.0f} s", transform=ax.transAxes, ha="left", va="top",
+                fontsize=10, color="yellow", bbox=dict(facecolor="black", alpha=0.5, pad=2, edgecolor="none"))
+        mark = "√" if correct else "×"
+        color = "#1a7f37" if correct else "#c0392b"
+        title = (f"场景 {i}（箭头连接的矩形框内为同一车辆 ID={vid}）\n"
+                 f"状态真值：{true_s}    GTSEP-DL 预测：{pred_s} {mark}")
+        fig.suptitle(title, fontsize=12, y=0.985, color=color if not correct else "black")
+        fp = out_dir / f"scene_{i}.png"
+        fig.savefig(fp, dpi=200, bbox_inches="tight")
+        plt.close(fig)
+
+        meta.append({
+            "scene": i, "t1_s": round(t1, 1), "t2_s": round(t2, 1), "vehicle_id": vid,
+            "mean_speed_kmh": round(float(wrow.mean_speed_kmh), 2),
+            "density_veh_per_m": round(float(wrow.density_veh_per_m), 3),
+            "vehicle_count": int(wrow.vehicle_count),
+            "flow_veh_per_s": round(float(wrow.flow_veh_per_s), 3),
+            "true": true_s, "pred": pred_s, "correct": correct,
+            "file": str(fp.relative_to(PROJECT_ROOT)),
         })
+        print(f"[FIG] scene {i}: {fp.name}  V={wrow.mean_speed_kmh:.1f}km/h "
+              f"D={wrow.density_veh_per_m:.3f}veh/m N={int(wrow.vehicle_count)} "
+              f"true={true_s} pred={pred_s} {'OK' if correct else 'WRONG'}")
     cap.release()
 
-    nrows = len(rows)
-    fig = plt.figure(figsize=(12.5, 2.55 * nrows + 0.7))
-    gs = fig.add_gridspec(nrows + 1, 4, width_ratios=[0.9, 7.2, 1.3, 1.6],
-                          height_ratios=[0.5] + [3] * nrows, hspace=0.12, wspace=0.04)
-    headers = ["场景编号", "交通场景（箭头连接的矩形框内为同一辆车）", "状态真值", "GTSEP-DL 预测"]
-    for c, htxt in enumerate(headers):
-        ax = fig.add_subplot(gs[0, c]); ax.axis("off")
-        ax.text(0.5, 0.3, htxt, ha="center", va="center", fontsize=12, fontweight="bold")
-
-    for r, row in enumerate(rows, start=1):
-        ax0 = fig.add_subplot(gs[r, 0]); ax0.axis("off")
-        ax0.text(0.5, 0.5, str(r), ha="center", va="center", fontsize=14)
-
-        ax1 = fig.add_subplot(gs[r, 1]); ax1.axis("off")
-        ax1.imshow(row["img"])
-        ax1.text(0.005, 0.985, f"t = {row['t1']:.0f} s", transform=ax1.transAxes,
-                 ha="left", va="top", fontsize=9, color="yellow",
-                 bbox=dict(facecolor="black", alpha=0.5, pad=1.5, edgecolor="none"))
-        ax1.text(0.005, 0.49, f"t = {row['t2']:.0f} s", transform=ax1.transAxes,
-                 ha="left", va="top", fontsize=9, color="yellow",
-                 bbox=dict(facecolor="black", alpha=0.5, pad=1.5, edgecolor="none"))
-        if row["vid"] is not None:
-            ax1.text(0.5, -0.02, f"同一车辆 ID = {row['vid']}", transform=ax1.transAxes,
-                     ha="center", va="top", fontsize=8.5, color="#444")
-
-        ax2 = fig.add_subplot(gs[r, 2]); ax2.axis("off")
-        ax2.text(0.5, 0.5, row["true"], ha="center", va="center", fontsize=13)
-
-        ax3 = fig.add_subplot(gs[r, 3]); ax3.axis("off")
-        correct = row["pred"] == row["true"]
-        ax3.text(0.5, 0.5, row["pred"] + ("  √" if correct else "  ×"),
-                 ha="center", va="center", fontsize=13,
-                 color="#1a7f37" if correct else "#c0392b")
-
-    fig.suptitle("部分测试样本及 GTSEP-DL 的交通状态识别结果（XAM-N-6）", fontsize=13, y=0.995)
-    out_path = PROJECT_ROOT / "outputs/figures/scene_tracking_cases.png"
-    fig.savefig(out_path, dpi=200, bbox_inches="tight")
-    plt.close(fig)
-    print(f"[FIG] wrote {out_path}  ({nrows} scenes)")
+    meta_path = PROJECT_ROOT / "outputs/reports/scene_cases.json"
+    meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"[FIG] wrote {len(meta)} scene images to {out_dir} and metadata to {meta_path}")
 
 
 if __name__ == "__main__":

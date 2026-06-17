@@ -1,0 +1,72 @@
+[
+  {
+    "scene": 1,
+    "t1_s": 296.0,
+    "t2_s": 301.0,
+    "vehicle_id": 702,
+    "mean_speed_kmh": 21.23,
+    "density_veh_per_m": 0.571,
+    "vehicle_count": 80,
+    "flow_veh_per_s": 16.0,
+    "true": "拥挤",
+    "pred": "堵塞",
+    "correct": false,
+    "file": "outputs/figures/scenes/scene_1.png"
+  },
+  {
+    "scene": 2,
+    "t1_s": 305.0,
+    "t2_s": 310.0,
+    "vehicle_id": 731,
+    "mean_speed_kmh": 20.97,
+    "density_veh_per_m": 0.529,
+    "vehicle_count": 74,
+    "flow_veh_per_s": 14.8,
+    "true": "拥挤",
+    "pred": "拥挤",
+    "correct": true,
+    "file": "outputs/figures/scenes/scene_2.png"
+  },
+  {
+    "scene": 3,
+    "t1_s": 319.0,
+    "t2_s": 324.0,
+    "vehicle_id": 771,
+    "mean_speed_kmh": 20.66,
+    "density_veh_per_m": 0.521,
+    "vehicle_count": 73,
+    "flow_veh_per_s": 14.6,
+    "true": "拥挤",
+    "pred": "拥挤",
+    "correct": true,
+    "file": "outputs/figures/scenes/scene_3.png"
+  },
+  {
+    "scene": 4,
+    "t1_s": 329.0,
+    "t2_s": 334.0,
+    "vehicle_id": 797,
+    "mean_speed_kmh": 27.46,
+    "density_veh_per_m": 0.514,
+    "vehicle_count": 72,
+    "flow_veh_per_s": 14.4,
+    "true": "缓行",
+    "pred": "缓行",
+    "correct": true,
+    "file": "outputs/figures/scenes/scene_4.png"
+  },
+  {
+    "scene": 5,
+    "t1_s": 349.0,
+    "t2_s": 354.0,
+    "vehicle_id": 860,
+    "mean_speed_kmh": 31.8,
+    "density_veh_per_m": 0.457,
+    "vehicle_count": 64,
+    "flow_veh_per_s": 12.8,
+    "true": "畅通",
+    "pred": "畅通",
+    "correct": true,
+    "file": "outputs/figures/scenes/scene_5.png"
+  }
+]
