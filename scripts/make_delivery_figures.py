@@ -2,10 +2,10 @@
 """Generate extra figures for the customer's group-meeting presentation.
 
 Outputs into outputs/figures/delivery/:
-    arch_obb_st_lstm.png         OBB-ST-LSTM 架构示意
+    arch_gtsep_dl.png         GTSEP-DL 架构示意
     short_horizon_compare.png    3/5/8s 横向对比柱状图
     pems_long_horizon_summary.png PeMS08 长时汇总图 (flow + speed × 5/15/30 min)
-    method_compare_radar.png     旧 Fusion vs 新 OBB-ST-LSTM 雷达对比
+    method_compare_radar.png     旧 Fusion vs 新 GTSEP-DL 雷达对比
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ plt.rcParams["font.family"] = "DejaVu Sans"
 plt.rcParams["font.size"] = 11
 
 
-# ---- Figure 1: OBB-ST-LSTM 架构示意 ----
+# ---- Figure 1: GTSEP-DL 架构示意 ----
 def draw_architecture():
     fig, ax = plt.subplots(figsize=(12, 6.5))
     ax.set_xlim(0, 14)
@@ -98,10 +98,10 @@ def draw_architecture():
     ax.text(6.5, 8.55, "Single end-to-end model — one loss, one forward pass",
             fontsize=10, color="#1f4e79", style="italic")
 
-    ax.set_title("OBB-ST-LSTM Architecture\n(Single model, no A+B fusion)",
+    ax.set_title("GTSEP-DL Architecture\n(Single model, no A+B fusion)",
                  fontsize=13, pad=10)
     fig.tight_layout()
-    fig.savefig(OUT_DIR / "arch_obb_st_lstm.png", dpi=200, bbox_inches="tight")
+    fig.savefig(OUT_DIR / "arch_gtsep_dl.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -110,9 +110,9 @@ def draw_short_horizon_compare():
     data = json.loads(
         (PROJECT_ROOT / "outputs" / "reports" / "experiment_results.json").read_text()
     )
-    sweep = data["horizon_sweep_obb_st_lstm"]["results"]
+    sweep = data["horizon_sweep_gtsep_dl"]["results"]
     horizons = [item["horizon_seconds"] for item in sweep if item.get("status") == "completed"]
-    models = ["XGBoost-future", "LSTM-future", "GRU-future", "OBB-ST-LSTM"]
+    models = ["XGBoost-future", "LSTM-future", "GRU-future", "GTSEP-DL"]
     colors = ["#9aa0a6", "#4c78a8", "#f58518", "#d62728"]
 
     f1_data = {m: [next(it for it in sweep if it["horizon_seconds"] == h)["models"][m]["f1_macro"]
@@ -137,11 +137,11 @@ def draw_short_horizon_compare():
         ax.set_xlabel("Prediction horizon")
         ax.set_ylabel(ylabel)
         ax.set_title(f"Short-horizon comparison ({title})")
-        ax.set_ylim(0, max(0.9, max(f1_data["OBB-ST-LSTM"] + acc_data["OBB-ST-LSTM"]) + 0.1))
+        ax.set_ylim(0, max(0.9, max(f1_data["GTSEP-DL"] + acc_data["GTSEP-DL"]) + 0.1))
         ax.grid(axis="y", alpha=0.3, linestyle="--")
 
     axes[0].legend(loc="upper right", fontsize=9, framealpha=0.95)
-    fig.suptitle("OBB-ST-LSTM vs baselines @ 3 / 5 / 8 second horizons",
+    fig.suptitle("GTSEP-DL vs baselines @ 3 / 5 / 8 second horizons",
                  fontsize=13, y=1.02)
     fig.tight_layout()
     fig.savefig(OUT_DIR / "short_horizon_compare.png", dpi=200, bbox_inches="tight")
@@ -154,7 +154,7 @@ def draw_pems_long_horizon():
         (PROJECT_ROOT / "outputs" / "reports" / "long_horizon_forecasting.json").read_text()
     )
     horizons = ["5min", "15min", "30min"]
-    models = ["Persistence", "RidgeLag", "LSTM-deep", "GRU-deep", "Ours-ST-LSTM"]
+    models = ["Persistence", "RidgeLag", "LSTM-deep", "GRU-deep", "GTSEP-DL"]
     colors = ["#9aa0a6", "#f58518", "#e45756", "#72b7b2", "#54a24b"]
 
     fig, axes = plt.subplots(2, 2, figsize=(13, 8.5))
@@ -181,14 +181,14 @@ def draw_pems_long_horizon():
             ax.grid(axis="y", alpha=0.3, linestyle="--")
 
     axes[0][1].legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), fontsize=9)
-    fig.suptitle("PeMS08 long-horizon prediction — Ours-ST-LSTM best MAE on all 6 settings",
+    fig.suptitle("PeMS08 long-horizon prediction — GTSEP-DL best MAE on all 6 settings",
                  fontsize=13, y=1.00)
     fig.tight_layout()
     fig.savefig(OUT_DIR / "pems_long_horizon_summary.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
-# ---- Figure 4: 旧 Fusion vs 新 OBB-ST-LSTM 维度对比 ----
+# ---- Figure 4: 旧 Fusion vs 新 GTSEP-DL 维度对比 ----
 def draw_method_compare():
     fig, ax = plt.subplots(figsize=(11, 6))
 
@@ -231,7 +231,7 @@ def draw_method_compare():
             label="Old: LSTM + XGBoost weighted fusion")
     ax.fill(angles, fusion_norm, color="#d62728", alpha=0.15)
     ax.plot(angles, ours_norm, "o-", color="#54a24b", linewidth=2,
-            label="New: OBB-ST-LSTM single model")
+            label="New: GTSEP-DL single model")
     ax.fill(angles, ours_norm, color="#54a24b", alpha=0.20)
 
     ax.set_xticks(angles[:-1])
@@ -253,16 +253,16 @@ def draw_ablation_summary():
         (PROJECT_ROOT / "outputs" / "reports" / "experiment_results.json").read_text()
     )
     pred = data["prediction"]
-    main_f1 = pred["OBB-ST-LSTM"]["metrics"]["f1_macro"]
-    abl = pred["OBB-ST-LSTM_ablation"]
+    main_f1 = pred["GTSEP-DL"]["metrics"]["f1_macro"]
+    abl = pred["GTSEP-DL_ablation"]
 
-    names = ["OBB-ST-LSTM\n(complete)"] + list(abl.keys())
+    names = ["GTSEP-DL\n(complete)"] + list(abl.keys())
     vals = [main_f1] + [v["metrics"]["f1_macro"] for v in abl.values()]
     colors = ["#54a24b"] + ["#4c78a8"] * len(abl)
 
-    # Use short labels on x-axis; full names in legend
-    short_names = ["Full\n(ours)", "A1", "A2", "A3", "A4", "A5"]
-    full_names = ["OBB-ST-LSTM (complete)"] + list(abl.keys())
+    # Use short labels on x-axis; full names in legend (sized to the data)
+    short_names = ["Full\n(ours)"] + [f"A{i + 1}" for i in range(len(abl))]
+    full_names = ["GTSEP-DL (complete)"] + list(abl.keys())
 
     fig, ax = plt.subplots(figsize=(12, 6))
     bars = ax.bar(range(len(short_names)), vals, color=colors,
@@ -275,7 +275,7 @@ def draw_ablation_summary():
     ax.set_ylabel("Macro-F1", fontsize=11)
     ax.set_ylim(0, max(vals) * 1.22)
     ax.grid(axis="y", alpha=0.3, linestyle="--")
-    ax.set_title("Ablation results — all 5 variants degrade from the full OBB-ST-LSTM",
+    ax.set_title(f"Ablation results — all {len(abl)} variants degrade from the full GTSEP-DL",
                  fontsize=12, pad=10)
     ax.axhline(main_f1, color="#54a24b", linestyle="--", alpha=0.5,
                label=f"Full model F1 = {main_f1:.4f}")

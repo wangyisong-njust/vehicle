@@ -2,7 +2,7 @@
 
 Contains both regression variants (kept for reference) and the classification
 variants used in the current long-horizon 4-class state forecasting experiment.
-Classification head mirrors the OBB-ST-LSTM classification head (CrossEntropy,
+Classification head mirrors the GTSEP-DL classification head (CrossEntropy,
 per-window 4-class output), transferred to the PeMS multi-sensor setting.
 """
 
@@ -12,13 +12,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from .obb_st_lstm import DisturbanceGatedLSTM
+from .gtsep_dl import DisturbanceGatedLSTM
 
 
-class STLSTMRegressor(nn.Module):
+class GTSEPDLRegressor(nn.Module):
     """ST-LSTM for sensor-network long-horizon regression.
 
-    Architecture transfer of OBB-ST-LSTM with two critical adaptations for
+    Architecture transfer of GTSEP-DL with two critical adaptations for
     multi-sensor regression on PeMS:
       (1) The 1D-CNN preserves the sensor axis (no GAP) so per-sensor identity
           is retained; spatial mixing happens through small-kernel conv.
@@ -28,7 +28,7 @@ class STLSTMRegressor(nn.Module):
           Persistence baseline at short horizons.
 
     The combination "spatial-CNN + temporal-LSTM + persistence prior" mirrors
-    the OBB-ST-LSTM idea of fusing spatial and temporal information into a
+    the GTSEP-DL idea of fusing spatial and temporal information into a
     single end-to-end model, with no second model and no late-stage weighted
     fusion.
     """
@@ -65,7 +65,7 @@ class STLSTMRegressor(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: (B, T, C, 1, N)
         b, t, c, h, w = x.shape
-        assert h == 1, "STLSTMRegressor expects sensor input with H=1"
+        assert h == 1, "GTSEPDLRegressor expects sensor input with H=1"
         # Persistence prior: use the last observation of channel 0
         last_obs = x[:, -1, 0, 0, :]  # (B, N)
         flat = x.reshape(b * t, c, w)
@@ -76,10 +76,10 @@ class STLSTMRegressor(nn.Module):
         return last_obs + delta
 
 
-class STLSTMRegressorV2(nn.Module):
+class GTSEPDLRegressorV2(nn.Module):
     """Improved ST-LSTM long-horizon regressor.
 
-    Three principled additions over STLSTMRegressor, each targeting a concrete
+    Three principled additions over GTSEPDLRegressor, each targeting a concrete
     weakness observed on PeMS08:
 
       (1) Learnable AR trend prior. Instead of anchoring on the single last
@@ -136,7 +136,7 @@ class STLSTMRegressorV2(nn.Module):
     def forward(self, x: torch.Tensor, disturbance: torch.Tensor | None = None) -> torch.Tensor:
         # x: (B, T, C, 1, N); channel 0 is the target channel.
         b, t, c, h, w = x.shape
-        assert h == 1, "STLSTMRegressorV2 expects sensor input with H=1"
+        assert h == 1, "GTSEPDLRegressorV2 expects sensor input with H=1"
         lags = x[:, :, 0, 0, :]  # (B, T, N) target-channel history
         ar = self.ar_prior(lags.transpose(1, 2)).squeeze(-1)  # (B, N) linear trend prior
         flat = x.reshape(b * t, c, w)
@@ -177,10 +177,10 @@ class GRURegressor(nn.Module):
         return self.head(out[:, -1, :])
 
 
-class STLSTMClassifier(nn.Module):
+class GTSEPDLClassifier(nn.Module):
     """ST-LSTM for per-sensor 4-class traffic state classification on PeMS data.
 
-    Architecture mirrors OBB-ST-LSTM: 1D-CNN spatial encoder → LSTM → per-sensor
+    Architecture mirrors GTSEP-DL: 1D-CNN spatial encoder → LSTM → per-sensor
     class logits. Head outputs (B, N, n_classes) so each sensor independently
     predicts its future traffic state.
     """

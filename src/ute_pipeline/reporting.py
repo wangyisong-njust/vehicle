@@ -520,10 +520,10 @@ def plot_ablation(results: dict, out_path: Path) -> None:
     plt.close(fig)
 
 
-def plot_obb_st_lstm_ablation(ablation: dict, main_metrics: dict, out_path: Path) -> None:
+def plot_gtsep_dl_ablation(ablation: dict, main_metrics: dict, out_path: Path) -> None:
     if not ablation and not main_metrics:
         return
-    names = ["OBB-ST-LSTM"]
+    names = ["GTSEP-DL"]
     vals = [float(main_metrics.get("f1_macro", 0.0))]
     for name, item in ablation.items():
         m = item.get("metrics", {})
@@ -538,7 +538,7 @@ def plot_obb_st_lstm_ablation(ablation: dict, main_metrics: dict, out_path: Path
     ax.set_xticklabels(names, rotation=18, ha="right")
     ax.set_ylim(0, max(1.0, max(vals) * 1.15) if vals else 1.0)
     ax.set_ylabel("Macro-F1 (chronological test split)")
-    ax.set_title("OBB-ST-LSTM ablation on XAM-N-6 future prediction")
+    ax.set_title("GTSEP-DL ablation on XAM-N-6 future prediction")
     ax.grid(axis="y", alpha=0.25)
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -823,13 +823,13 @@ def write_report(root: Path) -> None:
         exp["ablation"].get("M4: Ours+headway+acc+MGTI", {}).get("paired_t_test_matrix", {}),
         fig_dir / "ablation_ttest_matrix.png",
     )
-    obb_st = exp["prediction"]["OBB-ST-LSTM"]
-    plot_confusion(obb_st["confusion_matrix"], "OBB-ST-LSTM Future State", fig_dir / "cm_obb_st_lstm.png", state_names)
+    obb_st = exp["prediction"]["GTSEP-DL"]
+    plot_confusion(obb_st["confusion_matrix"], "GTSEP-DL Future State", fig_dir / "cm_gtsep_dl.png", state_names)
     plot_prediction_curve(obb_st, fig_dir / "future_prediction_curve.png", state_names)
-    plot_obb_st_lstm_ablation(
-        exp["prediction"].get("OBB-ST-LSTM_ablation", {}),
+    plot_gtsep_dl_ablation(
+        exp["prediction"].get("GTSEP-DL_ablation", {}),
         obb_st["metrics"],
-        fig_dir / "obb_st_lstm_ablation.png",
+        fig_dir / "gtsep_dl_ablation.png",
     )
     plot_pkdd_probability(exp.get("pkdd_generalization", {}), fig_dir / "pkdd_free_probability_hist.png")
 
@@ -842,9 +842,9 @@ def write_report(root: Path) -> None:
 
     # Extract key metrics
     xgb_obb = exp["classification"]["XGBoost-OBB"]["metrics"]
-    obb_st_future = exp["prediction"]["OBB-ST-LSTM"]["metrics"]
-    obb_st_ablation = exp["prediction"].get("OBB-ST-LSTM_ablation", {})
-    obb_st_meta = exp["prediction"].get("OBB-ST-LSTM_meta", {})
+    obb_st_future = exp["prediction"]["GTSEP-DL"]["metrics"]
+    obb_st_ablation = exp["prediction"].get("GTSEP-DL_ablation", {})
+    obb_st_meta = exp["prediction"].get("GTSEP-DL_meta", {})
     xgb_future = exp["prediction"]["XGBoost-future"]["metrics"]
     xgb_temporal_future = exp["prediction"].get("XGBoost-temporal-future", exp["prediction"]["XGBoost-future"])["metrics"]
     lstm_future = exp["prediction"]["LSTM-future"]["metrics"]
@@ -896,7 +896,7 @@ def write_report(root: Path) -> None:
         f"静态 `XGBoost-future` 的 Macro-F1 为 {xgb_future['f1_macro']:.4f}；加入滞后、差分和滚动趋势后的 `XGBoost-temporal-future` 为 {xgb_temporal_future['f1_macro']:.4f}，"
         f"相对静态模型变化 {temporal_delta * 100:+.2f} 个百分点。"
         f"LSTM 与 GRU 两个近五年短时交通预测常用时序基线的 Macro-F1 分别为 {lstm_future['f1_macro']:.4f} 和 {gru_future['f1_macro']:.4f}。"
-        f"本文提出的 **OBB-ST-LSTM** 通过张量化前端与轻量空间编码器替换传统标量输入，Macro-F1 达到 {obb_st_future['f1_macro']:.4f}，"
+        f"本文提出的 **GTSEP-DL** 通过张量化前端与轻量空间编码器替换传统标量输入，Macro-F1 达到 {obb_st_future['f1_macro']:.4f}，"
         f"相对最佳基线 {delta_word} {abs(obb_st_vs_best_baseline) * 100:.2f} 个百分点，相对普通 LSTM {('提升' if obb_st_vs_lstm >= 0 else '低于')} {abs(obb_st_vs_lstm) * 100:.2f} 个百分点。"
     )
     if obb_st_future["f1_macro"] < 0.50:
@@ -971,9 +971,9 @@ def write_report(root: Path) -> None:
         "",
         "**第四，PKDD 自由流场景给出了零样本跨场景核验。** PKDD-8 上 1059 个窗口全部判为畅通，畅通类预测概率 P05=0.971、P50=0.982、P95=0.990。这个结果说明模型在自由流场景下做出高置信的保守判断，而不是在跨场景数据上产生随机拥堵或多数类陷阱。",
         "",
-        f"**第五，OBB-ST-LSTM 把旋转框空间结构端到端引入未来状态预测，并超过所有循环网络基线。** 提出 OBB 感知时空 LSTM 单模型架构：前端把每个滑窗的 4 通道空间张量（OBB / HBB 占有率、单元加权 sin/cos 朝向）经轻量 2 层 CNN（通道 8/8）编码为帧级表征，与 V+D+F 标量描述符按时间步拼接送入单层 LSTM。在 XAM-N-6 后 30% 测试段上 5 种子概率集成 Macro-F1 = {obb_st_future['f1_macro']:.4f}，相对最佳基线 GRU-future（{gru_future['f1_macro']:.4f}）提升 {(obb_st_future['f1_macro'] - gru_future['f1_macro']) * 100:+.2f} 个百分点，相对普通 LSTM-future（{lstm_future['f1_macro']:.4f}）提升 {(obb_st_future['f1_macro'] - lstm_future['f1_macro']) * 100:+.2f} 个百分点，相对 XGBoost-future（{xgb_future['f1_macro']:.4f}）提升 {(obb_st_future['f1_macro'] - xgb_future['f1_macro']) * 100:+.2f} 个百分点。LSTM-future 与 GRU-future 同样使用 3 种子概率集成，确保对比公平。5 个消融变体（A1 去朝向、A2 去 HBB、A3 去空间 CNN、A4 去 LSTM、A5 去空间张量）的 Macro-F1 均显著低于主模型，验证四通道张量、CNN 空间编码、LSTM 时序聚合在前端中均不可替代。整个流程不引入第二个模型、不做加权融合，对应导师要求的“单模型前端改造”定位。",
+        f"**第五，GTSEP-DL 把旋转框空间结构端到端引入未来状态预测，并超过所有循环网络基线。** 提出 OBB 感知时空 LSTM 单模型架构：前端把每个滑窗的 4 通道空间张量（OBB / HBB 占有率、单元加权 sin/cos 朝向）经轻量 2 层 CNN（通道 8/8）编码为帧级表征，与 V+D+F 标量描述符按时间步拼接送入单层 LSTM。在 XAM-N-6 后 30% 测试段上 5 种子概率集成 Macro-F1 = {obb_st_future['f1_macro']:.4f}，相对最佳基线 GRU-future（{gru_future['f1_macro']:.4f}）提升 {(obb_st_future['f1_macro'] - gru_future['f1_macro']) * 100:+.2f} 个百分点，相对普通 LSTM-future（{lstm_future['f1_macro']:.4f}）提升 {(obb_st_future['f1_macro'] - lstm_future['f1_macro']) * 100:+.2f} 个百分点，相对 XGBoost-future（{xgb_future['f1_macro']:.4f}）提升 {(obb_st_future['f1_macro'] - xgb_future['f1_macro']) * 100:+.2f} 个百分点。LSTM-future 与 GRU-future 同样使用 3 种子概率集成，确保对比公平。5 个消融变体（A1 去朝向、A2 去 HBB、A3 去空间 CNN、A4 去 LSTM、A5 去空间张量）的 Macro-F1 均显著低于主模型，验证四通道张量、CNN 空间编码、LSTM 时序聚合在前端中均不可替代。整个流程不引入第二个模型、不做加权融合，对应导师要求的“单模型前端改造”定位。",
         "",
-        "**第六，本文架构在 PeMS08 长时预测上同样实现全 horizon 领先。** 把 OBB-ST-LSTM 的“轻量空间 CNN + LSTM 时序 + 持续性先验”设计迁移到 PeMS 检测器序列，得到 Ours-ST-LSTM 长时回归模型，在 5/15/30 分钟传感器流量与速度共 6 个 horizon × 目标变量组合上同时与 Persistence、SeasonalPersistence、HistoricalAverage、RidgeLag、LSTM-deep、GRU-deep 三类基线（统计/线性/深度）对比。**Ours-ST-LSTM 在全部 6/6 设置上都取得最低 MAE / RMSE / MAPE**：流量任务 5/15/30 min 的 MAE 分别为 15.14/16.93/18.35 vs 最强基线（Persistence/RidgeLag/RidgeLag）15.88/19.37/21.46；速度任务 0.78/1.25/1.59 vs 最强基线（Persistence）0.79/1.26/1.64。两套数据共用同一架构家族（4 通道 OBB 网格 / 1 通道传感器序列），构成完整的“短时（UTE）+ 长时（PeMS08）双重领先”论文证据闭环。详细每个 horizon 的 MAE/RMSE/MAPE 见 §1.7.1。",
+        "**第六，本文架构在 PeMS08 长时预测上同样实现全 horizon 领先。** 把 GTSEP-DL 的“轻量空间 CNN + LSTM 时序 + 持续性先验”设计迁移到 PeMS 检测器序列，得到 GTSEP-DL 长时回归模型，在 5/15/30 分钟传感器流量与速度共 6 个 horizon × 目标变量组合上同时与 Persistence、SeasonalPersistence、HistoricalAverage、RidgeLag、LSTM-deep、GRU-deep 三类基线（统计/线性/深度）对比。**GTSEP-DL 在全部 6/6 设置上都取得最低 MAE / RMSE / MAPE**：流量任务 5/15/30 min 的 MAE 分别为 15.14/16.93/18.35 vs 最强基线（Persistence/RidgeLag/RidgeLag）15.88/19.37/21.46；速度任务 0.78/1.25/1.59 vs 最强基线（Persistence）0.79/1.26/1.64。两套数据共用同一架构家族（4 通道 OBB 网格 / 1 通道传感器序列），构成完整的“短时（UTE）+ 长时（PeMS08）双重领先”论文证据闭环。详细每个 horizon 的 MAE/RMSE/MAPE 见 §1.7.1。",
         "",
         "---",
         "",
@@ -996,9 +996,9 @@ def write_report(root: Path) -> None:
         "| 空间占有率 | 常规 HBB/目标区域统计 | 提出 HF-GO 概念 | 纯代码实现 Sutherland-Hodgman 裁剪，并扩展 SGT、$\\Delta SGT$、LGAR |",
         "| 状态标签 | V-D 网格与人工校正 | 静态阈值 | K-Means 候选簇 + 速度/密度/占有率物理顺序校验，可复现 |",
         "| 状态特征 | V+D+R+F | V+D+HF-GO+MGTI | V、D、R、F、HF-GO、SGT、$\\Delta SGT$、THW、加速度、MGTI |",
-        "| 预测任务 | 主要做状态识别 | 计划做未来预测 | 当前识别、OBB-ST-LSTM 单模型未来预测、恶化预警三条实验线均已实现 |",
+        "| 预测任务 | 主要做状态识别 | 计划做未来预测 | 当前识别、GTSEP-DL 单模型未来预测、恶化预警三条实验线均已实现 |",
         "| 可解释与可靠性 | 未系统展开 | 未系统展开 | TreeSHAP、反事实曲线、配对 t 检验矩阵 |",
-        "| 近五年方法对比 | 通常对比 SVM/RF/KNN/XGBoost 等机器学习模型 | 通常对比 LSTM 单模型 | 增补 SVM、RF、KNN、GBDT、XGBoost、LSTM、GRU，并提出 OBB-ST-LSTM 单模型与之统一评测 |",
+        "| 近五年方法对比 | 通常对比 SVM/RF/KNN/XGBoost 等机器学习模型 | 通常对比 LSTM 单模型 | 增补 SVM、RF、KNN、GBDT、XGBoost、LSTM、GRU，并提出 GTSEP-DL 单模型与之统一评测 |",
         "",
         "### 1.1.1 与“对比1”参考文献的研究边界",
         "",
@@ -1016,7 +1016,7 @@ def write_report(root: Path) -> None:
         "",
         f"主实验均以 XAM-N-6 为准。当前状态识别采用 {train_pct}%/{test_pct}% 的分层随机划分，保证四类状态在训练集和测试集中的比例基本一致。消融实验和参数敏感性分析采用 5 折分层交叉验证，不再单独划验证集。主结果看特征可分性，时间序列补充结果看未见时段泛化，两者回答的问题不同。",
         "",
-        f"未来状态预测按时间顺序划分，前 {train_pct}% 时间窗口用于训练，后 {test_pct}% 时间窗口用于测试。LSTM 与 OBB-ST-LSTM 仅使用训练段做参数学习，最终指标只在后 {test_pct}% 测试段上统计。恶化预测使用连续时间分组 GroupKFold 的 out-of-fold 评估，避免单次 70/30 切分把恶化事件集中切入某一侧。XAM-N-5 和 PKDD-8 不参与主模型训练，分别用于 OBB 效果验证和自由流场景检查。",
+        f"未来状态预测按时间顺序划分，前 {train_pct}% 时间窗口用于训练，后 {test_pct}% 时间窗口用于测试。LSTM 与 GTSEP-DL 仅使用训练段做参数学习，最终指标只在后 {test_pct}% 测试段上统计。恶化预测使用连续时间分组 GroupKFold 的 out-of-fold 评估，避免单次 70/30 切分把恶化事件集中切入某一侧。XAM-N-5 和 PKDD-8 不参与主模型训练，分别用于 OBB 效果验证和自由流场景检查。",
         "",
         "## 1.3 方法设计",
         "",
@@ -1087,7 +1087,7 @@ def write_report(root: Path) -> None:
         "| 传统机器学习 | SVM-OBB、RF-OBB、KNN-OBB、LR-OBB | 交通状态识别常用基线，检验特征是否只依赖简单分类器即可区分 |",
         "| 树提升模型 | GBDT-OBB、XGBoost-HBB、XGBoost-OBB | 近年交通状态识别与拥堵识别常用强基线，检验非线性组合能力 |",
         "| 时序深度模型 | LSTM-future、GRU-future | 近年短时交通预测常用循环神经网络基线 |",
-        "| 本文方法 | M4 消融、OBB-ST-LSTM、HF-GO/SGT/MGTI 特征 | 验证 OBB 角度、局部占有率和微观扰动特征的增益 |",
+        "| 本文方法 | M4 消融、GTSEP-DL、HF-GO/SGT/MGTI 特征 | 验证 OBB 角度、局部占有率和微观扰动特征的增益 |",
         "",
         "文献依据如下，后续写论文正文时可把这些条目整理进参考文献列表。",
         "",
@@ -1176,7 +1176,7 @@ def write_report(root: Path) -> None:
             "",
             "本节回答未来 3 秒交通状态预测任务。已往工作多把滑窗内速度、密度、HF-GO 等指标聚合为标量后送入 LSTM/XGBoost，存在两点不足：(1) 窗口内逐帧时空异质性被均值抹掉；(2) 旋转框朝向、HF-GO 网格只剩单个标量，OBB 的空间信息没有真正进入深度模型。",
             "",
-            "针对上述缺陷，本文提出 **OBB-ST-LSTM（OBB-aware Spatio-Temporal LSTM）**：把每个滑窗的旋转框网格占有率、HBB 网格占有率和单元加权 sin/cos 朝向场拼成 4 通道空间张量；前端用 2 层卷积编码器逐窗口提取空间表征，主干使用 LSTM 聚合滑窗序列时序演化，输出 3 秒后的四类状态。整个流程不引入第二个模型，不做任何加权融合。",
+            "针对上述缺陷，本文提出 **GTSEP-DL（OBB-aware Spatio-Temporal LSTM）**：把每个滑窗的旋转框网格占有率、HBB 网格占有率和单元加权 sin/cos 朝向场拼成 4 通道空间张量；前端用 2 层卷积编码器逐窗口提取空间表征，主干使用 LSTM 聚合滑窗序列时序演化，输出 3 秒后的四类状态。整个流程不引入第二个模型，不做任何加权融合。",
             "",
             (
                 f"模型输入张量形状为 (T, C, H, W) = "
@@ -1194,15 +1194,15 @@ def write_report(root: Path) -> None:
             "",
             "![未来预测曲线](../outputs/figures/future_prediction_curve.png)",
             "",
-            "![OBB-ST-LSTM混淆矩阵](../outputs/figures/cm_obb_st_lstm.png)",
+            "![GTSEP-DL混淆矩阵](../outputs/figures/cm_gtsep_dl.png)",
             "",
-            "### 1.5.1 OBB-ST-LSTM 消融实验",
+            "### 1.5.1 GTSEP-DL 消融实验",
             "",
             "为定位前端张量化和空间编码器各自的贡献，设计四组消融。",
             "",
             "| 消融变体 | 移除的部分 | Macro-F1 | Accuracy |",
             "|---|---|---:|---:|",
-            f"| OBB-ST-LSTM（本文） | — | {obb_st_future['f1_macro']:.4f} | {obb_st_future['accuracy']:.4f} |",
+            f"| GTSEP-DL（本文） | — | {obb_st_future['f1_macro']:.4f} | {obb_st_future['accuracy']:.4f} |",
         ]
     )
     for abl_name, abl_data in obb_st_ablation.items():
@@ -1219,7 +1219,7 @@ def write_report(root: Path) -> None:
             "- **A4：去 LSTM**——前端 CNN 不变，时序聚合改为 mean pooling，检验时序模块的必要性。",
             "- **A5：去空间张量**——把 4 通道张量置零，模型退化为标量序列 LSTM，检验空间张量整体贡献。",
             "",
-            "OBB-ST-LSTM 与各消融变体均使用 5 个种子重复训练并对 softmax 概率做集成；LSTM-future / GRU-future 基线则使用 3 个种子做相同的概率集成，确保所有循环网络模型的报告口径一致。表中 Macro-F1 是集成后的最终预测值，附带的"
+            "GTSEP-DL 与各消融变体均使用 5 个种子重复训练并对 softmax 概率做集成；LSTM-future / GRU-future 基线则使用 3 个种子做相同的概率集成，确保所有循环网络模型的报告口径一致。表中 Macro-F1 是集成后的最终预测值，附带的"
             f" seed mean = {obb_st_future.get('f1_macro_seed_mean', 0):.4f} ± {obb_st_future.get('f1_macro_seed_std', 0):.4f}"
             "用于刻画训练随机性。",
             "",
@@ -1230,18 +1230,18 @@ def write_report(root: Path) -> None:
             "- A4（去 LSTM）大幅下降证明 LSTM 时序聚合不可省略；",
             "- A5（去整个空间张量）下降证明本文新增的空间感知前端是性能提升的核心来源。",
             "",
-            "![OBB-ST-LSTM 消融](../outputs/figures/obb_st_lstm_ablation.png)",
+            "![GTSEP-DL 消融](../outputs/figures/gtsep_dl_ablation.png)",
             "",
         ]
     )
-    horizon_sweep = exp.get("horizon_sweep_obb_st_lstm", {})
+    horizon_sweep = exp.get("horizon_sweep_gtsep_dl", {})
     if horizon_sweep.get("results"):
         lines.extend([
-            "### 1.5.2 OBB-ST-LSTM 短时多步长敏感性",
+            "### 1.5.2 GTSEP-DL 短时多步长敏感性",
             "",
-            "在 3/5/8 秒预测步长上统一比较 XGBoost-future、LSTM-future、GRU-future 与本文 OBB-ST-LSTM。LSTM/GRU 使用 3 种子概率集成，OBB-ST-LSTM 使用 5/10 种子概率集成。极短步长 1s 已剔除（几乎等于当前状态，无方法学挑战）。表中标 ★ 为该步长 Macro-F1 最优、加粗为 Accuracy 最优。",
+            "在 3/5/8 秒预测步长上统一比较 XGBoost-future、LSTM-future、GRU-future 与本文 GTSEP-DL。LSTM/GRU 使用 3 种子概率集成，GTSEP-DL 使用 5/10 种子概率集成。极短步长 1s 已剔除（几乎等于当前状态，无方法学挑战）。表中标 ★ 为该步长 Macro-F1 最优、加粗为 Accuracy 最优。",
             "",
-            "| Horizon (s) | 指标 | XGBoost | LSTM | GRU | OBB-ST-LSTM |",
+            "| Horizon (s) | 指标 | XGBoost | LSTM | GRU | GTSEP-DL |",
             "|---:|---|---:|---:|---:|---:|",
         ])
         accuracy_lead = 0
@@ -1255,20 +1255,20 @@ def write_report(root: Path) -> None:
             accs = {k: v["accuracy"] for k, v in m.items()}
             f1_best = max(f1s, key=f1s.get)
             acc_best_val = max(accs.values())
-            ours_acc = accs["OBB-ST-LSTM"]
-            ours_f1 = f1s["OBB-ST-LSTM"]
-            if f1_best == "OBB-ST-LSTM":
+            ours_acc = accs["GTSEP-DL"]
+            ours_f1 = f1s["GTSEP-DL"]
+            if f1_best == "GTSEP-DL":
                 f1_lead += 1
             if abs(ours_acc - acc_best_val) < 1e-6:
                 accuracy_lead += 1
             def fmt_f1(name, val):
                 tag_star = "★" if name == f1_best else ""
-                if name == "OBB-ST-LSTM":
+                if name == "GTSEP-DL":
                     return f"**{val:.4f}**{tag_star}"
                 return f"{val:.4f}{tag_star}"
             def fmt_acc(name, val):
                 strong = abs(val - acc_best_val) < 1e-6
-                if name == "OBB-ST-LSTM":
+                if name == "GTSEP-DL":
                     return f"**{val:.4f}**" + ("★" if strong else "")
                 return f"{val:.4f}" + ("★" if strong else "")
             lines.append(
@@ -1276,20 +1276,20 @@ def write_report(root: Path) -> None:
                 f"{fmt_f1('XGBoost-future', f1s['XGBoost-future'])} | "
                 f"{fmt_f1('LSTM-future', f1s['LSTM-future'])} | "
                 f"{fmt_f1('GRU-future', f1s['GRU-future'])} | "
-                f"{fmt_f1('OBB-ST-LSTM', f1s['OBB-ST-LSTM'])} |"
+                f"{fmt_f1('GTSEP-DL', f1s['GTSEP-DL'])} |"
             )
             lines.append(
                 f"| {item['horizon_seconds']:.1f} | Accuracy | "
                 f"{fmt_acc('XGBoost-future', accs['XGBoost-future'])} | "
                 f"{fmt_acc('LSTM-future', accs['LSTM-future'])} | "
                 f"{fmt_acc('GRU-future', accs['GRU-future'])} | "
-                f"{fmt_acc('OBB-ST-LSTM', accs['OBB-ST-LSTM'])} |"
+                f"{fmt_acc('GTSEP-DL', accs['GTSEP-DL'])} |"
             )
         completed = horizon_sweep.get("completed_horizons", 0)
         lines.extend([
             "",
-            f"**Macro-F1 维度**：OBB-ST-LSTM 在 {f1_lead}/{completed} 个步长上 Macro-F1 最优（3s、8s 大幅领先）；5s 的 Macro-F1 略低于 XGBoost-future，反映 XGBoost 在 25 维 OBB/HFGO/MGTI 树特征上能更均衡地处理少数类。",
-            f"**Accuracy 维度**：OBB-ST-LSTM 在 {accuracy_lead}/{completed} 个步长上 Accuracy 最优或并列最优——综合两个指标，本文方法在 3/5/8 秒整段短时区间内全部位于最优集合。",
+            f"**Macro-F1 维度**：GTSEP-DL 在 {f1_lead}/{completed} 个步长上 Macro-F1 最优（3s、8s 大幅领先）；5s 的 Macro-F1 略低于 XGBoost-future，反映 XGBoost 在 25 维 OBB/HFGO/MGTI 树特征上能更均衡地处理少数类。",
+            f"**Accuracy 维度**：GTSEP-DL 在 {accuracy_lead}/{completed} 个步长上 Accuracy 最优或并列最优——综合两个指标，本文方法在 3/5/8 秒整段短时区间内全部位于最优集合。",
             "",
             "论文叙事建议：主结论锚定 3s（Macro-F1 大幅领先 +8.3 pp），8s 作为长短时跨度的稳健性证据（Macro-F1 +5.3 pp），5s 作为 Accuracy 维度并列最优 + Macro-F1 的小样本下树模型边际优势的诚实记录。",
             "",
@@ -1423,7 +1423,7 @@ def write_report(root: Path) -> None:
             [
                 "### 1.7.1 PeMS 长时交通流/速度预测扩展",
                 "",
-                f"为对齐对比文献（《交通运输工程学报》2025 高速公路全域交通状态预测，5/15/30 分钟时长）的长时预测口径，本文把 OBB-ST-LSTM 的“轻量空间 CNN + LSTM 时序”设计迁移到 PeMS 传感器序列，得到 **Ours-ST-LSTM** 长时回归模型，在 `{long_forecast.get('dataset', 'PEMS')}` 上做 5/15/30 分钟传感器流量与速度联合预测。该数据包含 {shape.get('time_steps', '?')} 个 5 分钟时间步、{shape.get('sensors', '?')} 个检测器；输入张量形状为 (T=12, C=1, H=1, W={shape.get('sensors', '?')}), 1D-CNN 跨传感器编码后送 LSTM 输出 {shape.get('sensors', '?')} 维传感器预测。Persistence / SeasonalPersistence / HistoricalAverage / RidgeLag 是经典统计基线；LSTM-deep / GRU-deep 是同等数据下的深度时序基线（3 种子集成）。",
+                f"为对齐对比文献（《交通运输工程学报》2025 高速公路全域交通状态预测，5/15/30 分钟时长）的长时预测口径，本文把 GTSEP-DL 的“轻量空间 CNN + LSTM 时序”设计迁移到 PeMS 传感器序列，得到 **GTSEP-DL** 长时回归模型，在 `{long_forecast.get('dataset', 'PEMS')}` 上做 5/15/30 分钟传感器流量与速度联合预测。该数据包含 {shape.get('time_steps', '?')} 个 5 分钟时间步、{shape.get('sensors', '?')} 个检测器；输入张量形状为 (T=12, C=1, H=1, W={shape.get('sensors', '?')}), 1D-CNN 跨传感器编码后送 LSTM 输出 {shape.get('sensors', '?')} 维传感器预测。Persistence / SeasonalPersistence / HistoricalAverage / RidgeLag 是经典统计基线；LSTM-deep / GRU-deep 是同等数据下的深度时序基线（3 种子集成）。",
                 "",
             ]
         )
@@ -1447,7 +1447,7 @@ def write_report(root: Path) -> None:
             [
                 "![PeMS长时交通流预测](../outputs/figures/long_horizon_forecasting.png)",
                 "",
-                "**Ours-ST-LSTM 在全部 6 个组合（流量×3 horizons + 速度×3 horizons）上同时取得最低 MAE / RMSE / MAPE**，包括最强统计基线 Persistence 和深度基线 LSTM-deep / GRU-deep 都被超过。Ours-ST-LSTM 与 OBB-ST-LSTM 是同一架构家族的两个版本：UTE 上输入 4×12 OBB 网格张量做四类状态分类，PeMS08 上输入 1×170 传感器张量做连续值回归，二者均使用“轻量 1D/2D CNN 跨空间编码 + 单层 LSTM 跨时间聚合”的核心结构。PeMS 版本额外引入持续性先验（最近一次观测 + LSTM 学习残差），使模型即使在 5 分钟极短时（Persistence 已经很强）也能进一步降低 MAE。这种“同一架构、双场景双任务、全 horizon 领先”的实验布局回答了导师对论文逻辑的核心要求——本文创新方法在短时 UTE 状态分类和长时 PeMS 回归上都是最优，没有“在某一类任务上需要让位于基线”的让步。",
+                "**GTSEP-DL 在全部 6 个组合（流量×3 horizons + 速度×3 horizons）上同时取得最低 MAE / RMSE / MAPE**，包括最强统计基线 Persistence 和深度基线 LSTM-deep / GRU-deep 都被超过。GTSEP-DL 与 GTSEP-DL 是同一架构家族的两个版本：UTE 上输入 4×12 OBB 网格张量做四类状态分类，PeMS08 上输入 1×170 传感器张量做连续值回归，二者均使用“轻量 1D/2D CNN 跨空间编码 + 单层 LSTM 跨时间聚合”的核心结构。PeMS 版本额外引入持续性先验（最近一次观测 + LSTM 学习残差），使模型即使在 5 分钟极短时（Persistence 已经很强）也能进一步降低 MAE。这种“同一架构、双场景双任务、全 horizon 领先”的实验布局回答了导师对论文逻辑的核心要求——本文创新方法在短时 UTE 状态分类和长时 PeMS 回归上都是最优，没有“在某一类任务上需要让位于基线”的让步。",
                 "",
             ]
         )
@@ -1660,8 +1660,8 @@ def write_report(root: Path) -> None:
             "**状态识别与预测图表：**",
             "- `outputs/figures/classification_metrics.png` — 当前状态识别各模型指标",
             "- `outputs/figures/cm_xgboost_obb.png` — 当前状态混淆矩阵",
-            "- `outputs/figures/cm_obb_st_lstm.png` — OBB-ST-LSTM 未来状态预测混淆矩阵",
-            "- `outputs/figures/obb_st_lstm_ablation.png` — OBB-ST-LSTM 消融实验",
+            "- `outputs/figures/cm_gtsep_dl.png` — GTSEP-DL 未来状态预测混淆矩阵",
+            "- `outputs/figures/gtsep_dl_ablation.png` — GTSEP-DL 消融实验",
             "- `outputs/figures/future_prediction_curve.png` — 未来预测时序曲线",
             "- `outputs/figures/ablation_macro_f1.png` — 消融实验 Macro-F1",
             "- `outputs/figures/parameter_sensitivity.png` — 参数敏感性",

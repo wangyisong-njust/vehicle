@@ -115,7 +115,7 @@ class DisturbanceGatedLSTMCell(nn.Module):
         return h, c
 
 
-class OBBSTLSTM(nn.Module):
+class GTSEPDL(nn.Module):
     """OBB-aware Spatio-Temporal LSTM.
 
     Input:
@@ -320,7 +320,7 @@ class STCNNOnly(nn.Module):
         return self.head(pooled)
 
 
-def fit_obb_st_lstm(
+def fit_gtsep_dl(
     model: nn.Module,
     train_x: torch.Tensor,
     train_y: torch.Tensor,

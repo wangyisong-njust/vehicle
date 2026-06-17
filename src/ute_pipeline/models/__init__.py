@@ -1,3 +1,3 @@
-from .obb_st_lstm import OBBSTLSTM, fit_obb_st_lstm
+from .gtsep_dl import GTSEPDL, fit_gtsep_dl
 
-__all__ = ["OBBSTLSTM", "fit_obb_st_lstm"]
+__all__ = ["GTSEPDL", "fit_gtsep_dl"]

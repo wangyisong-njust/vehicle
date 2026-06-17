@@ -6,8 +6,8 @@ The long-horizon experiment is a *regression* task (not 4-class classification):
   - targets : flow and speed
   - horizons: 5 / 15 / 30 min  (1 / 3 / 6 steps at 5-min interval)
   - metric  : MAE / RMSE
-  - model   : Ours-ST-LSTM = 1D spatial CNN + LSTM residual regressor with a
-              persistence prior (src/ute_pipeline/models/st_lstm_pems.py)
+  - model   : GTSEP-DL = 1D spatial CNN + LSTM residual regressor with a
+              persistence prior (src/ute_pipeline/models/gtsep_dl_pems.py)
 
 Baselines: Persistence, RidgeLag, LSTM-deep, GRU-deep.
 
@@ -39,15 +39,15 @@ if str(SRC_DIR) not in sys.path:
 import torch
 from sklearn.linear_model import Ridge
 
-from ute_pipeline.models.st_lstm_pems import (
+from ute_pipeline.models.gtsep_dl_pems import (
     GRURegressor,
     LSTMRegressor,
-    STLSTMRegressorV2,
+    GTSEPDLRegressorV2,
     fit_regressor,
     fit_regressor_es,
 )
 
-OURS_SEEDS = [0, 31, 73]  # 3-seed ensemble offsets for Ours-ST-LSTM
+OURS_SEEDS = [0, 31, 73]  # 3-seed ensemble offsets for GTSEP-DL
 
 DATASETS = {
     "PEMS08": {
@@ -57,7 +57,7 @@ DATASETS = {
     },
 }
 
-MODEL_ORDER = ["Persistence", "RidgeLag", "LSTM-deep", "GRU-deep", "Ours-ST-LSTM"]
+MODEL_ORDER = ["Persistence", "RidgeLag", "LSTM-deep", "GRU-deep", "GTSEP-DL"]
 TARGET_CHANNEL = {"flow": 0, "speed": 2}  # PeMS08 channels: 0=flow, 1=occupancy, 2=speed
 HORIZON_STEPS = {"5min": 1, "15min": 3, "30min": 6}
 SEQ_LEN = 12
@@ -200,7 +200,7 @@ def run_target_horizon(
     pred_gru = fit_regressor(gru, flat_tr, y_tr_t, flat_te, seed, epochs=40, batch_size=64, device=device)
     results["GRU-deep"] = mae_rmse(pred_gru * tgt_std + tgt_mean, true_te)
 
-    # --- Ours-ST-LSTM (V2): AR trend prior + gated nonlinear residual +
+    # --- GTSEP-DL (V2): AR trend prior + gated nonlinear residual +
     # disturbance-gated LSTM, trained with L1 loss, validation early stopping
     # and a 3-seed ensemble. Input (B, T, C, 1, N) with the target channel
     # placed first so the AR prior reads the target history. ---
@@ -219,7 +219,7 @@ def run_target_horizon(
 
     ours_probs = []
     for off in OURS_SEEDS:
-        model = STLSTMRegressorV2(
+        model = GTSEPDLRegressorV2(
             in_channels=C, sensors=N, seq_len=SEQ_LEN, hidden_size=64, conv_channels=(8, 8)
         )
         pred = fit_regressor_es(
@@ -230,14 +230,14 @@ def run_target_horizon(
         ours_probs.append(pred)
     pred_ours = np.mean(np.stack(ours_probs, axis=0), axis=0)
     pred_ours_orig = pred_ours * tgt_std + tgt_mean
-    results["Ours-ST-LSTM"] = mae_rmse(pred_ours_orig, true_te)
+    results["GTSEP-DL"] = mae_rmse(pred_ours_orig, true_te)
 
     # Stash speed predictions (original units) for the state-mapping supplement.
     if target == "speed":
         results["_speed_pred"] = {
             "true": true_te,
             "Persistence": last_obs_te,
-            "Ours-ST-LSTM": pred_ours_orig,
+            "GTSEP-DL": pred_ours_orig,
         }
     return results
 
@@ -263,8 +263,8 @@ def build_report(dataset: str, device: str, seed: int) -> dict:
                 "models": {k: model_block[k] for k in MODEL_ORDER},
                 "best_model_by_mae": best_mae,
                 "best_model_by_rmse": best_rmse,
-                "ours_leads_mae": best_mae == "Ours-ST-LSTM",
-                "ours_leads_rmse": best_rmse == "Ours-ST-LSTM",
+                "ours_leads_mae": best_mae == "GTSEP-DL",
+                "ours_leads_rmse": best_rmse == "GTSEP-DL",
             }
             print(f"[LONG] {target} {horizon_name}: " + ", ".join(
                 f"{k}={model_block[k]['mae']:.3f}" for k in MODEL_ORDER))
@@ -275,7 +275,7 @@ def build_report(dataset: str, device: str, seed: int) -> dict:
     for horizon_name, preds in speed_preds.items():
         true_state = speed_to_state(preds["true"])
         block = {}
-        for model in ("Persistence", "Ours-ST-LSTM"):
+        for model in ("Persistence", "GTSEP-DL"):
             pred_state = speed_to_state(preds[model])
             mf1, acc = macro_f1_and_accuracy(true_state, pred_state)
             block[model] = {"macro_f1": round(mf1, 4), "accuracy": round(acc, 4)}
@@ -283,7 +283,7 @@ def build_report(dataset: str, device: str, seed: int) -> dict:
         block["best_model_by_macro_f1"] = best
         supplement["horizons"][horizon_name] = block
         print(f"[STATE] {horizon_name}: Persistence mF1={block['Persistence']['macro_f1']:.4f} "
-              f"Ours mF1={block['Ours-ST-LSTM']['macro_f1']:.4f} -> best={best}")
+              f"Ours mF1={block['GTSEP-DL']['macro_f1']:.4f} -> best={best}")
 
     ours_mae = sum(results[t][h]["ours_leads_mae"] for t in results for h in results[t])
     ours_rmse = sum(results[t][h]["ours_leads_rmse"] for t in results for h in results[t])
@@ -312,7 +312,7 @@ def build_report(dataset: str, device: str, seed: int) -> dict:
             "ours_leads_mae_count": int(ours_mae),
             "ours_leads_rmse_count": int(ours_rmse),
             "completed_settings": 6,
-            "note": "Ours-ST-LSTM MAE/RMSE on flow/speed x 5/15/30min; state mapping is classifier-free.",
+            "note": "GTSEP-DL MAE/RMSE on flow/speed x 5/15/30min; state mapping is classifier-free.",
         },
     }
 
@@ -321,7 +321,7 @@ def plot_results(report: dict, out_path: Path) -> None:
     horizons = ["5min", "15min", "30min"]
     colors = {
         "Persistence": "#8a8f98", "RidgeLag": "#4c78a8", "LSTM-deep": "#e45756",
-        "GRU-deep": "#72b7b2", "Ours-ST-LSTM": "#54a24b",
+        "GRU-deep": "#72b7b2", "GTSEP-DL": "#54a24b",
     }
     fig, axes = plt.subplots(2, 2, figsize=(13, 8))
     panels = [

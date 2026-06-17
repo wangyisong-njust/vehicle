@@ -21,13 +21,13 @@ from scipy.stats import ttest_rel
 from xgboost import DMatrix, XGBClassifier, XGBRFClassifier
 
 from .config import project_root
-from .models.obb_st_lstm import (
-    OBBSTLSTM,
+from .models.gtsep_dl import (
+    GTSEPDL,
     STCNNOnly,
     STFLATMLP,
     build_tensor_sequences,
     channel_standardize,
-    fit_obb_st_lstm,
+    fit_gtsep_dl,
 )
 
 
@@ -1671,7 +1671,7 @@ def _load_xamn6_grid_tensors(expected_rows: int) -> np.ndarray:
     return tensors
 
 
-def train_obb_st_lstm_block(
+def train_gtsep_dl_block(
     cfg: dict,
     main_idx: np.ndarray,
     y_main: np.ndarray,
@@ -1685,7 +1685,7 @@ def train_obb_st_lstm_block(
     lstm_cfg: dict,
     table: FeatureTable,
 ) -> dict[str, object]:
-    """Train OBB-ST-LSTM and ablation variants on XAM-N-6 grid tensors + scalar features.
+    """Train GTSEP-DL and ablation variants on XAM-N-6 grid tensors + scalar features.
 
     The frontend builds a per-frame embedding by concatenating a 2-layer CNN
     encoding of the OBB grid tensor with a small set of standardized handcrafted
@@ -1732,7 +1732,7 @@ def train_obb_st_lstm_block(
 
     if not np.array_equal(end_positions[seq_test_mask], seq_test_positions):
         raise RuntimeError(
-            "OBB-ST-LSTM sequence end positions diverged from the scalar LSTM branch."
+            "GTSEP-DL sequence end positions diverged from the scalar LSTM branch."
         )
 
     train_cfg = {
@@ -1773,7 +1773,7 @@ def train_obb_st_lstm_block(
             if use_state:
                 kwargs["train_current_state"] = train_current_state
                 kwargs["test_current_state"] = test_current_state
-            prob = fit_obb_st_lstm(
+            prob = fit_gtsep_dl(
                 model, train_tensor, train_y, test_tensor, s, n_states, train_cfg,
                 **kwargs,
             )
@@ -1821,7 +1821,7 @@ def train_obb_st_lstm_block(
     train_scalar = train_scalar_aug
     test_scalar = test_scalar_aug
 
-    main_factory = lambda: OBBSTLSTM(
+    main_factory = lambda: GTSEPDL(
         in_channels=main_n_channels,
         conv_channels=(8, 8),
         hidden_size=hidden_size,
@@ -1854,7 +1854,7 @@ def train_obb_st_lstm_block(
     # A1: drop OBB orientation channels (theta_sin, theta_cos) -> 2-channel tensor
     a1_train = main_train_x[:, :, [0, 1]]
     a1_test = main_test_x[:, :, [0, 1]]
-    a1_factory = lambda: OBBSTLSTM(
+    a1_factory = lambda: GTSEPDL(
         in_channels=2, conv_channels=(8, 8),
         num_classes=n_states, scalar_dim=augmented_scalar_dim, bidirectional=False, dropout=0.2,
         use_disturbance_gate=True, disturbance_dim=1,
@@ -1869,7 +1869,7 @@ def train_obb_st_lstm_block(
     # A2: drop HBB occupancy channel
     a2_train = main_train_x[:, :, [0, 2, 3]]
     a2_test = main_test_x[:, :, [0, 2, 3]]
-    a2_factory = lambda: OBBSTLSTM(
+    a2_factory = lambda: GTSEPDL(
         in_channels=3, conv_channels=(8, 8),
         num_classes=n_states, scalar_dim=augmented_scalar_dim, bidirectional=False, dropout=0.2,
         use_disturbance_gate=True, disturbance_dim=1,
@@ -1907,7 +1907,7 @@ def train_obb_st_lstm_block(
 
     zero_train = torch.zeros_like(main_train_x)
     zero_test = torch.zeros_like(main_test_x)
-    a5_factory = lambda: OBBSTLSTM(
+    a5_factory = lambda: GTSEPDL(
         in_channels=main_n_channels,
         conv_channels=(2, 2),
         hidden_size=hidden_size,
@@ -1925,7 +1925,7 @@ def train_obb_st_lstm_block(
         "note": "Spatial tensor zeroed out; only scalar features feed the LSTM.",
     }
 
-    a6_factory = lambda: OBBSTLSTM(
+    a6_factory = lambda: GTSEPDL(
         in_channels=main_n_channels,
         conv_channels=(8, 8),
         hidden_size=hidden_size,
@@ -1943,7 +1943,7 @@ def train_obb_st_lstm_block(
         "note": "Same disturbance-gated architecture, but the MGTI disturbance descriptor is replaced with zeros.",
     }
 
-    a7_factory = lambda: OBBSTLSTM(
+    a7_factory = lambda: GTSEPDL(
         in_channels=main_n_channels,
         conv_channels=(8, 8),
         hidden_size=hidden_size,
@@ -2108,7 +2108,7 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
     )
     pso_xgb_pred_aligned = class_predictions(pso_xgb.predict(x_scaled[seq_test_positions]))
 
-    obb_st_results = train_obb_st_lstm_block(
+    obb_st_results = train_gtsep_dl_block(
         cfg=cfg,
         main_idx=main_idx,
         y_main=y_main,
@@ -2194,7 +2194,7 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
             "true": common_true.tolist(),
             "input_features": FEATURES_VDF,
             "ensemble_seeds": baseline_seed_list,
-            "note": "LSTM with V+D+F scalar features, 3-seed prediction-average ensemble for fair comparison with OBB-ST-LSTM.",
+            "note": "LSTM with V+D+F scalar features, 3-seed prediction-average ensemble for fair comparison with GTSEP-DL.",
         },
         "GRU-future": {
             "metrics": {
@@ -2238,9 +2238,9 @@ def run_prediction(table: FeatureTable, cfg: dict) -> dict[str, object]:
             "ensemble_seeds": external_seed_list,
             "note": "External baseline: lightweight short/long temporal sequence correlation model.",
         },
-        "OBB-ST-LSTM": obb_st_results["main"],
-        "OBB-ST-LSTM_ablation": obb_st_results["ablation"],
-        "OBB-ST-LSTM_meta": obb_st_results["meta"],
+        "GTSEP-DL": obb_st_results["main"],
+        "GTSEP-DL_ablation": obb_st_results["ablation"],
+        "GTSEP-DL_meta": obb_st_results["meta"],
         "state_balanced_supplementary": balanced_result,
         "test_positions": seq_test_positions.tolist(),
     }
@@ -2414,16 +2414,16 @@ def pkdd_generalization(table: FeatureTable, cfg: dict) -> dict[str, object]:
     }
 
 
-def run_horizon_sweep_obb_st_lstm(table: FeatureTable, cfg: dict) -> dict[str, object]:
+def run_horizon_sweep_gtsep_dl(table: FeatureTable, cfg: dict) -> dict[str, object]:
     """Multi-horizon sweep on XAM-N-6.
 
     For each prediction horizon in [1, 3, 5, 8] seconds, train and evaluate:
         - XGBoost-future (single seed, deterministic)
         - LSTM-future, GRU-future (3 seeds, prob-ensemble)
-        - OBB-ST-LSTM (3 seeds, prob-ensemble)
+        - GTSEP-DL (3 seeds, prob-ensemble)
 
     Returns a dict mapping horizon_seconds -> per-model Macro-F1 etc.
-    Used by the report's "OBB-ST-LSTM 短时多步长对比" section to verify the
+    Used by the report's "GTSEP-DL 短时多步长对比" section to verify the
     proposed method leads at every short-term horizon.
     """
     seed = int(cfg["experiment"]["random_seed"])
@@ -2451,7 +2451,7 @@ def run_horizon_sweep_obb_st_lstm(table: FeatureTable, cfg: dict) -> dict[str, o
     sweep: list[dict[str, object]] = []
     baseline_seed_list = [seed, seed + 31, seed + 73]
     obb_seed_list = [seed + 119]
-    # Same hyperparams as the main 3s run (train_obb_st_lstm_block) so the
+    # Same hyperparams as the main 3s run (train_gtsep_dl_block) so the
     # sweep at horizon=3s exactly reproduces the main result.
     train_cfg = {
         "learning_rate": 7e-4,
@@ -2574,7 +2574,7 @@ def run_horizon_sweep_obb_st_lstm(table: FeatureTable, cfg: dict) -> dict[str, o
                 torch.manual_seed(actual_s)
                 model = model_factory()
                 if scalar_train is not None:
-                    p = fit_obb_st_lstm(
+                    p = fit_gtsep_dl(
                         model, train_x, train_y_t, test_x, actual_s, n_states, train_cfg,
                         train_scalar=scalar_train, test_scalar=scalar_test,
                         train_disturbance=train_disturbance if getattr(model, "use_disturbance_gate", False) else None,
@@ -2644,7 +2644,7 @@ def run_horizon_sweep_obb_st_lstm(table: FeatureTable, cfg: dict) -> dict[str, o
                 actual_s = s + seed_offset
                 torch.manual_seed(actual_s)
                 model = model_factory()
-                p = fit_obb_st_lstm(
+                p = fit_gtsep_dl(
                     model, train_x, train_y_t, test_x, actual_s, n_states, local_train_cfg,
                     train_scalar=scalar_train, test_scalar=scalar_test,
                     train_disturbance=disturbance_train if getattr(model, "use_disturbance_gate", False) else None,
@@ -2659,7 +2659,7 @@ def run_horizon_sweep_obb_st_lstm(table: FeatureTable, cfg: dict) -> dict[str, o
             return metrics_dict(common_true, pred, n_states), per_seed
 
         obb_st_metrics, obb_st_per_seed = _ensemble_local(
-            lambda: OBBSTLSTM(
+            lambda: GTSEPDL(
                 in_channels=n_channels,
                 conv_channels=local_conv,
                 hidden_size=local_hidden,
@@ -2681,7 +2681,7 @@ def run_horizon_sweep_obb_st_lstm(table: FeatureTable, cfg: dict) -> dict[str, o
         )
 
         standard_st_metrics, standard_st_per_seed = _ensemble_local(
-            lambda: OBBSTLSTM(
+            lambda: GTSEPDL(
                 in_channels=n_channels,
                 conv_channels=local_conv,
                 hidden_size=local_hidden,
@@ -2698,7 +2698,7 @@ def run_horizon_sweep_obb_st_lstm(table: FeatureTable, cfg: dict) -> dict[str, o
         )
 
         without_mgti_metrics, without_mgti_per_seed = _ensemble_local(
-            lambda: OBBSTLSTM(
+            lambda: GTSEPDL(
                 in_channels=n_channels,
                 conv_channels=local_conv,
                 hidden_size=local_hidden,
@@ -2736,16 +2736,16 @@ def run_horizon_sweep_obb_st_lstm(table: FeatureTable, cfg: dict) -> dict[str, o
             "XGBoost-future": _full(xgb_metrics),
             "LSTM-future": _full(lstm_metrics, lstm_per_seed),
             "GRU-future": _full(gru_metrics, gru_per_seed),
-            "OBB-ST-LSTM": _full(obb_st_metrics, obb_st_per_seed),
-            "OBB-ST-LSTM(no disturbance gate)": _full(standard_st_metrics, standard_st_per_seed),
-            "OBB-ST-LSTM(w/o MGTI)": _full(without_mgti_metrics, without_mgti_per_seed),
+            "GTSEP-DL": _full(obb_st_metrics, obb_st_per_seed),
+            "GTSEP-DL(no disturbance gate)": _full(standard_st_metrics, standard_st_per_seed),
+            "GTSEP-DL(w/o MGTI)": _full(without_mgti_metrics, without_mgti_per_seed),
         }
         best_name = max(models.items(), key=lambda kv: kv[1]["f1_macro"])[0]
         best_f1 = float(models[best_name]["f1_macro"])
         # Treat sub-0.001 Macro-F1 differences as numerical ties and prefer
         # the complete proposed model over internal ablations in tie cases.
-        if best_name.startswith("OBB-ST-LSTM(") and best_f1 - float(models["OBB-ST-LSTM"]["f1_macro"]) <= 1e-3:
-            best_name = "OBB-ST-LSTM"
+        if best_name.startswith("GTSEP-DL(") and best_f1 - float(models["GTSEP-DL"]["f1_macro"]) <= 1e-3:
+            best_name = "GTSEP-DL"
         sweep.append({
             "horizon_seconds": float(horizon_s),
             "horizon_steps": int(horizon),
@@ -2754,21 +2754,21 @@ def run_horizon_sweep_obb_st_lstm(table: FeatureTable, cfg: dict) -> dict[str, o
             "test_sequences": int(test_mask.sum()),
             "models": models,
             "best_model": best_name,
-            "obb_st_lstm_leads": bool(best_name == "OBB-ST-LSTM"),
+            "gtsep_dl_leads": bool(best_name == "GTSEP-DL"),
         })
 
     completed = [item for item in sweep if item.get("status") == "completed"]
-    obb_lead_count = int(sum(1 for item in completed if item.get("obb_st_lstm_leads", False)))
+    obb_lead_count = int(sum(1 for item in completed if item.get("gtsep_dl_leads", False)))
     return {
         "horizons_seconds": [float(h) for h in horizons_s],
         "baseline_seed_list": baseline_seed_list,
-        "obb_st_lstm_seed_list": obb_seed_list,
+        "gtsep_dl_seed_list": obb_seed_list,
         "seed_xgb": seed,
         "results": sweep,
-        "obb_st_lstm_lead_count": obb_lead_count,
+        "gtsep_dl_lead_count": obb_lead_count,
         "completed_horizons": len(completed),
         "summary_note": (
-            f"OBB-ST-LSTM leads at {obb_lead_count} / {len(completed)} short-horizon settings"
+            f"GTSEP-DL leads at {obb_lead_count} / {len(completed)} short-horizon settings"
             if completed else "all horizons skipped"
         ),
     }

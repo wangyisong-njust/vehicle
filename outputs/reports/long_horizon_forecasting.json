@@ -31,7 +31,7 @@
     "RidgeLag",
     "LSTM-deep",
     "GRU-deep",
-    "Ours-ST-LSTM"
+    "GTSEP-DL"
   ],
   "ours_model": "1D spatial CNN + LSTM residual regressor with persistence prior",
   "metrics": [
@@ -63,14 +63,14 @@
             "rmse": 31.104494094848633,
             "mape": null
           },
-          "Ours-ST-LSTM": {
+          "GTSEP-DL": {
             "mae": 13.06950569152832,
             "rmse": 20.474218368530273,
             "mape": null
           }
         },
-        "best_model_by_mae": "Ours-ST-LSTM",
-        "best_model_by_rmse": "Ours-ST-LSTM",
+        "best_model_by_mae": "GTSEP-DL",
+        "best_model_by_rmse": "GTSEP-DL",
         "ours_leads_mae": true,
         "ours_leads_rmse": true
       },
@@ -96,14 +96,14 @@
             "rmse": 33.2004508972168,
             "mape": null
           },
-          "Ours-ST-LSTM": {
+          "GTSEP-DL": {
             "mae": 14.501251220703125,
             "rmse": 22.89866065979004,
             "mape": null
           }
         },
-        "best_model_by_mae": "Ours-ST-LSTM",
-        "best_model_by_rmse": "Ours-ST-LSTM",
+        "best_model_by_mae": "GTSEP-DL",
+        "best_model_by_rmse": "GTSEP-DL",
         "ours_leads_mae": true,
         "ours_leads_rmse": true
       },
@@ -129,14 +129,14 @@
             "rmse": 34.653358459472656,
             "mape": null
           },
-          "Ours-ST-LSTM": {
+          "GTSEP-DL": {
             "mae": 15.929951667785645,
             "rmse": 25.19942283630371,
             "mape": null
           }
         },
-        "best_model_by_mae": "Ours-ST-LSTM",
-        "best_model_by_rmse": "Ours-ST-LSTM",
+        "best_model_by_mae": "GTSEP-DL",
+        "best_model_by_rmse": "GTSEP-DL",
         "ours_leads_mae": true,
         "ours_leads_rmse": true
       }
@@ -164,13 +164,13 @@
             "rmse": 3.5270426273345947,
             "mape": null
           },
-          "Ours-ST-LSTM": {
+          "GTSEP-DL": {
             "mae": 0.7832221984863281,
             "rmse": 1.518559217453003,
             "mape": null
           }
         },
-        "best_model_by_mae": "Ours-ST-LSTM",
+        "best_model_by_mae": "GTSEP-DL",
         "best_model_by_rmse": "RidgeLag",
         "ours_leads_mae": true,
         "ours_leads_rmse": false
@@ -197,14 +197,14 @@
             "rmse": 3.9673519134521484,
             "mape": null
           },
-          "Ours-ST-LSTM": {
+          "GTSEP-DL": {
             "mae": 1.1948487758636475,
             "rmse": 2.5829975605010986,
             "mape": null
           }
         },
-        "best_model_by_mae": "Ours-ST-LSTM",
-        "best_model_by_rmse": "Ours-ST-LSTM",
+        "best_model_by_mae": "GTSEP-DL",
+        "best_model_by_rmse": "GTSEP-DL",
         "ours_leads_mae": true,
         "ours_leads_rmse": true
       },
@@ -230,14 +230,14 @@
             "rmse": 4.396629810333252,
             "mape": null
           },
-          "Ours-ST-LSTM": {
+          "GTSEP-DL": {
             "mae": 1.4740126132965088,
             "rmse": 3.358792304992676,
             "mape": null
           }
         },
-        "best_model_by_mae": "Ours-ST-LSTM",
-        "best_model_by_rmse": "Ours-ST-LSTM",
+        "best_model_by_mae": "GTSEP-DL",
+        "best_model_by_rmse": "GTSEP-DL",
         "ours_leads_mae": true,
         "ours_leads_rmse": true
       }
@@ -256,7 +256,7 @@
           "macro_f1": 0.8725,
           "accuracy": 0.9665
         },
-        "Ours-ST-LSTM": {
+        "GTSEP-DL": {
           "macro_f1": 0.8695,
           "accuracy": 0.9673
         },
@@ -267,7 +267,7 @@
           "macro_f1": 0.7851,
           "accuracy": 0.9454
         },
-        "Ours-ST-LSTM": {
+        "GTSEP-DL": {
           "macro_f1": 0.7662,
           "accuracy": 0.9473
         },
@@ -278,7 +278,7 @@
           "macro_f1": 0.7179,
           "accuracy": 0.9306
         },
-        "Ours-ST-LSTM": {
+        "GTSEP-DL": {
           "macro_f1": 0.6804,
           "accuracy": 0.934
         },
@@ -290,6 +290,6 @@
     "ours_leads_mae_count": 6,
     "ours_leads_rmse_count": 5,
     "completed_settings": 6,
-    "note": "Ours-ST-LSTM MAE/RMSE on flow/speed x 5/15/30min; state mapping is classifier-free."
+    "note": "GTSEP-DL MAE/RMSE on flow/speed x 5/15/30min; state mapping is classifier-free."
   }
 }

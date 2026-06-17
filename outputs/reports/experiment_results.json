@@ -5165,7 +5165,7 @@
         73,
         115
       ],
-      "note": "LSTM with V+D+F scalar features, 3-seed prediction-average ensemble for fair comparison with OBB-ST-LSTM."
+      "note": "LSTM with V+D+F scalar features, 3-seed prediction-average ensemble for fair comparison with GTSEP-DL."
     },
     "GRU-future": {
       "metrics": {
@@ -6000,7 +6000,7 @@
       ],
       "note": "External baseline: lightweight short/long temporal sequence correlation model."
     },
-    "OBB-ST-LSTM": {
+    "GTSEP-DL": {
       "metrics": {
         "accuracy": 0.8191489361702128,
         "precision_macro": 0.5536750483558994,
@@ -6302,7 +6302,7 @@
       ],
       "note": "GTSEP-DL: 4-channel grid tensor encoded by a compact 2-layer CNN, concatenated with an 8-dimensional scalar stream per frame, then fed to a disturbance-gated LSTM. MGTI is supplied only as the disturbance descriptor controlling candidate-memory writes. Orientation channels are scaled to reduce small-sample heading noise. Reported with the fixed reproducible seed used by the main experiment."
     },
-    "OBB-ST-LSTM_ablation": {
+    "GTSEP-DL_ablation": {
       "A1: drop OBB orientation": {
         "metrics": {
           "accuracy": 0.6702127659574468,
@@ -6472,7 +6472,7 @@
         "note": "Same CNN and scalar inputs as GTSEP-DL, but replaces the disturbance-gated LSTM with a standard LSTM."
       }
     },
-    "OBB-ST-LSTM_meta": {
+    "GTSEP-DL_meta": {
       "n_windows_main": 324,
       "n_channels": 4,
       "grid_shape": [
@@ -8258,7 +8258,7 @@
       }
     }
   },
-  "horizon_sweep_obb_st_lstm": {
+  "horizon_sweep_gtsep_dl": {
     "horizons_seconds": [
       3.0,
       5.0,
@@ -8269,7 +8269,7 @@
       73,
       115
     ],
-    "obb_st_lstm_seed_list": [
+    "gtsep_dl_seed_list": [
       161
     ],
     "seed_xgb": 42,
@@ -8306,7 +8306,7 @@
             "f1_macro_seed_mean": 0.47316138346516007,
             "f1_macro_seed_std": 0.00513963561390107
           },
-          "OBB-ST-LSTM": {
+          "GTSEP-DL": {
             "accuracy": 0.8191489361702128,
             "precision_macro": 0.5536750483558994,
             "recall_macro": 0.5312733682298899,
@@ -8315,7 +8315,7 @@
             "f1_macro_seed_mean": 0.5416771400642368,
             "f1_macro_seed_std": 0.0
           },
-          "OBB-ST-LSTM(no disturbance gate)": {
+          "GTSEP-DL(no disturbance gate)": {
             "accuracy": 0.7553191489361702,
             "precision_macro": 0.5052286210822796,
             "recall_macro": 0.4826941566072001,
@@ -8324,7 +8324,7 @@
             "f1_macro_seed_mean": 0.49331384676212264,
             "f1_macro_seed_std": 0.0
           },
-          "OBB-ST-LSTM(w/o MGTI)": {
+          "GTSEP-DL(w/o MGTI)": {
             "accuracy": 0.8085106382978723,
             "precision_macro": 0.5298136645962732,
             "recall_macro": 0.5098680696506783,
@@ -8334,8 +8334,8 @@
             "f1_macro_seed_std": 0.0
           }
         },
-        "best_model": "OBB-ST-LSTM",
-        "obb_st_lstm_leads": true
+        "best_model": "GTSEP-DL",
+        "gtsep_dl_leads": true
       },
       {
         "horizon_seconds": 5.0,
@@ -8369,7 +8369,7 @@
             "f1_macro_seed_mean": 0.4321350134162101,
             "f1_macro_seed_std": 0.03757721859885188
           },
-          "OBB-ST-LSTM": {
+          "GTSEP-DL": {
             "accuracy": 0.8043478260869565,
             "precision_macro": 0.5326081576081576,
             "recall_macro": 0.5400798525798526,
@@ -8378,7 +8378,7 @@
             "f1_macro_seed_mean": 0.5354991619526503,
             "f1_macro_seed_std": 0.0
           },
-          "OBB-ST-LSTM(no disturbance gate)": {
+          "GTSEP-DL(no disturbance gate)": {
             "accuracy": 0.6739130434782609,
             "precision_macro": 0.4550117344234991,
             "recall_macro": 0.4548525798525799,
@@ -8387,7 +8387,7 @@
             "f1_macro_seed_mean": 0.4453828828828829,
             "f1_macro_seed_std": 0.0
           },
-          "OBB-ST-LSTM(w/o MGTI)": {
+          "GTSEP-DL(w/o MGTI)": {
             "accuracy": 0.7934782608695652,
             "precision_macro": 0.5250677506775068,
             "recall_macro": 0.5343980343980345,
@@ -8397,8 +8397,8 @@
             "f1_macro_seed_std": 0.0
           }
         },
-        "best_model": "OBB-ST-LSTM",
-        "obb_st_lstm_leads": true
+        "best_model": "GTSEP-DL",
+        "gtsep_dl_leads": true
       },
       {
         "horizon_seconds": 8.0,
@@ -8432,7 +8432,7 @@
             "f1_macro_seed_mean": 0.2502886034785956,
             "f1_macro_seed_std": 0.009299829410564394
           },
-          "OBB-ST-LSTM": {
+          "GTSEP-DL": {
             "accuracy": 0.5955056179775281,
             "precision_macro": 0.44366635543106137,
             "recall_macro": 0.40616947324264396,
@@ -8441,7 +8441,7 @@
             "f1_macro_seed_mean": 0.4065945512820513,
             "f1_macro_seed_std": 0.0
           },
-          "OBB-ST-LSTM(no disturbance gate)": {
+          "GTSEP-DL(no disturbance gate)": {
             "accuracy": 0.5730337078651685,
             "precision_macro": 0.3529050736497545,
             "recall_macro": 0.32350032959789055,
@@ -8450,7 +8450,7 @@
             "f1_macro_seed_mean": 0.3326118326118326,
             "f1_macro_seed_std": 0.0
           },
-          "OBB-ST-LSTM(w/o MGTI)": {
+          "GTSEP-DL(w/o MGTI)": {
             "accuracy": 0.5955056179775281,
             "precision_macro": 0.43541739231394405,
             "recall_macro": 0.406828669023791,
@@ -8460,12 +8460,12 @@
             "f1_macro_seed_std": 0.0
           }
         },
-        "best_model": "OBB-ST-LSTM",
-        "obb_st_lstm_leads": true
+        "best_model": "GTSEP-DL",
+        "gtsep_dl_leads": true
       }
     ],
-    "obb_st_lstm_lead_count": 3,
+    "gtsep_dl_lead_count": 3,
     "completed_horizons": 3,
-    "summary_note": "OBB-ST-LSTM leads at 3 / 3 short-horizon settings"
+    "summary_note": "GTSEP-DL leads at 3 / 3 short-horizon settings"
   }
 }
