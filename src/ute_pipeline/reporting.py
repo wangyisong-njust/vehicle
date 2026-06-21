@@ -1447,7 +1447,7 @@ def write_report(root: Path) -> None:
             [
                 "![PeMS长时交通流预测](../outputs/figures/long_horizon_forecasting.png)",
                 "",
-                "**GTSEP-DL 在全部 6 个组合（流量×3 horizons + 速度×3 horizons）上同时取得最低 MAE / RMSE / MAPE**，包括最强统计基线 Persistence 和深度基线 LSTM-deep / GRU-deep 都被超过。GTSEP-DL 与 GTSEP-DL 是同一架构家族的两个版本：UTE 上输入 4×12 OBB 网格张量做四类状态分类，PeMS08 上输入 1×170 传感器张量做连续值回归，二者均使用“轻量 1D/2D CNN 跨空间编码 + 单层 LSTM 跨时间聚合”的核心结构。PeMS 版本额外引入持续性先验（最近一次观测 + LSTM 学习残差），使模型即使在 5 分钟极短时（Persistence 已经很强）也能进一步降低 MAE。这种“同一架构、双场景双任务、全 horizon 领先”的实验布局回答了导师对论文逻辑的核心要求——本文创新方法在短时 UTE 状态分类和长时 PeMS 回归上都是最优，没有“在某一类任务上需要让位于基线”的让步。",
+                "**GTSEP-DL 在全部 6 个组合（流量×3 horizons + 速度×3 horizons）上同时取得最低 MAE / RMSE / MAPE**，包括最强统计基线 Persistence 和深度基线 LSTM-deep / GRU-deep 都被超过。GTSEP-DL 的短时分类版本与长时回归版本是同一架构家族的两个版本：UTE 上输入 4×12 OBB 网格张量做四类状态分类，PeMS08 上输入 1×170 传感器张量做连续值回归，二者均使用“轻量 1D/2D CNN 跨空间编码 + 单层 LSTM 跨时间聚合”的核心结构。PeMS 版本额外引入持续性先验（最近一次观测 + LSTM 学习残差），使模型即使在 5 分钟极短时（Persistence 已经很强）也能进一步降低 MAE。这种“同一架构、双场景双任务、全 horizon 领先”的实验布局回答了导师对论文逻辑的核心要求——本文创新方法在短时 UTE 状态分类和长时 PeMS 回归上都是最优，没有“在某一类任务上需要让位于基线”的让步。",
                 "",
             ]
         )

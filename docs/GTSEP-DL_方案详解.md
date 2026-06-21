@@ -1,9 +1,9 @@
-# OBB-ST-LSTM 方案详解
-OBB-ST-LSTM = Oriented Bounding Box + Spatio-Temporal + LSTM
+# GTSEP-DL 方案详解
+GTSEP-DL = Oriented Bounding Box + Spatio-Temporal + LSTM
 
-OBB-ST-LSTM 的设计目标：把这两类被丢掉的信息直接以张量形式喂给深度模型，让模型自己学怎么用。
+GTSEP-DL 的设计目标：把这两类被丢掉的信息直接以张量形式喂给深度模型，让模型自己学怎么用。
 
-OBB-ST-LSTM 是把 LSTM 输入端张量化重构后的单模型架构，不再使用任何"两个模型加权融合"的设计。
+GTSEP-DL 是把 LSTM 输入端张量化重构后的单模型架构，不再使用任何"两个模型加权融合"的设计。
 核心思想是：
 1. **方法学上是单模型端到端**：一个前向、一个损失、一次反向传播。
 2. **短时（3 秒）主任务全面领先所有基线**：Macro-F1 = 0.5589，比最强基线 GRU-future 高 8.30 个百分点。
@@ -22,11 +22,11 @@ OBB-ST-LSTM 是把 LSTM 输入端张量化重构后的单模型架构，不再�
 **缺陷二：OBB 几何信息没真正进入深度模型。** 前面 2.1–2.3 节做了 OBB 朝向估计、4×12 高保真占有率（HF-GO）、单元朝向场，但最终只把它们压缩成 `hfgo_occupancy` 一个标量与 `theta_conf_mean` 一个置信度。**48 维空间网格 + 全车辆朝向场被降到 2 维**，OBB 工作量大但深度模型只用了边角料。
 
 
-针对这两点，当前方法通过模型 OBB-ST-LSTM 解决：通过 LSTM 输入端的张量化与轻量空间编码器，把旋转框、网格占有率、朝向场以张量形式直接进入端到端深度学习，不再使用任何加权融合。
+针对这两点，当前方法通过模型 GTSEP-DL 解决：通过 LSTM 输入端的张量化与轻量空间编码器，把旋转框、网格占有率、朝向场以张量形式直接进入端到端深度学习，不再使用任何加权融合。
 
 ---
 
-# 2 OBB-ST-LSTM 单模型架构
+# 2 GTSEP-DL 单模型架构
 
 ## 2.1 输入张量
 
@@ -119,7 +119,7 @@ $$
 
 ```
 Step 1（初始化）
-  加载 5 个 OBB-ST-LSTM 预训练模型 {f_s1, ..., f_s5}（同架构，不同种子）
+  加载 5 个 GTSEP-DL 预训练模型 {f_s1, ..., f_s5}（同架构，不同种子）
   初始化 Frenet 网格 (H, W) = (4, 12)
   滑窗参数 (T, L, k) = (8, 5s, 3s)
 
@@ -169,7 +169,7 @@ Step 8（滚动迭代）
 
 ## 4.1 短时主任务对比（XAM-N-6，预测 3 秒后状态）
 
-测试集是 XAM-N-6 按时间顺序后 30%（94 个序列）。所有基线均采用 3 种子概率集成，OBB-ST-LSTM 采用 5 种子集成。
+测试集是 XAM-N-6 按时间顺序后 30%（94 个序列）。所有基线均采用 3 种子概率集成，GTSEP-DL 采用 5 种子集成。
 
 | 模型 | Accuracy | Precision | Recall | Macro-F1 | Weighted-F1 |
 |---|---:|---:|---:|---:|---:|
@@ -177,7 +177,7 @@ Step 8（滚动迭代）
 | XGBoost-temporal-future | 0.4043 | 0.4866 | 0.3314 | 0.3298 | 0.5019 |
 | LSTM-future | 0.6915 | 0.4892 | 0.4820 | 0.4700 | 0.7278 |
 | GRU-future | 0.7021 | 0.4944 | 0.4888 | 0.4759 | 0.7378 |
-| **OBB-ST-LSTM（本文）** | **0.7872** | **0.5702** | **0.5682** | **0.5589** | **0.8226** |
+| **GTSEP-DL（本文）** | **0.7872** | **0.5702** | **0.5682** | **0.5589** | **0.8226** |
 
 **关键差距**：
 - 相对最强循环网络基线 GRU-future：Macro-F1 +8.30 pp，Accuracy +8.51 pp
@@ -188,7 +188,7 @@ Step 8（滚动迭代）
 
 极短步长 1 秒已剔除（几乎等于当前状态，所有模型都接近上限，无方法学挑战）。
 
-| Horizon | 指标 | XGBoost | LSTM | GRU | OBB-ST-LSTM |
+| Horizon | 指标 | XGBoost | LSTM | GRU | GTSEP-DL |
 |---:|---|---:|---:|---:|---:|
 | 3 s | Macro-F1 | 0.4788 | 0.4109 | 0.4759 | **0.5589 ★** |
 | 3 s | Accuracy | 0.6277 | 0.5745 | 0.7021 | **0.7872 ★** |
@@ -197,7 +197,7 @@ Step 8（滚动迭代）
 | 8 s | Macro-F1 | 0.3620 | 0.1803 | 0.2695 | **0.4147 ★** |
 | 8 s | Accuracy | 0.5169 | 0.2360 | 0.4045 | **0.6180 ★** |
 
-★ 表示该步长该指标最优。**OBB-ST-LSTM 在 6 个组合中 5 个最优 / 并列最优**：
+★ 表示该步长该指标最优。**GTSEP-DL 在 6 个组合中 5 个最优 / 并列最优**：
 
 - **Macro-F1 维度**：3 s 与 8 s 大幅领先，5 s 略低于 XGBoost（差 5.5 pp）——XGBoost 用 25 维 OBB/HFGO/MGTI 树特征对少数类的均衡处理在 5 s 有边际优势
 - **Accuracy 维度**：3 / 5 / 8 s 全部最优或并列最优——综合两个指标，本文方法在 3–8 s 短时区间内覆盖全部最优集合
@@ -210,7 +210,7 @@ Step 8（滚动迭代）
 
 | 消融变体 | 移除部分 | Macro-F1 | 相对主模型 |
 |---|---|---:|---:|
-| **OBB-ST-LSTM（完整）** | — | **0.5589** | — |
+| **GTSEP-DL（完整）** | — | **0.5589** | — |
 | A1：去 OBB 朝向通道 | 通道 2、3（sin θ / cos θ） | 0.4271 | −13.18 pp |
 | A2：去 HBB 对照通道 | 通道 1（O_HBB） | 0.4647 | −9.42 pp |
 | A3：去空间 CNN | 张量 flatten + MLP 代替 CNN | 0.2702 | −28.87 pp |
@@ -230,11 +230,11 @@ Step 8（滚动迭代）
 **为什么用 PeMS08 而不是 UTE**：UTE XAM-N-6 视频只有约 5.5 分钟，做不了 3+ 分钟长时预测。PeMS08 是公开高速公路 5 分钟粒度数据，包含 170 个检测器 × 17,856 个时间步（约 60 天），与对比文献（《交通运输工程学报》2025 高速公路全域预测）口径一致。
 
 
-### 4.4.1 模型迁移：Ours-ST-LSTM
+### 4.4.1 模型迁移：GTSEP-DL
 
-把 OBB-ST-LSTM 的"轻量空间 CNN + LSTM"骨架迁移到 PeMS08 检测器序列，命名为 **Ours-ST-LSTM**：
+把 GTSEP-DL 的"轻量空间 CNN + LSTM"骨架迁移到 PeMS08 检测器序列，命名为 **GTSEP-DL**：
 
-| 维度 | OBB-ST-LSTM（短时 UTE 分类） | Ours-ST-LSTM（长时 PeMS 回归） |
+| 维度 | GTSEP-DL（短时 UTE 分类） | GTSEP-DL（长时 PeMS 回归） |
 |---|---|---|
 | 数据 | 无人机视频 OBB 旋转框 | 高速公路检测器流量/速度 |
 | 任务 | 4 类状态分类 | 170 维传感器连续值回归 |
@@ -247,11 +247,11 @@ Step 8（滚动迭代）
 
 ### 4.4.2 PeMS08 长时对比结果
 
-7 个模型横向对比：Persistence、SeasonalPersistence、HistoricalAverage、RidgeLag（统计基线），LSTM-deep、GRU-deep（3 种子集成深度基线），Ours-ST-LSTM（3 种子集成本文方法）。
+7 个模型横向对比：Persistence、SeasonalPersistence、HistoricalAverage、RidgeLag（统计基线），LSTM-deep、GRU-deep（3 种子集成深度基线），GTSEP-DL（3 种子集成本文方法）。
 
 **表 流量预测 MAE / RMSE（加粗为该步长最优）**
 
-| Horizon | 指标 | Persistence | RidgeLag | LSTM-deep | GRU-deep | Ours-ST-LSTM |
+| Horizon | 指标 | Persistence | RidgeLag | LSTM-deep | GRU-deep | GTSEP-DL |
 |---:|---|---:|---:|---:|---:|---:|
 | 5 min | MAE | 15.880 | 17.130 | 20.546 | 19.588 | **15.129** |
 | 5 min | RMSE | 24.563 | 25.760 | 31.721 | 30.112 | **23.468** |
@@ -262,7 +262,7 @@ Step 8（滚动迭代）
 
 **表 速度预测 MAE / RMSE（加粗为该步长最优）**
 
-| Horizon | 指标 | Persistence | RidgeLag | LSTM-deep | GRU-deep | Ours-ST-LSTM |
+| Horizon | 指标 | Persistence | RidgeLag | LSTM-deep | GRU-deep | GTSEP-DL |
 |---:|---|---:|---:|---:|---:|---:|
 | 5 min | MAE | 0.793 | 1.331 | 1.805 | 1.717 | **0.782** |
 | 5 min | RMSE | 1.528 | 2.449 | 4.095 | 3.882 | **1.503** |
@@ -271,7 +271,7 @@ Step 8（滚动迭代）
 | 30 min | MAE | 1.635 | 2.390 | 2.061 | 2.034 | **1.592** |
 | 30 min | RMSE | 3.718 | 4.536 | 4.586 | 4.480 | **3.480** |
 
-**Ours-ST-LSTM 在 6 / 6 全部组合上 MAE 与 RMSE 同时最低**：
+**GTSEP-DL 在 6 / 6 全部组合上 MAE 与 RMSE 同时最低**：
 
 - 流量预测 MAE 较最强基线下降：5 min 4.7%、15 min 12.5%、30 min 14.7%
 - 速度预测 MAE 较最强基线下降：5 min 1.4%、15 min 0.5%、30 min 2.6%
@@ -281,7 +281,7 @@ Step 8（滚动迭代）
 
 短时和长时都由同一架构骨架完成：
 
-| 维度 | OBB-ST-LSTM（UTE 短时分类） | Ours-ST-LSTM（PeMS 长时回归） |
+| 维度 | GTSEP-DL（UTE 短时分类） | GTSEP-DL（PeMS 长时回归） |
 |---|---|---|
 | 数据形态 | 视频 OBB 4×12 网格 | 检测器 1×170 序列 |
 | 输入维度 | (8, 4, 4, 12) | (12, 1, 1, 170) |

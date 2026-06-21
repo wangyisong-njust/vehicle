@@ -1,4 +1,4 @@
-"""ST-LSTM models for PeMS sensor-network long-horizon traffic forecasting.
+"""GTSEP-DL models for PeMS sensor-network long-horizon traffic forecasting.
 
 Contains both regression variants (kept for reference) and the classification
 variants used in the current long-horizon 4-class state forecasting experiment.
@@ -16,7 +16,7 @@ from .gtsep_dl import DisturbanceGatedLSTM
 
 
 class GTSEPDLRegressor(nn.Module):
-    """ST-LSTM for sensor-network long-horizon regression.
+    """GTSEP-DL for sensor-network long-horizon regression.
 
     Architecture transfer of GTSEP-DL with two critical adaptations for
     multi-sensor regression on PeMS:
@@ -77,7 +77,7 @@ class GTSEPDLRegressor(nn.Module):
 
 
 class GTSEPDLRegressorV2(nn.Module):
-    """Improved ST-LSTM long-horizon regressor.
+    """Improved GTSEP-DL long-horizon regressor.
 
     Three principled additions over GTSEPDLRegressor, each targeting a concrete
     weakness observed on PeMS08:
@@ -178,7 +178,7 @@ class GRURegressor(nn.Module):
 
 
 class GTSEPDLClassifier(nn.Module):
-    """ST-LSTM for per-sensor 4-class traffic state classification on PeMS data.
+    """GTSEP-DL for per-sensor 4-class traffic state classification on PeMS data.
 
     Architecture mirrors GTSEP-DL: 1D-CNN spatial encoder → LSTM → per-sensor
     class logits. Head outputs (B, N, n_classes) so each sensor independently

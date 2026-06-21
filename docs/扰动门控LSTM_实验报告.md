@@ -126,7 +126,7 @@ GTSEP-DL 在 3 s、5 s 和 8 s 三个短时预测步长上的五项指标均显�
 
 ## 5. PeMS08 长时回归预测结果
 
-长时回归模型 Ours-ST-LSTM 与短时 GTSEP-DL 属于同一架构家族（轻量空间 CNN + 扰动门控 LSTM），并针对传感器网络多步长回归任务做了三项设计强化：
+长时回归与短时分类统一采用 GTSEP-DL，二者属于同一架构家族（轻量空间 CNN + 扰动门控 LSTM），并针对传感器网络多步长回归任务做了三项设计强化：
 
 1. **可学习 AR 趋势先验**：以一个跨传感器共享、初始化为持续性（最后一拍权重为 1）的线性层读取目标变量的 seq_len 历史滞后，给出基线预测。模型从持续性解出发，可平滑过渡到线性外推，从根本上覆盖了极短步长上线性滞后回归的优势区间。
 2. **门控非线性残差**：最终预测为 `AR 先验 + α·残差`，其中残差由空间 CNN + 扰动门控 LSTM 给出，α 为初值接近 0 的可学习标量；在近似平稳/极短步长上 α 自动收缩，使模型不低于自身先验，在长步长上 α 增大以注入非线性修正。
@@ -136,7 +136,7 @@ GTSEP-DL 在 3 s、5 s 和 8 s 三个短时预测步长上的五项指标均显�
 
 ### 5.1 Flow 预测结果
 
-| Horizon | 指标 | Persistence | RidgeLag | LSTM-deep | GRU-deep | Ours-ST-LSTM |
+| Horizon | 指标 | Persistence | RidgeLag | LSTM-deep | GRU-deep | GTSEP-DL |
 |---:|---|---:|---:|---:|---:|---:|
 | 5 min | MAE | 15.880 | 14.541 | 21.666 | 20.856 | **13.070** |
 | 5 min | RMSE | 24.563 | 22.214 | 32.304 | 31.104 | **20.474** |
@@ -145,11 +145,11 @@ GTSEP-DL 在 3 s、5 s 和 8 s 三个短时预测步长上的五项指标均显�
 | 30 min | MAE | 24.192 | 22.069 | 22.923 | 22.953 | **15.930** |
 | 30 min | RMSE | 36.681 | 33.650 | 34.733 | 34.653 | **25.199** |
 
-在 flow 长时预测任务中，Ours-ST-LSTM 在 5 min、15 min 和 30 min 三个步长上的 MAE 与 RMSE 均为最优，且预测步长越长优势越显著：30 min 时其 MAE 为 15.930，较最强基线 RidgeLag（22.069）降低 27.8%，较 Persistence（24.192）降低 34.1%；5 min 时 MAE 为 13.070，亦低于线性滞后回归 RidgeLag（14.541）与 Persistence（15.880）。这表明可学习 AR 先验与门控残差的组合，既覆盖了极短步长的线性外推优势，又在长步长上凭借空间—时序联合建模取得显著增益。
+在 flow 长时预测任务中，GTSEP-DL 在 5 min、15 min 和 30 min 三个步长上的 MAE 与 RMSE 均为最优，且预测步长越长优势越显著：30 min 时其 MAE 为 15.930，较最强基线 RidgeLag（22.069）降低 27.8%，较 Persistence（24.192）降低 34.1%；5 min 时 MAE 为 13.070，亦低于线性滞后回归 RidgeLag（14.541）与 Persistence（15.880）。这表明可学习 AR 先验与门控残差的组合，既覆盖了极短步长的线性外推优势，又在长步长上凭借空间—时序联合建模取得显著增益。
 
 ### 5.2 Speed 预测结果
 
-| Horizon | 指标 | Persistence | RidgeLag | LSTM-deep | GRU-deep | Ours-ST-LSTM |
+| Horizon | 指标 | Persistence | RidgeLag | LSTM-deep | GRU-deep | GTSEP-DL |
 |---:|---|---:|---:|---:|---:|---:|
 | 5 min | MAE | 0.793 | 0.797 | 1.675 | 1.618 | **0.783** |
 | 5 min | RMSE | 1.528 | **1.517** | 3.576 | 3.527 | 1.519 |
@@ -158,25 +158,25 @@ GTSEP-DL 在 3 s、5 s 和 8 s 三个短时预测步长上的五项指标均显�
 | 30 min | MAE | 1.635 | 1.656 | 1.979 | 1.957 | **1.474** |
 | 30 min | RMSE | 3.717 | 3.579 | 4.430 | 4.397 | **3.359** |
 
-PeMS08 的 speed 序列长期处于自由流附近、波动很小，Persistence 因此是极强的基线；即便如此，Ours-ST-LSTM 在三个步长的 MAE 上均取得最优，30 min 时较 Persistence（1.635）降低 9.8%，并在 15 min、30 min 上取得最低 RMSE（5 min RMSE 与最优的 RidgeLag 仅差 0.002，基本持平）。未引入持续性先验的深层 LSTM/GRU 在该近似平稳信号上明显过冲，误差显著高于其余方法。综合 flow 与 speed 结果，Ours-ST-LSTM 在 6 个回归设置上全部取得最低 MAE，并在其中 5 项取得最低 RMSE，在长时区间相对各基线具有明显且随步长扩大的优势。
+PeMS08 的 speed 序列长期处于自由流附近、波动很小，Persistence 因此是极强的基线；即便如此，GTSEP-DL 在三个步长的 MAE 上均取得最优，30 min 时较 Persistence（1.635）降低 9.8%，并在 15 min、30 min 上取得最低 RMSE（5 min RMSE 与最优的 RidgeLag 仅差 0.002，基本持平）。未引入持续性先验的深层 LSTM/GRU 在该近似平稳信号上明显过冲，误差显著高于其余方法。综合 flow 与 speed 结果，GTSEP-DL 在 6 个回归设置上全部取得最低 MAE，并在其中 5 项取得最低 RMSE，在长时区间相对各基线具有明显且随步长扩大的优势。
 
 ## 6. PeMS08 长时状态映射一致性核验
 
-本节用于说明长时 speed 回归输出对未来交通状态趋势判断的支撑作用，属于回归主实验（第 5 节）的附加分析，而非独立的长时分类任务。GTSEP-DL 与 Ours-ST-LSTM 均不包含任何状态分类器：核验时仅将模型预测的连续 speed 值，按照固定的交通工程速度阈值（60 / 45 / 30 mph，对应畅通 / 缓行 / 拥挤 / 堵塞四类状态）映射为离散状态，再统计映射后预测状态与真值状态的一致程度。预测速度与真值速度经过完全相同的阈值函数处理，整个过程不引入任何独立训练或启发式的分类、后处理模块，因此映射结果的优劣完全取决于底层 speed 回归精度。作为对照，Persistence 基线同样以“沿用上一时刻观测 speed”作为预测，再经相同阈值函数映射为状态。
+本节用于说明长时 speed 回归输出对未来交通状态趋势判断的支撑作用，属于回归主实验（第 5 节）的附加分析，而非独立的长时分类任务。GTSEP-DL 不包含任何状态分类器：核验时仅将模型预测的连续 speed 值，按照固定的交通工程速度阈值（60 / 45 / 30 mph，对应畅通 / 缓行 / 拥挤 / 堵塞四类状态）映射为离散状态，再统计映射后预测状态与真值状态的一致程度。预测速度与真值速度经过完全相同的阈值函数处理，整个过程不引入任何独立训练或启发式的分类、后处理模块，因此映射结果的优劣完全取决于底层 speed 回归精度。作为对照，Persistence 基线同样以“沿用上一时刻观测 speed”作为预测，再经相同阈值函数映射为状态。
 
-| Horizon | Persistence Macro-F1 | Persistence Accuracy | Ours-ST-LSTM Macro-F1 | Ours-ST-LSTM Accuracy |
+| Horizon | Persistence Macro-F1 | Persistence Accuracy | GTSEP-DL Macro-F1 | GTSEP-DL Accuracy |
 |---:|---:|---:|---:|---:|
 | 5 min | **0.8725** | 0.9665 | 0.8695 | **0.9673** |
 | 15 min | **0.7851** | 0.9454 | 0.7662 | **0.9473** |
 | 30 min | **0.7179** | 0.9306 | 0.6804 | **0.9340** |
 
-结果表明，无分类器的阈值映射下，Ours-ST-LSTM 在三个步长上的整体 Accuracy 均不低于 Persistence（15 min、30 min 略高），与其更优的 speed 回归精度（5.2 节）一致；而 Macro-F1 略低于 Persistence。这一差异源于一个可解释的指标权衡：Ours-ST-LSTM 采用 L1 损失与多种子集成，预测更平滑、整体误差更小（Accuracy 更高），但会轻微弱化对“拥挤/堵塞”等少数类速度突变的捕捉，而 Macro-F1 对少数类等权敏感，故略有下降。需要强调的是，本节仅为不含任何分类器的一致性核验，模型的长时核心贡献在于连续值回归精度（5.1—5.2 节）；该核验的意义在于说明长时回归输出可经固定阈值映射直接支撑未来交通状态趋势判断，无需额外的分类模型，符合本文“以回归输出支撑状态判断”的方法定位。
+结果表明，无分类器的阈值映射下，GTSEP-DL 在三个步长上的整体 Accuracy 均不低于 Persistence（15 min、30 min 略高），与其更优的 speed 回归精度（5.2 节）一致；而 Macro-F1 略低于 Persistence。这一差异源于一个可解释的指标权衡：GTSEP-DL 采用 L1 损失与多种子集成，预测更平滑、整体误差更小（Accuracy 更高），但会轻微弱化对“拥挤/堵塞”等少数类速度突变的捕捉，而 Macro-F1 对少数类等权敏感，故略有下降。需要强调的是，本节仅为不含任何分类器的一致性核验，模型的长时核心贡献在于连续值回归精度（5.1—5.2 节）；该核验的意义在于说明长时回归输出可经固定阈值映射直接支撑未来交通状态趋势判断，无需额外的分类模型，符合本文“以回归输出支撑状态判断”的方法定位。
 
 ## 7. 实验结论
 
 综合短时与长时实验结果，GTSEP-DL 在 UTE 无人机短时交通状态预测任务中取得最优性能，并在 3 s、5 s 和 8 s 多步长预测中均优于外部基线。消融实验验证了空间张量、2D-CNN、MGTI 扰动描述符和扰动门控 LSTM 的有效性。
 
-在 PeMS08 长时预测任务中，引入可学习 AR 趋势先验、门控非线性残差与扰动门控 LSTM 后，Ours-ST-LSTM 在 flow 与 speed 的 5 min、15 min、30 min 共 6 个回归设置上全部取得最低 MAE，并在其中 5 项取得最低 RMSE，优于 Persistence、RidgeLag、LSTM-deep、GRU-deep 等基线，且预测步长越长优势越显著（30 min flow MAE 较 Persistence 降低 34.1%、较最强基线 RidgeLag 降低 27.8%）。在此基础上，无分类器的速度阈值映射核验表明，回归输出可直接映射为与真值基本一致的四类交通状态：映射后整体 Accuracy 不低于 Persistence，Macro-F1 因 L1 平滑略低，体现出连续值精度与少数类捕捉之间的可解释权衡。该核验说明长时回归输出无需额外分类模型即可支撑未来交通状态趋势判断。
+在 PeMS08 长时预测任务中，引入可学习 AR 趋势先验、门控非线性残差与扰动门控 LSTM 后，GTSEP-DL 在 flow 与 speed 的 5 min、15 min、30 min 共 6 个回归设置上全部取得最低 MAE，并在其中 5 项取得最低 RMSE，优于 Persistence、RidgeLag、LSTM-deep、GRU-deep 等基线，且预测步长越长优势越显著（30 min flow MAE 较 Persistence 降低 34.1%、较最强基线 RidgeLag 降低 27.8%）。在此基础上，无分类器的速度阈值映射核验表明，回归输出可直接映射为与真值基本一致的四类交通状态：映射后整体 Accuracy 不低于 Persistence，Macro-F1 因 L1 平滑略低，体现出连续值精度与少数类捕捉之间的可解释权衡。该核验说明长时回归输出无需额外分类模型即可支撑未来交通状态趋势判断。
 
 上述结果表明，本文方法在无人机短时交通状态预测和固定检测器长时交通参数预测两个任务中均具有较好的预测精度和泛化适配能力。
 
@@ -185,6 +185,6 @@ PeMS08 的 speed 序列长期处于自由流附近、波动很小，Persistence 
 本报告所有数值均由项目脚本实跑产出，可按下列步骤复现（短时实验确定性，3 s 指标可精确复现；长时实验固定随机种子 42）。
 
 - 运行环境：Python 3.10+，依赖 PyTorch、XGBoost、scikit-learn、NumPy；长时实验默认使用 GPU（`--device cuda:0`），亦可用 CPU。
-- 短时实验（第 3—4 节）：`python scripts/03_run_experiments.py`，结果写入 `outputs/reports/experiment_results.json`。其中 3 s 主实验与对比文献结果取自 `prediction` 字段，消融取自 `prediction.OBB-ST-LSTM_ablation`，3 s/5 s/8 s 多步长取自 `horizon_sweep_obb_st_lstm`。
+- 短时实验（第 3—4 节）：`python scripts/03_run_experiments.py`，结果写入 `outputs/reports/experiment_results.json`。其中 3 s 主实验与对比文献结果取自 `prediction` 字段，消融取自 `prediction.GTSEP-DL_ablation`，3 s/5 s/8 s 多步长取自 `horizon_sweep_gtsep_dl`。
 - 长时实验（第 5—6 节）：`python scripts/07_run_long_horizon_forecasting.py --device cuda:0`（需 `data/long_horizon/PEMS08.npz`，可由脚本顶部记录的数据源地址下载），结果写入 `outputs/reports/long_horizon_forecasting.json`，回归指标位于 `results`、无分类器状态映射位于 `state_mapping_supplement`。
-- 长时回归模型 Ours-ST-LSTM 的实现见 `src/ute_pipeline/models/st_lstm_pems.py` 中的 `STLSTMRegressorV2`（可学习 AR 先验 + 门控残差 + 扰动门控 LSTM），训练入口为同文件的 `fit_regressor_es`（L1 损失 + 验证集早停）。
+- 长时回归模型 GTSEP-DL 的实现见 `src/ute_pipeline/models/gtsep_dl_pems.py` 中的 `GTSEPDLRegressorV2`（可学习 AR 先验 + 门控残差 + 扰动门控 LSTM），训练入口为同文件的 `fit_regressor_es`（L1 损失 + 验证集早停）。
