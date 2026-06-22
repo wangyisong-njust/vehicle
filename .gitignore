@@ -18,3 +18,7 @@ outputs/logs/
 outputs/models/
 deliverables/hbb_to_obb_minimal/outputs/
 data/long_horizon/
+
+# Regenerable intermediate artifacts (rebuild via scripts/01-02)
+outputs/processed/
+outputs/features/
