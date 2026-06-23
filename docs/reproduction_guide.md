@@ -38,14 +38,16 @@
 
 已验证环境：
 
+下表为生成报告数值的精确版本，复现时请严格对齐（尤其是 PyTorch）。短时深度模型在 CPU 上训练，结果对 torch/BLAS 版本敏感，换版本可能使 94 样本测试集上的 Macro-F1 漂移数个百分点。
+
 | 项目 | 版本 |
 |---|---|
-| Python | 3.10 |
+| Python | 3.11 |
 | NumPy | 1.26.4 |
-| SciPy | 1.11.4 |
-| scikit-learn | 1.4.2 |
+| SciPy | 1.15.3 |
+| scikit-learn | 1.7.1 |
 | XGBoost | 2.1.4 |
-| PyTorch | 1.12.1 |
+| PyTorch | 2.9.0 |
 | OpenCV | 4.8+ |
 | SUMO | 1.22.0，可用但当前实验不依赖 |
 
@@ -86,13 +88,13 @@ conda activate vehicle_ute
 目的：不使用 conda 时安装依赖。
 
 ```bash
-python3.10 -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-如果 `torch==1.12.1` 在当前平台没有可用轮子，可以安装本机可用的 PyTorch 版本，但需要重新运行实验并以新结果为准。
+如果 `torch==2.9.0` 在当前平台没有可用轮子，可以安装本机可用的 PyTorch 版本，但短时深度模型的数值会随之变化（在 94 样本测试集上 Macro-F1 可能漂移数个百分点、消融次序可能改变），此时应重新运行实验并以新结果为准。
 
 ## 4. 环境自检
 

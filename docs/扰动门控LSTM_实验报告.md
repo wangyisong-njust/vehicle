@@ -182,9 +182,11 @@ PeMS08 的 speed 序列长期处于自由流附近、波动很小，Persistence 
 
 ## 8. 复现说明
 
-本报告所有数值均由项目脚本实跑产出，可按下列步骤复现（短时实验确定性，3 s 指标可精确复现；长时实验固定随机种子 42）。
+本报告所有数值均由项目脚本实跑产出。短时实验为单随机种子（seed 161，模型内部使用 seed+119）、在 CPU 上训练，长时实验固定随机种子 42。
 
-- 运行环境：Python 3.10+，依赖 PyTorch、XGBoost、scikit-learn、NumPy；长时实验默认使用 GPU（`--device cuda:0`），亦可用 CPU。
+**复现环境（务必对齐版本）**：报告数值是在 **Python 3.11 + torch 2.9.0 + numpy 1.26.4 + scikit-learn 1.7.1 + scipy 1.15.3 + xgboost 2.1.4** 下生成的（见 `requirements.txt` / `environment.yml`，已锁定为该版本）。短时深度模型在 CPU 上训练 40 个 epoch，其浮点结果对 PyTorch / BLAS 版本敏感；由于测试集仅 94 个样本且类别不均衡，**更换 torch/BLAS 版本可能使个别预测翻转、Macro-F1 漂移数个百分点，并可能改变消融变体之间的相对次序**。若复现出的数值与本报告不一致，请首先核对上述版本是否完全一致——使用其它 torch 版本（如 1.12）将无法精确复现。在版本一致的前提下，本报告的全部短时数值（含主表、对比与 8 组消融）均可由 `scripts/01→02→03` 从原始数据完整重跑、逐位复现。
+
+- 运行环境：Python 3.11，依赖见 `requirements.txt`；短时实验在 CPU 上训练，长时实验默认使用 GPU（`--device cuda:0`），亦可用 CPU。
 - 短时实验（第 3—4 节）：`python scripts/03_run_experiments.py`，结果写入 `outputs/reports/experiment_results.json`。其中 3 s 主实验与对比文献结果取自 `prediction` 字段，消融取自 `prediction.GTSEP-DL_ablation`，3 s/5 s/8 s 多步长取自 `horizon_sweep_gtsep_dl`。
 - 长时实验（第 5—6 节）：`python scripts/07_run_long_horizon_forecasting.py --device cuda:0`（需 `data/long_horizon/PEMS08.npz`，可由脚本顶部记录的数据源地址下载），结果写入 `outputs/reports/long_horizon_forecasting.json`，回归指标位于 `results`、无分类器状态映射位于 `state_mapping_supplement`。
 - 长时回归模型 GTSEP-DL 的实现见 `src/ute_pipeline/models/gtsep_dl_pems.py` 中的 `GTSEPDLRegressorV2`（可学习 AR 先验 + 门控残差 + 扰动门控 LSTM），训练入口为同文件的 `fit_regressor_es`（L1 损失 + 验证集早停）。

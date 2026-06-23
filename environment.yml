@@ -1,19 +1,22 @@
+# Exact stack used to generate the reported results (Python 3.11 + torch 2.9).
+# The short-time deep models train on CPU over 40 epochs and are sensitive to
+# the PyTorch / BLAS version: a different torch build can shift Macro-F1 by a
+# few points on the 94-sample test set and change the ablation ordering. Pin
+# these versions to reproduce the report numbers.
 name: vehicle_ute
 channels:
-  - pytorch
   - conda-forge
 dependencies:
-  - python=3.10
-  - numpy=1.26
-  - pandas=2.2
-  - scipy=1.11
-  - scikit-learn=1.4
+  - python=3.11
+  - numpy=1.26.4
+  - pandas=2.3.2
+  - scipy=1.15.3
+  - scikit-learn=1.7.1
   - matplotlib>=3.7
   - tqdm>=4.66
   - opencv>=4.8
-  - pytorch=1.12
-  - torchvision=0.13
   - pip
   - pip:
+      - torch==2.9.0
       - xgboost==2.1.4
       - eclipse-sumo==1.22.0
